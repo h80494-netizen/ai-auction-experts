@@ -1,0 +1,752 @@
+[
+  {
+    "tag": "INPUT",
+    "name": "usage_code_all",
+    "type": "hidden",
+    "id": ""
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code_all2",
+    "type": "hidden",
+    "id": ""
+  },
+  {
+    "tag": "INPUT",
+    "name": "stitle",
+    "type": "hidden",
+    "id": ""
+  },
+  {
+    "tag": "INPUT",
+    "name": "npls",
+    "type": "hidden",
+    "id": ""
+  },
+  {
+    "tag": "INPUT",
+    "name": "spels",
+    "type": "hidden",
+    "id": ""
+  },
+  {
+    "tag": "INPUT",
+    "name": "schs",
+    "type": "hidden",
+    "id": ""
+  },
+  {
+    "tag": "INPUT",
+    "name": "pchs",
+    "type": "hidden",
+    "id": ""
+  },
+  {
+    "tag": "INPUT",
+    "name": "address2_01",
+    "type": "hidden",
+    "id": "address2_01"
+  },
+  {
+    "tag": "INPUT",
+    "name": "address2_02",
+    "type": "hidden",
+    "id": "address2_02"
+  },
+  {
+    "tag": "INPUT",
+    "name": "address2_03",
+    "type": "hidden",
+    "id": "address2_03"
+  },
+  {
+    "tag": "INPUT",
+    "name": "ps_alert",
+    "type": "hidden",
+    "id": "ps_alert"
+  },
+  {
+    "tag": "INPUT",
+    "name": "sellMethod",
+    "type": "radio",
+    "id": "pbl01"
+  },
+  {
+    "tag": "INPUT",
+    "name": "sellMethod",
+    "type": "radio",
+    "id": "pbl02"
+  },
+  {
+    "tag": "INPUT",
+    "name": "sellMethod",
+    "type": "radio",
+    "id": "pbl03"
+  },
+  {
+    "tag": "SELECT",
+    "name": "status",
+    "type": "select-one",
+    "id": ""
+  },
+  {
+    "tag": "INPUT",
+    "name": "cltr_mnmt_no",
+    "type": "text",
+    "id": ""
+  },
+  {
+    "tag": "INPUT",
+    "name": "ipdate1",
+    "type": "text",
+    "id": "ipdate1"
+  },
+  {
+    "tag": "INPUT",
+    "name": "ipdate2",
+    "type": "text",
+    "id": "ipdate2"
+  },
+  {
+    "tag": "SELECT",
+    "name": "address1_01",
+    "type": "select-one",
+    "id": "address1_01"
+  },
+  {
+    "tag": "SELECT",
+    "name": "address1_02",
+    "type": "select-one",
+    "id": "address1_02"
+  },
+  {
+    "tag": "SELECT",
+    "name": "address1_03",
+    "type": "select-one",
+    "id": "address1_03"
+  },
+  {
+    "tag": "SELECT",
+    "name": "eprice1",
+    "type": "select-one",
+    "id": ""
+  },
+  {
+    "tag": "SELECT",
+    "name": "eprice2",
+    "type": "select-one",
+    "id": ""
+  },
+  {
+    "tag": "SELECT",
+    "name": "mprice1",
+    "type": "select-one",
+    "id": ""
+  },
+  {
+    "tag": "SELECT",
+    "name": "mprice2",
+    "type": "select-one",
+    "id": ""
+  },
+  {
+    "tag": "INPUT",
+    "name": "",
+    "type": "checkbox",
+    "id": "asset001"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code2",
+    "type": "checkbox",
+    "id": "asset002"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code2",
+    "type": "checkbox",
+    "id": "asset003"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code2",
+    "type": "checkbox",
+    "id": "asset004"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code2",
+    "type": "checkbox",
+    "id": "asset005"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code2",
+    "type": "checkbox",
+    "id": "asset006"
+  },
+  {
+    "tag": "INPUT",
+    "name": "",
+    "type": "checkbox",
+    "id": "asset007"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code2",
+    "type": "checkbox",
+    "id": "asset008"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code2",
+    "type": "checkbox",
+    "id": "asset009"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code2",
+    "type": "checkbox",
+    "id": "asset010"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code2",
+    "type": "checkbox",
+    "id": "asset011"
+  },
+  {
+    "tag": "INPUT",
+    "name": "",
+    "type": "checkbox",
+    "id": "sct_all"
+  },
+  {
+    "tag": "INPUT",
+    "name": "",
+    "type": "checkbox",
+    "id": ""
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land02"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land03"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land04"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land05"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land06"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land07"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land08"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land09"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land10"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land11"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land12"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land13"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land14"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land15"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land16"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land17"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land18"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land19"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land20"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land21"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land22"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land23"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land24"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land25"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land26"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land27"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land28"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land29"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land30"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "land31"
+  },
+  {
+    "tag": "INPUT",
+    "name": "",
+    "type": "checkbox",
+    "id": ""
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell02"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell03"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell04"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell05"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell06"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell07"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell08"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell09"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell10"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell11"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell12"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell13"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell14"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell15"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell16"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell17"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell18"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "dwell19"
+  },
+  {
+    "tag": "INPUT",
+    "name": "",
+    "type": "checkbox",
+    "id": ""
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office02"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office03"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office04"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office05"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office06"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office07"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office08"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office09"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office10"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office11"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office12"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office13"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office14"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office15"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office16"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office17"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office18"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office19"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office20"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office21"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office22"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office23"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "office24"
+  },
+  {
+    "tag": "INPUT",
+    "name": "",
+    "type": "checkbox",
+    "id": ""
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "industry02"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "industry03"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "industry04"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "industry05"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "industry06"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "industry07"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "industry07"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "industry07"
+  },
+  {
+    "tag": "INPUT",
+    "name": "",
+    "type": "checkbox",
+    "id": ""
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "complex02"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "complex03"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "complex04"
+  },
+  {
+    "tag": "INPUT",
+    "name": "usage_code",
+    "type": "checkbox",
+    "id": "complex05"
+  }
+]

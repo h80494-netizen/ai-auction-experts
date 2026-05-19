@@ -1,0 +1,55 @@
+{
+  "success": true,
+  "data": {
+    "case_number": "2022타경58150",
+    "status": "진행중",
+    "appraised_value": "1550000000",
+    "minimum_value": "1085000000",
+    "address": "경기도 성남시 분당구 양현로 220, 1002동 4층402호 (이매동,이매촌삼성아파트)구) 경기도 성남시 분당구 이매동 100",
+    "approval_date": "1994년09월29일",
+    "risks": [
+      "대항력 임차인"
+    ],
+    "documents": [
+      {
+        "name": "등기부.pdf",
+        "url": "https://www.my-auction.co.kr/view/pop_detail.php?type=aceeaea1&idx=1253263"
+      },
+      {
+        "name": "건축물대장.pdf",
+        "url": "https://www.my-auction.co.kr/view/pop_detail.php?type=aceeair&idx=1253263"
+      },
+      {
+        "name": "감정평가서.pdf",
+        "url": "https://www.my-auction.co.kr/view/pop_detail.php?type=judgement&idx=1253263"
+      },
+      {
+        "name": "물건명세서.pdf",
+        "url": "https://www.my-auction.co.kr/view/pop_detail.php?type=mul&idx=1253263"
+      },
+      {
+        "name": "현황조사서.pdf",
+        "url": "https://www.my-auction.co.kr/view/pop_detail.php?type=status&idx=1253263"
+      }
+    ],
+    "history": [
+      {
+        "date": "2023-05-01",
+        "price": "1,550,000,000원",
+        "status": "유찰"
+      },
+      {
+        "date": "2023-06-05",
+        "price": "1,085,000,000원",
+        "status": "변경"
+      },
+      {
+        "date": "2026-05-11",
+        "price": "1,085,000,000원",
+        "status": "변경"
+      }
+    ],
+    "photo_url": "/api/download_photo/2022타경58150"
+  },
+  "message": "크롤링 완료"
+}

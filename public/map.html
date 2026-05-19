@@ -1,0 +1,1783 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Auction Map Sandbox - Professional</title>
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@400;600;800&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+
+    <style>
+        :root {
+            --primary-blue: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-light: #f8fafc;
+            --bg-panel: rgba(255, 255, 255, 0.95);
+            --border-color: #e2e8f0;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+            --color-auction: #ef4444;
+            /* Red for Auction */
+            --color-public: #3b82f6;
+            /* Blue for Public Sale */
+            --color-hagwon: #8b5cf6;
+            /* Purple for Academy */
+        }
+
+        .custom-tooltip {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            border-radius: 6px;
+            color: var(--text-dark);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+        }
+
+        /* --- Top Navigation Bar --- */
+        .top-bar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            height: 60px;
+            background: var(--bg-panel);
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+        }
+
+        .top-brand {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary-blue);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .top-center {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+            margin: 0 40px;
+        }
+
+        .search-box {
+            display: flex;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .search-box input {
+            border: none;
+            padding: 10px 15px;
+            outline: none;
+            width: 100%;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+
+        .search-box button {
+            background: var(--primary-blue);
+            color: #fff;
+            border: none;
+            padding: 0 20px;
+            white-space: nowrap;
+            word-break: keep-all;
+            flex-shrink: 0;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .search-box button:hover {
+            background: var(--primary-hover);
+        }
+
+        .sale-type-toggles {
+            display: flex;
+            gap: 5px;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .sale-type-toggles button {
+            border: none;
+            background: transparent;
+            padding: 6px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .sale-type-toggles button.active.auction {
+            background: var(--color-auction);
+            color: white;
+        }
+
+        .sale-type-toggles button.active.public {
+            background: var(--color-public);
+            color: white;
+        }
+
+        .top-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .icon-btn {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            color: var(--text-dark);
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: #f8fafc;
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+        }
+
+        /* --- Floating Panels --- */
+        .floating-panel {
+            position: absolute;
+            background: var(--bg-panel);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        .panel-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-dark);
+        }
+
+        .panel-content {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Left Panel - Layers */
+        #left-panel {
+            top: 90px;
+            left: 15px;
+            width: 250px;
+        }
+
+        /* Right Panel - Filters */
+        #right-panel {
+            top: 90px;
+            right: 15px;
+            width: 280px;
+        }
+
+        /* --- UI Controls --- */
+        .layer-group-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .toggle-row:last-child {
+            border-bottom: none;
+        }
+
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .toggle-desc {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+            display: block;
+        }
+
+        /* Switch UI (Light Mode) */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: .3s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+            box-shadow: var(--shadow-sm);
+        }
+
+        input:checked+.slider {
+            background-color: var(--primary-blue);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(16px);
+        }
+
+        /* Checkbox UI */
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: 6px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .checkbox-item:hover {
+            border-color: var(--primary-blue);
+            background: #eff6ff;
+        }
+
+        .checkbox-item input {
+            cursor: pointer;
+        }
+
+        /* Range Slider */
+        .range-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .range-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: var(--primary-blue);
+        }
+
+        /* Button */
+        .btn-primary {
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loader {
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid var(--primary-blue);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Mobile Tab Bar Styles */
+        .mobile-tab-bar {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--bg-panel);
+            border-top: 1px solid var(--border-color);
+            z-index: 2000;
+            justify-content: space-around;
+            align-items: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+        .mobile-tab-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 11px;
+            gap: 4px;
+            flex: 1;
+            height: 100%;
+            cursor: pointer;
+        }
+        .mobile-tab-btn.active {
+            color: var(--primary-blue);
+            font-weight: bold;
+        }
+        .mobile-tab-btn i {
+            font-size: 20px;
+        }
+
+        /* Mobile Layout */
+        @media (max-width: 768px) {
+            body {
+                display: block;
+                height: 100vh;
+                font-size: 12px;
+                overflow: hidden; /* Prevent scrolling of body */
+            }
+            .leaflet-tooltip.custom-tooltip {
+                display: none !important;
+            }
+            .mobile-tab-bar {
+                display: flex;
+            }
+            .top-bar {
+                position: absolute;
+                top: 10px; left: 10px; right: 10px;
+                height: auto;
+                flex-wrap: nowrap;
+                padding: 8px;
+                justify-content: flex-start;
+                gap: 10px;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            .top-bar::-webkit-scrollbar { display: none; }
+            .top-center {
+                flex-wrap: nowrap;
+                justify-content: flex-start;
+                gap: 5px;
+            }
+            .top-actions { flex-wrap: nowrap; }
+            .top-brand { flex-shrink: 0; }
+            #map {
+                position: absolute;
+                top: 0;
+                bottom: 60px; /* Leave space for tab bar */
+                left: 0;
+                right: 0;
+                width: 100%;
+                min-height: auto;
+                height: auto;
+            }
+            #left-panel, #right-panel {
+                position: fixed;
+                top: auto;
+                bottom: 60px; /* Above the tab bar */
+                left: 0;
+                right: 0;
+                width: 100%;
+                height: 60vh; /* Slide up 60% of screen */
+                max-height: 60vh;
+                margin-bottom: 0;
+                border-radius: 16px 16px 0 0; /* Rounded top corners */
+                box-shadow: 0 -4px 12px rgba(0,0,0,0.15);
+                z-index: 1500;
+                display: none; /* Hidden by default */
+                overflow-y: auto;
+                background: var(--bg-panel);
+                border-bottom: none;
+            }
+            /* When active, show the panel */
+            #left-panel.active-panel, #right-panel.active-panel {
+                display: flex;
+                flex-direction: column;
+            }
+            .panel-header, .layer-group-title, .filter-label, button, input {
+                font-size: 12px !important;
+            }
+            .region-toggles {
+                padding: 5px !important;
+                flex-wrap: nowrap !important;
+                overflow-x: auto;
+                gap: 10px !important;
+            }
+            .region-toggles::-webkit-scrollbar {
+                display: none; /* Hide scrollbar for clean look */
+            }
+            .region-toggles label {
+                white-space: nowrap;
+            }
+            .top-brand {
+                font-size: 1rem;
+            }
+        }
+        .neon-glow-marker { filter: drop-shadow(0 0 8px #bd00ff); }
+    </style>
+</head>
+
+<body>
+
+    <div id="loading" class="loading-overlay">
+        <div class="loader"></div>
+        <p style="margin-top: 15px; color: var(--primary-blue); font-weight: bold;">지도 데이터를 구성 중입니다...</p>
+    </div>
+
+    <div id="zoom-warning" style="display: none; position: absolute; top: 90px; left: 50%; transform: translateX(-50%); z-index: 2000; background: rgba(225, 29, 72, 0.9); color: white; padding: 10px 20px; border-radius: 20px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: opacity 0.3s; pointer-events: none;">
+        <i class="fa-solid fa-magnifying-glass-plus"></i> 지도를 동네 수준으로 확대해야 물건이 표시됩니다.
+    </div>
+
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Top Navigation Bar -->
+    <div class="top-bar">
+        <div class="top-brand" style="cursor:pointer;" onclick="window.location.href='/'" title="메인 대시보드로 돌아가기">
+            <i class="fa-solid fa-house"></i> 메인 대시보드
+        </div>
+
+        <div class="top-center">
+            <div class="sale-type-toggles">
+                <button class="active auction" id="btn-auction">경매</button>
+                <button class="active public" id="btn-public">공매</button>
+            </div>
+
+            
+            <div id="center-address-box" style="display: flex; align-items: center; justify-content: center; background: #fff; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color); font-weight: bold; color: var(--text-dark); cursor: pointer; min-width: 250px; text-align: center; margin: 0 15px;" onclick="addCenterMarker()">
+                <i class="fa-solid fa-location-crosshairs" style="color: #ef4444; margin-right: 8px;"></i>
+                <span id="center-address-text">위치 불러오는 중...</span>
+            </div>
+            <div class="region-toggles" style="display: flex; gap: 15px; align-items: center; padding: 0 15px;">
+                <label style="cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:bold; color:var(--text-dark);">
+                    <input type="checkbox" class="region-checkbox" value="서울" onchange="loadAuctions(); updateCenterAddress();
+                    fetchInfraData();" checked> 서울
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:bold; color:var(--text-dark);">
+                    <input type="checkbox" class="region-checkbox" value="경기" onchange="loadAuctions(); updateCenterAddress();
+                    fetchInfraData();"> 경기
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:bold; color:var(--text-dark);">
+                    <input type="checkbox" class="region-checkbox" value="인천" onchange="loadAuctions(); updateCenterAddress();
+                    fetchInfraData();"> 인천
+                </label>
+            </div>
+        </div>
+
+        <div class="top-actions">
+            <span id="highlight-count" style="display: none; font-size: 0.85rem; font-weight: bold; color: #c026d3; margin-right: 10px; background: #fdf4ff; padding: 4px 8px; border-radius: 12px; border: 1px solid #c026d3;">0건 중첩</span>
+            <div class="icon-btn" id="btn-highlighter" title="형광펜 켜기/끄기 (필터와 중첩된 물건 강조)" style="color: #94a3b8;"><i class="fa-solid fa-highlighter"></i></div>
+            <div class="icon-btn" title="경공매 필터 설정" onclick="toggleRightPanel()"><i class="fa-solid fa-filter" style="color: var(--primary-blue);"></i></div>
+        </div>
+    </div>
+
+    <!-- Left Panel: Layer List -->
+    <div class="floating-panel" id="left-panel">
+        <div class="panel-header">
+            <span><i class="fa-solid fa-layer-group"></i> 레이어 목록</span>
+        </div>
+        <div class="panel-content">
+
+            <div class="layer-group-title">기본 인프라</div>
+            <div class="toggle-row"
+                style="flex-direction: column; align-items: stretch; gap: 5px; padding-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="toggle-label"><i class="fa-solid fa-train-subway" style="color: #10b981;"></i> 지하철역
+                    </div>
+                    <label class="switch"><input type="checkbox" id="toggle-subways" checked><span
+                            class="slider"></span></label>
+                </div>
+                <div
+                    style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
+                    버퍼: <input type="number" id="buffer-subways" value="500"
+                        style="width: 50px; padding: 2px; border: 1px solid var(--border-color); border-radius: 4px;"
+                        onchange="fetchInfraData()"> m
+                </div>
+            </div>
+            <div class="toggle-row"
+                style="flex-direction: column; align-items: stretch; gap: 5px; padding-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="toggle-label">
+                        <div>
+                            <i class="fa-solid fa-bus" style="color: #0ea5e9;"></i> 버스정류장
+                            <span class="toggle-desc">화면 이동 시 자동 로딩</span>
+                        </div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="toggle-bus"><span class="slider"></span></label>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
+                    버퍼: <input type="number" id="buffer-bus" value="20"
+                        style="width: 50px; padding: 2px; border: 1px solid var(--border-color); border-radius: 4px;"
+                        onchange="fetchInfraData()"> m
+                </div>
+            </div>
+            <div class="toggle-row"
+                style="flex-direction: column; align-items: stretch; gap: 5px; padding-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="toggle-label"><i class="fa-solid fa-industry" style="color: #f59e0b;"></i> 산업단지</div>
+                    <label class="switch"><input type="checkbox" id="toggle-inds"><span
+                            class="slider"></span></label>
+                </div>
+                <div
+                    style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
+                    버퍼: <input type="number" id="buffer-inds" value="1000"
+                        style="width: 50px; padding: 2px; border: 1px solid var(--border-color); border-radius: 4px;"
+                        onchange="fetchInfraData()"> m
+                </div>
+            </div>
+            <div class="toggle-row">
+                <div class="toggle-label">
+                    <div>
+                        <i class="fa-solid fa-store" style="color: #8b5cf6;"></i> 서울 상권
+                        <span class="toggle-desc">화면 이동 시 자동 로딩</span>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="toggle-commercial"><span class="slider"></span></label>
+            </div>
+
+            <div class="layer-group-title" style="margin-top: 15px;">교육 및 학군</div>
+            <div class="toggle-row"
+                style="flex-direction: column; align-items: stretch; gap: 5px; padding-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="toggle-label">
+                        <div>
+                            <i class="fa-solid fa-school" style="color: #f43f5e;"></i> 중학교
+                            <span class="toggle-desc">특목고 10%대 배정구역 표시</span>
+                        </div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="toggle-middles"><span
+                            class="slider"></span></label>
+                </div>
+                <div
+                    style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
+                    버퍼: <input type="number" id="buffer-middles" value="500"
+                        style="width: 50px; padding: 2px; border: 1px solid var(--border-color); border-radius: 4px;"
+                        onchange="fetchInfraData()"> m
+                </div>
+            </div>
+            <div class="toggle-row"
+                style="flex-direction: column; align-items: stretch; gap: 5px; padding-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="toggle-label"><i class="fa-solid fa-graduation-cap" style="color: #3b82f6;"></i> 대학교
+                    </div>
+                    <label class="switch"><input type="checkbox" id="toggle-univs"><span
+                            class="slider"></span></label>
+                </div>
+                <div
+                    style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
+                    버퍼: <input type="number" id="buffer-univs" value="" placeholder="500"
+                        style="width: 50px; padding: 2px; border: 1px solid var(--border-color); border-radius: 4px;"
+                        onchange="fetchInfraData()"> m
+                </div>
+            </div>
+            <div class="toggle-row" style="background: #f3e8ff; padding: 10px; border-radius: 8px; margin-top: 5px;">
+                <div class="toggle-label">
+                    <div>
+                        <i class="fa-solid fa-building-columns" style="color: var(--color-hagwon);"></i> 학원가 폴리곤
+                        <span class="toggle-desc" style="color: #7e22ce;">학원 밀집 구역 시각화 (보라색 히트맵)</span>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="toggle-hagwons"><span
+                        class="slider"></span></label>
+            </div>
+
+            <div class="toggle-row" style="background: #fff1f2; padding: 10px; border-radius: 8px; margin-top: 5px;">
+                <div class="toggle-label">
+                    <div>
+                        <i class="fa-solid fa-fire" style="color: #e11d48;"></i> 유동인구 히트맵 (250m)
+                        <span class="toggle-desc" style="color: #be123c;">서울의 생활인구 변화를 시각화</span>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="toggle-heatmap"><span
+                        class="slider"></span></label>
+            </div>
+
+            <div class="toggle-row" style="background: #fff7ed; padding: 10px; border-radius: 8px; margin-top: 5px;">
+                <div class="toggle-label">
+                    <div>
+                        <i class="fa-solid fa-building-circle-exclamation" style="color: #ea580c;"></i> 노후화 집중 구역
+                        <span class="toggle-desc" style="color: #c2410c;">500가구 60% 이상 또는 1000가구 이상 밀집 격자</span>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="toggle-old-buildings"><span
+                        class="slider"></span></label>
+            </div>
+
+            <div class="layer-group-title" style="margin-top: 15px;">개발구역 (준비중)</div>
+            <div class="toggle-row">
+                <div class="toggle-label"><i class="fa-solid fa-map" style="color: #64748b;"></i> 택지지구</div>
+                <label class="switch"><input type="checkbox" id="toggle-dev1"><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+                <div class="toggle-label"><i class="fa-solid fa-map" style="color: #64748b;"></i> 지구단위계획구역</div>
+                <label class="switch"><input type="checkbox" id="toggle-dev2"><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+                <div class="toggle-label"><i class="fa-solid fa-map" style="color: #64748b;"></i> 재개발/재건축구역</div>
+                <label class="switch"><input type="checkbox" id="toggle-dev3" disabled><span class="slider"
+                        style="background-color: #e2e8f0;"></span></label>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Right Panel: Filters -->
+    <div class="floating-panel" id="right-panel">
+        <div class="panel-header">
+            <span><i class="fa-solid fa-filter"></i> 경공매 표시 설정</span>
+            <i class="fa-solid fa-xmark" style="cursor: pointer; color: var(--text-muted);"
+                onclick="toggleRightPanel()"></i>
+        </div>
+        <div class="panel-content">
+
+            <div class="layer-group-title">부동산 종류 다중 선택</div>
+                                    <div class="checkbox-grid">
+                <label class="checkbox-item"><input type="checkbox" value="토지"> 토지</label>
+                <label class="checkbox-item"><input type="checkbox" value="지산"> 지산</label>
+                <label class="checkbox-item"><input type="checkbox" value="집합"> 집합</label>
+                <label class="checkbox-item"><input type="checkbox" value="일반"> 일반</label>
+                <label class="checkbox-item"><input type="checkbox" value="오피스텔"> 오피스텔</label>
+                <label class="checkbox-item"><input type="checkbox" value="다세대"> 다세대</label>
+                <label class="checkbox-item"><input type="checkbox" value="아파트" checked> 아파트</label>
+                <label class="checkbox-item"><input type="checkbox" value="단독"> 단독</label>
+                <label class="checkbox-item"><input type="checkbox" value="기타"> 기타</label>
+                <label class="checkbox-item"><input type="checkbox" value="공장"> 공장</label>
+            </div>
+
+            <div class="layer-group-title" style="margin-top: 15px;">최저가율 필터 (감정가 대비)</div>
+            <div class="range-container">
+                <div class="range-labels">
+                    <span>0%</span>
+                    <span id="rate-val" style="color: var(--primary-blue); font-weight: 700; font-size: 1rem;">100%
+                        이하</span>
+                </div>
+                <input type="range" id="rate-slider" min="0" max="100" value="100"
+                    oninput="document.getElementById('rate-val').innerText = this.value + '% 이하'"
+                    onchange="loadAuctions()">
+            </div>
+
+            <div class="layer-group-title" style="margin-top: 15px;">전용면적 (평)</div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="number" id="min-area" placeholder="최소"
+                    style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px;">
+                <span>~</span>
+                <input type="number" id="max-area" placeholder="최대"
+                    style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px;">
+            </div>
+
+            <div class="layer-group-title" style="margin-top: 15px;">추가 조건</div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label class="checkbox-item" style="border: none; padding: 0;">
+                    <input type="checkbox" id="req-elite-school"> 명문학군 포함 (주택 전체)
+                </label>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
+                    <span>세대수</span>
+                    <input type="number" id="min-households" placeholder="ex) 300"
+                        style="width: 80px; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px;">
+                    <span style="color: var(--text-muted);">(아파트 전용)</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button class="btn-primary" style="width: 100%;" onclick="loadAuctions()">
+                    <i class="fa-solid fa-download"></i> 조건에 맞는 데이터 가져오기
+                </button>
+                <button onclick="exportToExcel()"
+                    style="width: 100%; margin-top: 10px; background: #10b981; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-file-excel"></i> 왼쪽 조건 중첩 물건 추출 (Excel)
+                </button>
+            </div>
+
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 10px;">
+                현재 화면(BBox) 기준으로 데이터를 불러옵니다.
+            </div>
+
+        </div>
+    </div>
+    <!-- Leaflet JS -->
+    <script>
+        // 1. Initialize Standard Light Map (Kakao Map Style)
+        const map = L.map('map', { zoomControl: false, preferCanvas: true }).setView([37.4979, 127.0276], 13);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        // Make popups draggable so users can see the map underneath
+        map.on('popupopen', function(e) {
+            var popupWrapper = e.popup._wrapper.parentNode;
+            var pos, dragStartPos;
+            
+            // Allow clicking through without closing popup if dragged
+            popupWrapper.style.cursor = 'move';
+            
+            var onMouseDown = function(event) {
+                if(event.target.tagName.toLowerCase() === 'button' || event.target.tagName.toLowerCase() === 'a') return;
+                var evt = event.type.startsWith('touch') ? event.touches[0] : event;
+                pos = { x: evt.clientX, y: evt.clientY };
+                
+                dragStartPos = {
+                    left: parseInt(popupWrapper.style.marginLeft || 0, 10),
+                    top: parseInt(popupWrapper.style.marginTop || 0, 10)
+                };
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+                document.addEventListener('touchmove', onMouseMove, {passive: false});
+                document.addEventListener('touchend', onMouseUp);
+            };
+
+            var onMouseMove = function(event) {
+                if(event.type.startsWith('touch') && event.cancelable) event.preventDefault();
+                var evt = event.type.startsWith('touch') ? event.touches[0] : event;
+                var dx = evt.clientX - pos.x;
+                var dy = evt.clientY - pos.y;
+                
+                popupWrapper.style.marginLeft = (dragStartPos.left + dx) + 'px';
+                popupWrapper.style.marginTop = (dragStartPos.top + dy) + 'px';
+            };
+
+            var onMouseUp = function() {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                document.removeEventListener('touchmove', onMouseMove);
+                document.removeEventListener('touchend', onMouseUp);
+            };
+
+            popupWrapper.addEventListener('mousedown', onMouseDown);
+            popupWrapper.addEventListener('touchstart', onMouseDown, {passive: false});
+            
+            map.once('popupclose', function() {
+                popupWrapper.removeEventListener('mousedown', onMouseDown);
+                popupWrapper.removeEventListener('touchstart', onMouseDown);
+                onMouseUp();
+                popupWrapper.style.marginLeft = '0px';
+                popupWrapper.style.marginTop = '0px';
+            });
+        });
+
+        L.tileLayer('https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; VWorld'
+        }).addTo(map);
+
+        // 2. Map Layers Initialization
+        map.createPane('auctionPane');
+        map.getPane('auctionPane').style.zIndex = 650;
+
+        // 2. Layer Groups
+        const layers = {
+            subway: L.layerGroup().addTo(map),
+            subwayLine: L.layerGroup().addTo(map),
+            univ: L.layerGroup(),
+            middle: L.layerGroup(),
+            ind: L.layerGroup(),
+            bus: L.layerGroup(),
+            commercial: L.layerGroup(),
+            hagwon: L.layerGroup(),
+            dev1: L.layerGroup(),
+            dev2: L.layerGroup(),
+            popHeatmap: L.layerGroup(),
+            oldBuildings: L.layerGroup(),
+            auction: L.layerGroup().addTo(map)
+        };
+
+        function createDotMarker(lat, lng, color, popupHtml, radius = 5) {
+            return L.circleMarker([lat, lng], {
+                radius: radius,
+                fillColor: color,
+                color: '#fff',
+                weight: 1.5,
+                opacity: 1,
+                fillOpacity: 1
+            }).bindPopup(popupHtml);
+        }
+
+                const SUBWAY_COLORS = {
+            '1호선': '#0052A4', '2호선': '#00A84D', '3호선': '#EF7C1C', '4호선': '#00A4E3',
+            '5호선': '#996CAC', '6호선': '#CD7C2F', '7호선': '#747F00', '8호선': '#E6186C',
+            '9호선': '#BDB092', '경의중앙선': '#77C4A3', '수인분당선': '#FABE00', '경춘선': '#0C8E72',
+            '신분당선': '#D4003B', '우이신설': '#B0CE18', '경강선': '#003499', 
+            '김포골드': '#A17E46', '서해선': '#8FC31F', '공항철도': '#0090D2', '인천2호선': '#ED8B00',
+            '인천1호선': '#7CA8D5', '용인에버': '#56C343', '신림선': '#6789CA'
+        };
+
+        function getGlobalLineColor(lineName) {
+            if (!lineName) return '#94a3b8';
+            for (let key in SUBWAY_COLORS) {
+                if (lineName.includes(key)) return SUBWAY_COLORS[key];
+            }
+            return '#94a3b8'; // default
+        }
+
+        // 3. UI Interactions
+        function toggleRightPanel() {
+            const panel = document.getElementById('right-panel');
+            panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+        }
+
+        document.getElementById('btn-auction').addEventListener('click', function () {
+            this.classList.toggle('active');
+            loadAuctions();
+        });
+        document.getElementById('btn-public').addEventListener('click', function () {
+            this.classList.toggle('active');
+            loadAuctions();
+        });
+
+        let highlightTimeout;
+        function triggerHighlighter() {
+            clearTimeout(highlightTimeout);
+            highlightTimeout = setTimeout(applyHighlighter, 200);
+        }
+
+        document.getElementById('btn-highlighter').addEventListener('click', function() {
+            this.classList.toggle('active');
+            if (this.classList.contains('active')) {
+                this.style.color = '#c026d3';
+                this.style.borderColor = '#c026d3';
+                this.style.background = '#fdf4ff';
+            } else {
+                this.style.color = '#94a3b8';
+                this.style.borderColor = 'var(--border-color)';
+                this.style.background = 'transparent';
+            }
+            triggerHighlighter();
+        });
+
+        function checkPointInLayerGroup(pt, layerGroup, latlng) {
+            let isInside = false;
+            layerGroup.eachLayer(layer => {
+                if (isInside) return;
+                
+                if (layer.eachLayer) { 
+                    isInside = checkPointInLayerGroup(pt, layer, latlng);
+                } else if (layer.feature && (layer.feature.geometry.type === 'Polygon' || layer.feature.geometry.type === 'MultiPolygon')) {
+                    if (layer.getBounds && layer.getBounds().contains(latlng)) {
+                        if (window.turf && turf.booleanPointInPolygon(pt, layer.feature)) {
+                            isInside = true;
+                        }
+                    }
+                } else if (layer.getRadius && typeof layer.getRadius === 'function') {
+                    if (layer._mRadius || (layer.options && layer.options.dashArray === '4, 4')) {
+                        if (layer.getBounds && layer.getBounds().contains(latlng)) {
+                            if (map.distance(layer.getLatLng(), latlng) <= layer.getRadius()) {
+                                isInside = true;
+                            }
+                        }
+                    }
+                }
+            });
+            return isInside;
+        }
+
+        let highlightedCaseNos = [];
+
+        function applyHighlighter() {
+            const btnHighlighter = document.getElementById('btn-highlighter');
+            const countEl = document.getElementById('highlight-count');
+            highlightedCaseNos = [];
+
+            if (!btnHighlighter || !btnHighlighter.classList.contains('active')) {
+                layers.auction.eachLayer(marker => {
+                    marker.setStyle({
+                        radius: 6, color: '#fff', weight: 2, fillColor: marker.typeColor, fillOpacity: 1
+                    });
+                });
+                if (countEl) countEl.style.display = 'none';
+                return;
+            }
+
+            const activeFilterIds = [
+                { id: 'toggle-subways', layer: layers.subway },
+                { id: 'toggle-univs', layer: layers.univ },
+                { id: 'toggle-inds', layer: layers.ind },
+                { id: 'toggle-middles', layer: layers.middle },
+                { id: 'toggle-commercial', layer: layers.commercial },
+                { id: 'toggle-hagwons', layer: layers.hagwon },
+                { id: 'toggle-dev1', layer: layers.dev1 },
+                { id: 'toggle-dev2', layer: layers.dev2 },
+                { id: 'toggle-old-buildings', layer: layers.oldBuildings }
+            ];
+            
+            const activeLayers = [];
+            activeFilterIds.forEach(f => {
+                const el = document.getElementById(f.id);
+                if (el && el.checked) {
+                    activeLayers.push(f.layer);
+                }
+            });
+
+            if (activeLayers.length === 0) {
+                layers.auction.eachLayer(marker => {
+                    marker.setStyle({
+                        radius: 6, color: '#fff', weight: 2, fillColor: marker.typeColor, fillOpacity: 1
+                    });
+                });
+                return;
+            }
+
+            layers.auction.eachLayer(marker => {
+                const latlng = marker.getLatLng();
+                const pt = window.turf ? turf.point([latlng.lng, latlng.lat]) : null;
+                let isInside = true;
+
+                for (let i = 0; i < activeLayers.length; i++) {
+                    if (!checkPointInLayerGroup(pt, activeLayers[i], latlng)) {
+                        isInside = false;
+                        break;
+                    }
+                }
+
+                if (isInside) {
+                    marker.setStyle({
+                        radius: 10, color: '#c026d3', weight: 4, fillColor: marker.typeColor, fillOpacity: 1
+                    });
+                    if (marker.bringToFront) marker.bringToFront();
+                    highlightedCaseNos.push(marker.auctionData.case_no);
+                } else {
+                    marker.setStyle({
+                        radius: 4, color: '#94a3b8', weight: 1, fillColor: marker.typeColor, fillOpacity: 0.3
+                    });
+                }
+            });
+
+            if (countEl) {
+                if (activeLayers.length > 0) {
+                    countEl.innerText = `${highlightedCaseNos.length}건 중첩`;
+                    countEl.style.display = 'inline-block';
+                } else {
+                    countEl.style.display = 'none';
+                }
+            }
+        }
+
+        // 4. Data Loading Logic
+        async function fetchInfraData() {
+            if (map.getZoom() < 13) return;
+            const bounds = map.getBounds();
+            const checkedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => cb.value);
+            let url = `/api/map/pois?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}`;
+            if (checkedRegions.length > 0) url += `&regions=${checkedRegions.join(',')}`;
+            
+            try {
+                const res = await fetch(url);
+                const json = await res.json();
+
+                if (json.status === 'success') {
+                    const data = json.data;
+
+                    if (data.subways && document.getElementById('toggle-subways').checked) {
+                        layers.subway.clearLayers();
+                        data.subways.forEach(s => {
+                            let radius = parseInt(document.getElementById('buffer-subways').value) || 500;
+                            let color = getGlobalLineColor(s.line);
+                            L.circle([s.lat, s.lng], { color: color, fillColor: color, fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.subway);
+                            createDotMarker(s.lat, s.lng, color, `<b>${s.name}</b><br>${s.line}`)
+                                .addTo(layers.subway);
+                        });
+                    }
+
+                    if (data.universities && document.getElementById('toggle-univs').checked) {
+                        layers.univ.clearLayers();
+                        data.universities.forEach(u => {
+                            let radius = parseInt(document.getElementById('buffer-univs').value) || 500;
+                            L.circle([u.lat, u.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.univ);
+                            createDotMarker(u.lat, u.lng, '#3b82f6', `<b>${u.name}</b><br>대학교`).addTo(layers.univ);
+                        });
+                    }
+
+                    if (data.industrial_complexes && document.getElementById('toggle-inds').checked) {
+                        layers.ind.clearLayers();
+                        data.industrial_complexes.forEach(i => {
+                            let radius = parseInt(document.getElementById('buffer-inds').value) || 500;
+                            L.circle([i.lat, i.lng], { color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.ind);
+                            createDotMarker(i.lat, i.lng, '#f59e0b', `<b>${i.name}</b><br>산업단지`).addTo(layers.ind);
+                        });
+                    }
+
+                    if (data.middle_schools && document.getElementById('toggle-middles') && document.getElementById('toggle-middles').checked) {
+                        layers.middle.clearLayers();
+                        data.middle_schools.forEach(m => {
+                            let color = '#94a3b8';
+                            let label = `특목고 진학률 ${parseFloat(m.special_hs_rate).toFixed(1)}%`;
+                            let markerRadius = 4;
+                            if (m.special_hs_rate >= 10) {
+                                color = '#f43f5e';
+                                markerRadius = 6;
+                                let radius = parseInt(document.getElementById('buffer-middles').value) || 500;
+                                L.circle([m.lat, m.lng], { color: '#f43f5e', fillColor: '#f43f5e', fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.middle);
+                            }
+                            createDotMarker(m.lat, m.lng, color, `<b>${m.name}</b><br>${label}`, markerRadius).addTo(layers.middle);
+                        });
+                    }
+                    
+                    if (document.getElementById('toggle-bus').checked && map.getZoom() >= 13 && data.bus_stops) {
+                        layers.bus.clearLayers();
+                        let radius = parseInt(document.getElementById('buffer-bus').value) || 20;
+                        data.bus_stops.forEach(b => {
+                            L.circle([b.lat, b.lng], { color: '#0ea5e9', fillColor: '#0ea5e9', fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.bus);
+                            createDotMarker(b.lat, b.lng, '#0ea5e9', `<b>${b.name}</b><br>버스 (${b.city})`, 3).addTo(layers.bus);
+                        });
+                    }
+                    if (document.getElementById('toggle-commercial').checked && data.commercial_areas) {
+                        
+                        // 인구수 배열 생성 및 정렬 (백분위 계산용)
+                        const pops = data.commercial_areas.map(c => c.population || 0).sort((a, b) => a - b);
+                        
+                        // ?곴텒 ?대쫫(name)蹂??멸뎄??留ㅽ븨
+                        const popData = {};
+                        data.commercial_areas.forEach(c => {
+                            popData[c.name] = c.population || 0;
+                        });
+
+                        const getTierStyle = (pop) => {
+                            if (pop === 0 || pops.length === 0) return null;
+                            
+                            // ?댁쭊 ?먯깋 ???媛꾨떒???꾩튂 李얘린 (?곗씠?곌? 留롮? ?딆쑝誘濡?
+                            const idx = pops.findIndex(p => p >= pop);
+                            const percentile = (idx + 1) / pops.length;
+                            const tier = Math.ceil(percentile * 10) || 1; // 1 ~ 10 단계
+                            
+                            if (tier <= 3) return null;
+                            
+                            const colors = {
+                                10: '#08306b', 9: '#08519c', 8: '#2171b5',
+                                7: '#4292c6', 6: '#6baed6', 5: '#9ecae1', 4: '#c6dbef'
+                            };
+                            
+                            return {
+                                color: colors[tier] || '#ffffff',
+                                fillColor: colors[tier] || '#ffffff',
+                                fillOpacity: 0.5,
+                                weight: 0
+                            };
+                        };
+
+                        if (!window.commercialGeoJsonData) {
+                            try {
+                                const res = await fetch('/data/seoul_commercial.geojson');
+                                window.commercialGeoJsonData = await res.json();
+                            } catch (err) {
+                                console.error('Failed to load commercial geojson:', err);
+                            }
+                        }
+
+                        if (window.commercialGeoJsonData) {
+                            layers.commercial.clearLayers();
+                            const geoJsonLayer = L.geoJSON(window.commercialGeoJsonData, {
+                                filter: function(feature) {
+                                    const name = feature.properties.TRDAR_CD_N;
+                                    const pop = popData[name] || 0;
+                                    const style = getTierStyle(pop);
+                                    return style !== null;
+                                },
+                                style: function(feature) {
+                                    const name = feature.properties.TRDAR_CD_N;
+                                    const pop = popData[name] || 0;
+                                    return getTierStyle(pop);
+                                },
+                                onEachFeature: function(feature, layer) {
+                                    const name = feature.properties.TRDAR_CD_N;
+                                    const pop = popData[name] || 0;
+                                    let popStr = pop > 0 ? (pop / 10000).toFixed(0) + '만 명' : '데이터 없음';
+                                    layer.bindTooltip(`<b>${name}</b><br>상권<br>유동인구: ${popStr}`, {
+                                        sticky: true,
+                                        className: 'custom-tooltip'
+                                    });
+                                }
+                            });
+                            geoJsonLayer.addTo(layers.commercial);
+                        }
+                    }
+                }
+            } catch (err) { console.error(err); } finally { triggerHighlighter(); }
+        }
+
+        async function fetchSubwayLines() {
+            if (!document.getElementById('toggle-subways').checked) return;
+            if (layers.subwayLine.getLayers().length > 0) return;
+            try {
+                const res = await fetch('/api/map/subway_lines');
+                const json = await res.json();
+                
+                if (json.status === 'success') {
+                    layers.subwayLine.clearLayers();
+                    json.data.forEach(line => {
+                        let coords = JSON.parse(line.coordinates_json);
+                        let color = getGlobalLineColor(line.line);
+                        L.polyline(coords, { color: color, weight: 4, opacity: 0.8 })
+                            .bindPopup(`<b>${line.line}</b>`).addTo(layers.subwayLine);
+                        // Start/End points
+                        if (coords.length > 0) {
+                            createDotMarker(coords[0][0], coords[0][1], color, `<b>${line.line} 기점</b>`).addTo(layers.subwayLine);
+                            createDotMarker(coords[coords.length - 1][0], coords[coords.length - 1][1], color, `<b>${line.line} 종점</b>`).addTo(layers.subwayLine);
+                        }
+                    });
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadBusStops() {
+            // Deprecated, handled in fetchInfraData
+        }
+
+        async function fetchHagwonPolygons() {
+            if (map.getZoom() < 13) return;
+            if (!document.getElementById('toggle-hagwons').checked) return;
+            if (layers.hagwon.getLayers().length > 0) return;
+            try {
+                const res = await fetch('/api/map/hagwon_polygons');
+                const json = await res.json();
+                if (json.status === 'success') {
+                    layers.hagwon.clearLayers();
+                    json.data.forEach(poly => {
+                        let coords = JSON.parse(poly.coordinates_json);
+                        let count = poly.count;
+                        let intensity = Math.min(count / 200, 1); // Cap at 200 for spread
+
+                        // 10 steps from White to Red
+                        let step = Math.ceil(intensity * 10);
+                        if (step < 1) step = 1;
+                        if (step > 10) step = 10;
+
+                        let color;
+                        switch (step) {
+                            case 1: color = '#fff5f5'; break;
+                            case 2: color = '#ffe3e3'; break;
+                            case 3: color = '#ffc9c9'; break;
+                            case 4: color = '#ffa8a8'; break;
+                            case 5: color = '#ff8787'; break;
+                            case 6: color = '#ff6b6b'; break;
+                            case 7: color = '#fa5252'; break;
+                            case 8: color = '#f03e3e'; break;
+                            case 9: color = '#e03131'; break;
+                            case 10: color = '#c92a2a'; break;
+                        }
+
+                        const polygonLayer = L.polygon(coords, {
+                            color: color,
+                            fillColor: color,
+                            fillOpacity: 0.5,
+                            opacity: 0.5,
+                            weight: 2
+                        }).bindPopup(`<b>학원 밀집가</b><br>반경 200m 내 ${poly.count}개 학원 밀집`);
+                        
+                        const geojsonCoords = coords.map(c => [c[1], c[0]]);
+                        polygonLayer.feature = {
+                            type: 'Feature',
+                            geometry: {
+                                type: 'Polygon',
+                                coordinates: [geojsonCoords]
+                            }
+                        };
+                        
+                        polygonLayer.addTo(layers.hagwon);
+                    });
+                }
+            } catch (err) { console.error(err); } finally { triggerHighlighter(); }
+        }
+
+        async function fetchDistrictUnits() {
+            if (map.getZoom() < 13) return;
+            if (!document.getElementById('toggle-dev2').checked) return;
+            const bounds = map.getBounds();
+            try {
+                const res = await fetch(`/api/map/district_units?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}`);
+                const json = await res.json();
+                if (json.status === 'success') {
+                    layers.dev2.clearLayers();
+                    json.data.forEach(item => {
+                        let geojson = JSON.parse(item.geojson);
+                        L.geoJSON(geojson, {
+                            style: {
+                                color: '#4ade80', // 연한 초록색                                fillColor: '#4ade80',
+                                fillOpacity: 0.25,
+                                weight: 2,
+                                dashArray: '5, 5'
+                            }
+                        }).bindPopup(`<b>吏援щ떒?꾧퀎?띻뎄??/b><br>${item.name}`).addTo(layers.dev2);
+                    });
+                }
+            } catch (err) { console.error(err); } finally { triggerHighlighter(); }
+        }
+
+        async function fetchPopulationHeatmap() {
+            if (map.getZoom() < 13) return;
+            if (!document.getElementById('toggle-heatmap').checked) return;
+            const bounds = map.getBounds();
+            try {
+                const res = await fetch(`/api/map/population_heatmap?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}`);
+                const json = await res.json();
+                if (json.status === 'success') {
+                    layers.popHeatmap.clearLayers();
+                    
+                    let heatData = [];
+                    let maxPop = 0;
+                    json.data.forEach(item => {
+                        if (item.avg_population > maxPop) maxPop = item.avg_population;
+                        heatData.push([item.lat, item.lng, item.avg_population]);
+                    });
+
+                    if (heatData.length > 0) {
+                        const heatLayer = L.heatLayer(heatData, {
+                            radius: 40,
+                            blur: 30,
+                            maxZoom: 15,
+                            max: 9000,
+                            gradient: {
+                                0.1: '#fee5d9', 
+                                0.2: '#fcbba1', 
+                                0.3: '#fc9272', 
+                                0.4: '#fb6a4a', 
+                                0.5: '#ef3b2c', 
+                                0.6: '#cb181d', 
+                                0.7: '#a50f15', 
+                                0.8: '#85000e', 
+                                0.9: '#67000d', 
+                                1.0: '#4a000a'  // Dark Red
+                            }
+                        });
+                        heatLayer.addTo(layers.popHeatmap);
+                        if (heatLayer._canvas) {
+                            heatLayer._canvas.style.opacity = '0.5'; // 50% transparency for the entire heatmap
+                        }
+                    }
+                }
+            } catch (err) { console.error("Heatmap fetch error:", err); }
+        }
+        function buildAuctionUrl(basePath) {
+            const bounds = map.getBounds();
+            const isAuctionActive = document.getElementById('btn-auction').classList.contains('active');
+            const isPublicActive = document.getElementById('btn-public').classList.contains('active');
+
+            const checkedTypes = Array.from(document.querySelectorAll('.checkbox-item input:checked')).map(cb => cb.value);
+            const rateLimit = document.getElementById('rate-slider').value;
+
+            if (!isAuctionActive && !isPublicActive) return null;
+
+            let saleType = '전체';
+            if (isAuctionActive && !isPublicActive) saleType = '경매';
+            if (!isAuctionActive && isPublicActive) saleType = '공매';
+
+            let url = `${basePath}?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}`;
+            
+            const checkedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => cb.value);
+            if (checkedRegions.length > 0) url += `&regions=${checkedRegions.join(',')}`;
+            
+            if (checkedTypes.length > 0) url += `&property_types=${checkedTypes.join(',')}`;
+            url += `&min_rate=${rateLimit}&sale_type=${saleType}`;
+
+            const minArea = document.getElementById('min-area').value;
+            const maxArea = document.getElementById('max-area').value;
+
+            // Read distance filters from the Left Panel
+            const useSubwayDist = document.getElementById('toggle-subways').checked;
+            const useUnivDist = document.getElementById('toggle-univs').checked;
+            const useIndDist = document.getElementById('toggle-inds').checked;
+            const subwayDist = document.getElementById('buffer-subways').value;
+            const univDist = document.getElementById('buffer-univs').value;
+            const indDist = document.getElementById('buffer-inds').value;
+
+            const reqElite = document.getElementById('toggle-middles') ? document.getElementById('toggle-middles').checked : false;
+            const minHouseholds = document.getElementById('min-households') ? document.getElementById('min-households').value : '';
+
+            if (minArea) url += `&min_area=${minArea}`;
+            if (maxArea) url += `&max_area=${maxArea}`;
+            if (useSubwayDist && subwayDist) url += `&subway_dist_max=${subwayDist}`;
+            if (useUnivDist && univDist) url += `&univ_dist_max=${univDist}`;
+            if (useIndDist && indDist) url += `&ind_dist_max=${indDist}`;
+            if (reqElite) url += `&req_elite_school=true`;
+            if (minHouseholds) url += `&min_households=${minHouseholds}`;
+
+            return url;
+        }
+
+        async function loadAuctions() {
+            const zoomWarning = document.getElementById('zoom-warning');
+            
+            if (map.getZoom() < 13) {
+                layers.auction.clearLayers();
+                if (zoomWarning) {
+                    zoomWarning.style.display = 'block';
+                    setTimeout(() => { zoomWarning.style.opacity = '1'; }, 10);
+                }
+                return;
+            } else {
+                if (zoomWarning) {
+                    zoomWarning.style.opacity = '0';
+                    setTimeout(() => { zoomWarning.style.display = 'none'; }, 300);
+                }
+            }
+
+            layers.auction.clearLayers();
+
+            const url = buildAuctionUrl('/api/map/auctions');
+            if (!url) return;
+
+            try {
+                const res = await fetch(url);
+                const json = await res.json();
+
+                if (json.status === 'success') {
+                    json.data.forEach(item => {
+                        let isPublic = item.sale_type.includes('공매');
+                        let typeColor = isPublic ? '#3b82f6' : '#ef4444';
+                        
+                        let marker = L.circleMarker([item.lat, item.lng], {
+                            radius: 6, fillColor: typeColor, color: '#fff', weight: 2, opacity: 1, fillOpacity: 1,
+                            pane: 'auctionPane'
+                        });
+                        marker.auctionData = item;
+                        marker.isPublic = isPublic;
+                        marker.typeColor = typeColor;
+
+                        marker.bindPopup(function(layer) {
+                            let d = layer.auctionData;
+                            let isPub = layer.isPublic;
+                            let tColor = layer.typeColor;
+                            let typeLabelStr = isPub ? '공매' : '경매';
+                            let typeLabel = `<span style="color:${tColor};font-weight:bold;">[${typeLabelStr}]</span>`;
+                            return `
+                                <div style="font-family:'Noto Sans KR'; min-width: 220px; padding-bottom: 5px;">
+                                    <div style="font-size:1.1rem;">${typeLabel} <b>${d.case_no}</b></div>
+                                    <div style="color:gray; font-size:0.85rem; margin-bottom:8px;">${d.property_type} | ${d.address}</div>
+                                    <table style="width:100%; font-size:0.9rem; border-collapse: collapse; margin-bottom: 10px;">
+                                        <tr><td style="color:gray; padding:3px 0;">감정가</td><td style="text-align:right; font-weight:bold;">${(d.appraisal_price / 100000000).toFixed(1)}억</td></tr>
+                                        <tr><td style="color:gray; padding:3px 0;">최저가</td><td style="text-align:right; font-weight:bold; color:${tColor};">${d.min_bid_rate}% (${(d.min_price / 100000000).toFixed(1)}억)</td></tr>
+                                        <tr><td style="color:gray; padding:3px 0;">건물/대지</td><td style="text-align:right;">${d.area_size ? d.area_size.toFixed(1) : 0}평 / ${d.land_size ? d.land_size.toFixed(1) : 0}평</td></tr>
+                                        <tr><td style="color:gray; padding:3px 0;">최저가 평당가</td><td style="text-align:right;">${d.min_price_per_pyeong ? (d.min_price_per_pyeong).toFixed(0) + '만원' : '-'}</td></tr>
+                                    </table>
+                                    <button onclick="window.innerWidth <= 768 ? window.location.href='/?case=${d.case_no}' : (window.opener ? (window.opener.location.href='/?case=${d.case_no}', window.opener.focus()) : window.open('/?case=${d.case_no}', '_blank'))" style="width:100%; background:var(--primary-blue); color:white; border:none; padding:12px 10px; border-radius:6px; cursor:pointer; font-size:1rem; font-weight:bold; touch-action:manipulation;">권리분석 리포트 보기</button>
+                                </div>
+                            `;
+                        });
+                        
+                        if (!L.Browser.mobile && window.innerWidth > 768) {
+                            marker.bindTooltip(function(layer) {
+                                let d = layer.auctionData;
+                                return `
+                                    <div style="font-family:'Noto Sans KR'; font-size:0.85rem; padding: 5px; line-height: 1.4;">
+                                        <b>사건번호:</b> ${d.case_no}<br>
+                                        <b>종류:</b> ${d.property_type}<br>
+                                        <b>감정가:</b> ${(d.appraisal_price / 100000000).toFixed(1)}억<br>
+                                        <b>최저가:</b> ${(d.min_price / 100000000).toFixed(1)}억<br>
+                                        <b>최저가율:</b> ${d.min_bid_rate}%<br>
+                                        <b>건물평수:</b> ${d.area_size ? d.area_size.toFixed(1) : 0}평<br>
+                                        <b>대지평수:</b> ${d.land_size ? d.land_size.toFixed(1) : 0}평<br>
+                                        <b>최저가 기준 평당가:</b> ${d.min_price_per_pyeong ? (d.min_price_per_pyeong).toFixed(0) + '만원' : '-'}
+                                    </div>
+                                `;
+                            }, { direction: 'top', className: 'custom-tooltip' });
+                        }
+                        
+                        // 오른쪽 클릭 시 고정 팝업 열기
+                        marker.on('contextmenu', function(e) {
+                            marker.openPopup();
+                        });
+                        
+                        marker.addTo(layers.auction);
+                    });
+                }
+            } catch (e) {
+                console.error("Auction load error:", e);
+            } finally {
+                triggerHighlighter();
+            }
+        } // End of loadAuctions
+
+        // Toggles mapping
+            const toggleMap = {
+                'toggle-subways': [layers.subway, layers.subwayLine],
+                'toggle-univs': [layers.univ],
+                'toggle-middles': [layers.middle],
+                'toggle-inds': [layers.ind],
+                'toggle-commercial': [layers.commercial],
+                'toggle-hagwons': [layers.hagwon],
+                'toggle-dev2': [layers.dev2],
+                'toggle-heatmap': [layers.popHeatmap]
+            };
+
+            Object.keys(toggleMap).forEach(id => {
+                document.getElementById(id).addEventListener('change', (e) => {
+                    const layerList = toggleMap[id];
+                    if (e.target.checked) {
+                        layerList.forEach(l => map.addLayer(l));
+                        if (['toggle-subways', 'toggle-univs', 'toggle-middles', 'toggle-inds', 'toggle-commercial'].includes(id)) {
+                            updateCenterAddress();
+                    fetchInfraData();
+                        }
+                    } else {
+                        layerList.forEach(l => map.removeLayer(l));
+                    }
+                    triggerHighlighter();
+                });
+            });
+
+            document.getElementById('toggle-bus').addEventListener('change', (e) => {
+                e.target.checked ? (map.addLayer(layers.bus), loadBusStops()) : map.removeLayer(layers.bus);
+            });
+
+            // Fetch infra when map moves
+            let moveEndTimeout;
+            
+        let centerMarker = null;
+
+        function updateCenterAddress() {
+            const center = map.getCenter();
+            fetch(`https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${center.lng}&y=${center.lat}`, {
+                headers: { 'Authorization': 'KakaoAK 9e5265220f87e54e4379077cb60071bb' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                let addressText = "주소 정보를 찾을 수 없습니다";
+                if (data.documents && data.documents.length > 0) {
+                    const doc = data.documents[0];
+                    addressText = doc.road_address ? doc.road_address.address_name : doc.address.address_name;
+                }
+                document.getElementById('center-address-text').innerText = addressText;
+            })
+            .catch(err => {
+                console.error('Failed to reverse geocode', err);
+                document.getElementById('center-address-text').innerText = "주소 변환 실패";
+            });
+        }
+
+        function addCenterMarker() {
+            const center = map.getCenter();
+            if (centerMarker) {
+                map.removeLayer(centerMarker);
+            }
+            centerMarker = L.marker([center.lat, center.lng], {
+                icon: L.divIcon({
+                    html: '<div style="color: #ef4444; font-size: 24px;"><i class="fa-solid fa-location-dot"></i></div>',
+                    className: 'custom-center-marker',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 24]
+                })
+            }).addTo(map);
+            
+            // Re-center map to exactly the clicked center to provide feedback
+            map.setView(center, map.getZoom());
+        }
+        
+        // Initial call
+        updateCenterAddress();
+
+            map.on('moveend', () => {
+                clearTimeout(moveEndTimeout);
+                moveEndTimeout = setTimeout(() => {
+                    updateCenterAddress();
+                    fetchInfraData();
+                    fetchDistrictUnits();
+                    fetchPopulationHeatmap();
+                    loadAuctions();
+                }, 400); // 400ms debounce
+            });
+
+            document.getElementById('toggle-hagwons').addEventListener('change', (e) => {
+                if (e.target.checked && layers.hagwon.getLayers().length === 0) {
+                    fetchHagwonPolygons();
+                } else {
+                    triggerHighlighter();
+                }
+            });
+
+            document.getElementById('toggle-heatmap').addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    fetchPopulationHeatmap();
+                }
+            });
+
+            document.getElementById('toggle-old-buildings').addEventListener('change', async (e) => {
+                if (e.target.checked) {
+                    map.addLayer(layers.oldBuildings);
+                    if (layers.oldBuildings.getLayers().length === 0) {
+                        const loadingOverlay = document.getElementById('loading');
+                        if (loadingOverlay) loadingOverlay.style.display = 'flex';
+                        try {
+                            const res = await fetch('/data/old_buildings_ratio.geojson');
+                            if (!res.ok) throw new Error('Network response was not ok');
+                            const geojsonData = await res.json();
+                            
+                            L.geoJSON(geojsonData, {
+                                style: function (feature) {
+                                    return {
+                                        fillColor: '#e11d48', // 짙은 분홍색
+                                        weight: 1,
+                                        opacity: 0.3,
+                                        color: 'white',
+                                        dashArray: '3',
+                                        fillOpacity: 0.5 // 투명도 50% 이상
+                                    };
+                                },
+                                onEachFeature: function (feature, layer) {
+                                    const props = feature.properties;
+                                    layer.bindTooltip(`<b>노후화 집중 구역</b><br>건축물: ${props.val} / ${props.total_val}개<br>노후화 비율: ${props.ratio_pct}%`, {
+                                        sticky: true,
+                                        className: 'custom-tooltip'
+                                    });
+                                }
+                            }).addTo(layers.oldBuildings);
+                        } catch (error) {
+                            console.error('Error loading old buildings:', error);
+                            alert('노후 건축물 데이터를 불러오는 데 실패했습니다.');
+                        } finally {
+                            if (loadingOverlay) loadingOverlay.style.display = 'none';
+                        }
+                    }
+                } else {
+                    map.removeLayer(layers.oldBuildings);
+                    triggerHighlighter();
+                }
+            });
+
+            document.getElementById('toggle-dev1').addEventListener('change', async (e) => {
+                if (e.target.checked) {
+                    map.addLayer(layers.dev1);
+                    if (layers.dev1.getLayers().length === 0) {
+                        const loadingOverlay = document.getElementById('loading');
+                        if (loadingOverlay) loadingOverlay.style.display = 'flex';
+                        try {
+                            const res = await fetch('/data/taekji.geojson');
+                            if (!res.ok) throw new Error('Network response was not ok');
+                            const geojsonData = await res.json();
+                            
+                            L.geoJSON(geojsonData, {
+                                style: function (feature) {
+                                    return {
+                                        fillColor: '#3b82f6', // 파란색
+                                        weight: 2,
+                                        opacity: 0.8,
+                                        color: '#2563eb',
+                                        dashArray: '4',
+                                        fillOpacity: 0.2
+                                    };
+                                },
+                                onEachFeature: function (feature, layer) {
+                                    const props = feature.properties;
+                                    layer.bindTooltip(`<b>택지지구</b><br>${props.zoneName || '이름 없음'}`, {
+                                        sticky: true,
+                                        className: 'custom-tooltip'
+                                    });
+                                }
+                            }).addTo(layers.dev1);
+                        } catch (error) {
+                            console.error('Error loading taekji:', error);
+                            alert('택지지구 데이터를 불러오는 데 실패했습니다.');
+                        } finally {
+                            if (loadingOverlay) loadingOverlay.style.display = 'none';
+                        }
+                    }
+                } else {
+                    map.removeLayer(layers.dev1);
+                    triggerHighlighter();
+                }
+            });
+
+            // Load main auction data first to show results quickly
+            loadAuctions().finally(() => {
+                const loadingOverlay = document.getElementById('loading');
+                if (loadingOverlay) loadingOverlay.style.display = 'none';
+                
+                // Defer loading heavy infra data to prevent main thread blocking
+                setTimeout(() => {
+                    updateCenterAddress();
+                    fetchInfraData();
+                    fetchSubwayLines();
+                    fetchHagwonPolygons();
+                    fetchDistrictUnits();
+                    fetchPopulationHeatmap();
+                }, 100);
+            });
+
+            // Right panel fetch button
+            document.querySelector('#right-panel .btn-primary').addEventListener('click', loadAuctions);
+
+            function exportToExcel() {
+                let url = buildAuctionUrl('/api/map/auctions/export');
+                if (url) {
+                    const btnHighlighter = document.getElementById('btn-highlighter');
+                    if (btnHighlighter && btnHighlighter.classList.contains('active') && highlightedCaseNos.length > 0) {
+                        url += `&cases=${highlightedCaseNos.join(',')}`;
+                    }
+                    window.location.href = url;
+                } else {
+                    alert('경공매 표시를 먼저 활성화해주세요.');
+                }
+            }
+
+            function switchMobileTab(tab) {
+                if (window.innerWidth > 768) return;
+
+                const leftPanel = document.getElementById('left-panel');
+                const rightPanel = document.getElementById('right-panel');
+                const btns = document.querySelectorAll('.mobile-tab-btn');
+
+                btns.forEach(b => b.classList.remove('active'));
+
+                if (tab === 'map') {
+                    leftPanel.classList.remove('active-panel');
+                    rightPanel.classList.remove('active-panel');
+                    btns[0].classList.add('active');
+                } else if (tab === 'left') {
+                    leftPanel.classList.add('active-panel');
+                    rightPanel.classList.remove('active-panel');
+                    btns[1].classList.add('active');
+                } else if (tab === 'right') {
+                    leftPanel.classList.remove('active-panel');
+                    rightPanel.classList.add('active-panel');
+                    btns[2].classList.add('active');
+                }
+            }
+        </script>
+
+<!-- Mobile Tab Bar -->
+<div class="mobile-tab-bar">
+<button class="mobile-tab-btn active" onclick="switchMobileTab('map')">
+<i class="fa-solid fa-map"></i>
+<span>지도</span>
+</button>
+<button class="mobile-tab-btn" onclick="switchMobileTab('left')">
+<i class="fa-solid fa-layer-group"></i>
+<span>레이어</span>
+</button>
+<button class="mobile-tab-btn" onclick="switchMobileTab('right')">
+<i class="fa-solid fa-sliders"></i>
+<span>필터</span>
+</button>
+</div>
+
+</body>
+</html>

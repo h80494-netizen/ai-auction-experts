@@ -1,0 +1,70 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Executables
+*.exe
+cloudflared.exe
+
+# Log files
+*.log
+*.log.*
+server.log
+backend.log
+
+# Temp files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Data/Scraping Outputs
+downloads/
+test_images/
+cache/
+temp_shp/
+*.html
+!index.html
+!public/**/*.html
+!frontend/**/*.html
+*.png
+!public/**/*.png
+*.txt
+!requirements.txt
+!README.md
+!CLAUDE.md
+*.xlsx
+*.csv
+
+# Spatial files (if you want to ignore them. Comment out if needed)
+# *.shp
+# *.shx
+# *.dbf
+# *.prj
+# *.cpg
+# *.qmd
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

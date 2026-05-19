@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 20년 경매 전문가 투자 대시보드</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- Markdown Parser (Marked.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- html2pdf for PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+
+<body>
+    <!-- Password Login Overlay -->
+    <div id="loginOverlay">
+        <div class="login-box">
+            <h1 class="login-title">Private Access</h1>
+            <p class="login-subtitle">AI Auction Expert 2.0</p>
+            <input type="password" id="passwordInput" class="login-input" placeholder="비밀번호 입력">
+            <button id="loginBtn" class="login-btn">입장하기</button>
+        </div>
+    </div>
+
+    <div class="background-effects">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+        <div class="glow-orb orb-3"></div>
+    </div>
+
+    <main class="dashboard-container">
+        <!-- Header & Search -->
+        <header class="header">
+            <div style="display:flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1 class="title">AI Auction <span class="neon-text">Expert 2.0</span></h1>
+                    <p class="subtitle">20년 경력 실전 경매 전문가 사고모델 탑재</p>
+                </div>
+                <button onclick="window.open('/map.html?v=1', '_blank')" class="primary-btn" style="background:var(--neon-blue); border-color:var(--neon-blue); font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;">
+                    <i class="fa-solid fa-map-location-dot"></i> 지도보기
+                </button>
+            </div>
+
+            <div class="search-container" style="display:flex; flex-direction:column; gap:10px;">
+                <div style="display:flex; gap:10px; width:100%;">
+                    <div class="input-wrapper" style="flex:1;">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" id="caseNumberInput" placeholder="사건번호 (예: 2024타경5020)" autocomplete="off">
+                    </div>
+                    <button id="searchCaseBtn" class="primary-btn" style="flex-shrink:0; background:var(--neon-purple); border-color:var(--neon-purple);">대법원 스크래핑 <i class="fa-solid fa-search"></i></button>
+                </div>
+            </div>
+
+            <!-- 기본 입력 폼 영역 (2차 입력 화면) -->
+            <div id="secondaryInputScreen" style="display:none; flex-direction:column; gap:10px; margin-top:20px;">
+                <div class="search-container" style="display:flex; flex-direction:column; gap:10px; width:100%; max-width:800px; margin:0 auto;">
+                    <div id="addressListContainer" style="display:flex; flex-direction:column; gap:8px; width:100%;">
+                        <!-- 검색된 물건 목록 (버튼) -->
+                    </div>
+                </div>
+
+                <!-- Analysis Settings Panel -->
+                <div class="settings-panel">
+                    <h3 style="margin-bottom: 15px; text-align: left; color: var(--neon-blue);"><i class="fa-solid fa-sliders"></i> 기본 투자 조건 설정</h3>
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <label for="propertyType"><i class="fa-solid fa-building-flag"></i> 부동산 종류 (자동 식별)</label>
+                            <input type="text" id="propertyType" class="setting-select" value="알 수 없음" style="color: var(--neon-blue);">
+                        </div>
+                        <div class="setting-item">
+                            <label for="approvalDate"><i class="fa-solid fa-calendar-check"></i> 사용승인일자 (자동 식별)</label>
+                            <input type="text" id="approvalDate" class="setting-select" value="알 수 없음" style="color: var(--neon-blue);">
+                        </div>
+                        <div class="setting-item" id="houseCountContainer">
+                            <label for="houseCount"><i class="fa-solid fa-house"></i> 현재 주택수</label>
+                            <select id="houseCount" class="setting-select">
+                                <option value="무주택">무주택</option>
+                                <option value="1주택">1주택</option>
+                                <option value="2주택">2주택</option>
+                                <option value="3주택 이상">3주택 이상</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="investorType"><i class="fa-solid fa-user-tie"></i> 투자 주체</label>
+                            <select id="investorType" class="setting-select">
+                                <option value="개인">개인</option>
+                                <option value="매매사업자">매매사업자</option>
+                                <option value="법인">법인</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="investmentDuration"><i class="fa-solid fa-clock"></i> 투자 기간</label>
+                            <select id="investmentDuration" class="setting-select">
+                                <option value="단기(6개월)">단기 (6개월 이내 매도)</option>
+                                <option value="장기(3년, 임대전략)">장기 (3년 이상, 임대 세팅)</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="targetReturnRate"><i class="fa-solid fa-percent"></i> 연 목표수익률 (%)</label>
+                            <input type="number" id="targetReturnRate" class="setting-select" value="20" min="0" max="100">
+                        </div>
+                        <div class="setting-item" style="grid-column: span 2;">
+                            <label for="madangsUrl"><i class="fa-solid fa-link"></i> 마당스 팝업 URL (입력 시 해당 사진으로 완전 교체)</label>
+                            <input type="text" id="madangsUrl" class="setting-select" placeholder="예: https://madangs.com/popup/detail_report?link=photo..." value="https://madangs.com/popup/detail_report?link=photo&code=0320240058264001&type=1&photo_idx=2" style="width: 100%;">
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px; padding: 15px; background: rgba(0, 0, 0, 0.4); border-radius: 8px; border: 1px dashed var(--glass-border);">
+                        <h4 style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;"><i class="fa-solid fa-robot"></i> AI 자동 산출 (물건지 주소 기반)</h4>
+                        <div style="display: flex; gap: 20px;">
+                            <div class="setting-item" style="flex: 1;">
+                                <label><i class="fa-solid fa-map-location-dot"></i> 규제지역 여부</label>
+                                <div id="isRegulatedAreaDisplay" style="padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; color: var(--text-main); font-size: 0.95rem; font-weight: 600;">클릭 시 판독</div>
+                                <input type="hidden" id="isRegulatedArea" value="false">
+                            </div>
+                            <div class="setting-item" style="flex: 1;">
+                                <label><i class="fa-solid fa-hammer"></i> 건물 노후도 (수리비 책정용)</label>
+                                <div id="agingDisplay" style="padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; color: var(--text-main); font-size: 0.95rem; font-weight: 600;">클릭 시 판독</div>
+                            </div>
+                        </div>
+                    </div>
+                
+                    <!-- 2차 실행 버튼 -->
+                    <div style="margin-top: 20px; text-align: center;">
+                        <button id="startBtn" class="primary-btn" style="width: 100%; justify-content: center; font-size: 1.2rem; padding: 20px;" disabled>
+                            9단계 심층 분석 시작 (Gemini 2.5 Flash) <i class="fa-solid fa-bolt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="errorMsg" class="error-msg"></div>
+        </header>
+
+        <!-- Loading State -->
+        <div id="loadingState" style="display: none; text-align: center; margin: 40px 0;">
+            <div class="spinner" style="display: inline-block; width: 40px; height: 40px; border-width: 4px; border-top-color: var(--neon-purple); border-right-color: var(--neon-purple);"></div>
+            <h3 style="margin-top: 20px; color: var(--neon-purple);" id="loadingText">AI가 관련 문서(PDF)를 정밀 분석 중입니다...</h3>
+            <p style="color: var(--text-muted); margin-top: 10px;">세금, 대출한도, 10% Up 시뮬레이션을 도출 중입니다. 최대 1분 정도 소요됩니다.</p>
+        </div>
+
+        <!-- 9-Step Final Report Section -->
+        <section class="final-report hidden" id="finalReport">
+            <!-- 0. Top Summary -->
+            <div class="report-item summary-box" style="margin-bottom: 25px; border-color: var(--neon-purple); box-shadow: 0 0 20px rgba(187, 0, 255, 0.15);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                    <h3 style="color: var(--neon-purple); font-size: 1.8rem; font-weight: 800;"><i class="fa-solid fa-flag-checkered"></i> 핵심요점</h3>
+                    <span id="decisionBadge" class="badge" style="font-size: 1.2rem; padding: 10px 25px; color: #ff0000; font-weight: bold; border-color: #ff0000;">Neutral</span>
+                </div>
+                <div id="report-section-0" class="markdown-content" style="font-size: 1.1rem; line-height: 1.7;">
+                    <!-- 요약 내용 삽입 (마크다운) -->
+                </div>
+                
+                <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;" id="downloadButtonsContainer">
+                    <button id="downloadBtn" class="primary-btn" style="background: var(--success); border-color: var(--success); color: white;"><i class="fa-solid fa-file-word"></i> 전문 리포트(Word) 다운로드</button>
+                    <button id="downloadPdfBtn" class="primary-btn" style="background: var(--danger); border-color: var(--danger); color: white;"><i class="fa-solid fa-file-pdf"></i> 화면 캡쳐(PDF) 다운로드</button>
+                </div>
+            </div>
+
+            <div class="report-content-wrapper" style="display: flex; flex-direction: column; gap: 20px;">
+                
+                <!-- 상단: 전경사진(좌) + 1. 기본정보(우) -->
+                <div style="display: flex; gap: 20px; width: 100%; align-items: stretch; flex-wrap: wrap;">
+                    <!-- 전경사진/위치도/내부구조도 캐러셀 (좌측) -->
+                    <div class="report-item" style="flex: 1; min-width: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px dashed rgba(187, 0, 255, 0.4); background: rgba(0,0,0,0.2); overflow: hidden; padding: 0; min-height: 300px; position: relative;">
+                        <!-- 스크롤 가능한 컨테이너 -->
+                        <div id="imageCarousel" style="width: 100%; height: 100%; display: none; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--neon-purple) transparent;">
+                            <div style="min-width: 100%; height: 100%; scroll-snap-align: center; position: relative; display: flex; align-items: center; justify-content: center;">
+                                <img id="resultImagePhoto" src="" alt="전경사진" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 5px; font-size: 0.9rem; font-weight: bold; color: white;">Ⅰ. 전경사진</div>
+                            </div>
+                            <div style="min-width: 100%; height: 100%; scroll-snap-align: center; position: relative; display: flex; align-items: center; justify-content: center;">
+                                <img id="resultImageMap" src="" alt="위치도" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 5px; font-size: 0.9rem; font-weight: bold; color: white;">Ⅱ. 위치도</div>
+                            </div>
+                            <div style="min-width: 100%; height: 100%; scroll-snap-align: center; position: relative; display: flex; align-items: center; justify-content: center;">
+                                <img id="resultImageStructure" src="" alt="내부구조도" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 5px; font-size: 0.9rem; font-weight: bold; color: white;">Ⅲ. 내부구조도</div>
+                            </div>
+                        </div>
+                        <div id="imagePlaceholder" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; width: 100%;">
+                            <i class="fa-solid fa-images" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 10px;"></i>
+                            <p style="color: var(--text-muted); font-size: 0.9rem;">사진 3장 로딩 중...<br><span style="font-size:0.8rem;">(좌우로 스크롤하여 확인)</span></p>
+                        </div>
+                        <!-- 좌우 스크롤 안내 화살표 -->
+                        <div id="scrollHint" style="display:none; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(187, 0, 255, 0.8); color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.85rem; pointer-events: none; animation: pulse 2s infinite; white-space: nowrap;">
+                            <i class="fa-solid fa-arrows-left-right"></i> 스와이프하여 사진 넘기기
+                        </div>
+                    </div>
+                    
+                    <!-- 1. 기본정보 (우측) -->
+                    <div class="report-item" style="flex: 2; min-width: 400px; display: flex; flex-direction: column;">
+                        <h4 style="font-size: 1.3rem; font-weight: 800;"><i class="fa-solid fa-circle-info"></i> Ⅰ. 기본정보</h4>
+                        <div id="report-section-1" class="markdown-content" style="flex: 1;"></div>
+                    </div>
+                </div>
+
+                <!-- 2단계부터 9단계까지 각 한 행(row)씩 세로로 배치 -->
+                <div class="report-grid" style="display: flex; flex-direction: column; gap: 20px; width: 100%;">
+                    <div class="report-item">
+                        <h4 style="font-size: 1.3rem; font-weight: 800;"><i class="fa-solid fa-hammer"></i> Ⅱ. 물리적 현황</h4>
+                        <div id="report-section-2" class="markdown-content"></div>
+                    </div>
+                    <div class="report-item" style="border-left: 3px solid var(--danger);">
+                        <h4 style="font-size: 1.3rem; font-weight: 800;"><i class="fa-solid fa-scale-balanced"></i> Ⅲ. 권리 분석</h4>
+                        <div id="report-section-3" class="markdown-content"></div>
+                    </div>
+                    <div class="report-item">
+                        <h4 style="font-size: 1.3rem; font-weight: 800;"><i class="fa-solid fa-chart-line"></i> Ⅳ. 시세 및 수익성 현황</h4>
+                        <div id="report-section-4" class="markdown-content"></div>
+                    </div>
+                    <div class="report-item highlight-box" style="border-color: var(--success); background: rgba(46, 160, 67, 0.05);">
+                        <h4 style="color: var(--success); font-size: 1.3rem; font-weight: 800;"><i class="fa-solid fa-map-location-dot"></i> Ⅴ. 입지 분석</h4>
+                        <div id="report-section-5" class="markdown-content"></div>
+                    </div>
+                    
+                    <div class="report-item">
+                        <h4 style="font-size: 1.3rem; font-weight: 800;"><i class="fa-solid fa-won-sign"></i> Ⅵ. 추천 입찰가</h4>
+                        <div id="report-section-6" class="markdown-content"></div>
+                    </div>
+                    <div class="report-item" style="border-left: 3px solid var(--warning);">
+                        <h4 style="font-size: 1.3rem; font-weight: 800;"><i class="fa-solid fa-bolt"></i> Ⅶ. 출구 전략</h4>
+                        <div id="report-section-7" class="markdown-content"></div>
+                    </div>
+                    <div class="report-item">
+                        <h4 style="font-size: 1.3rem; font-weight: 800;"><i class="fa-solid fa-money-bill-wave"></i> Ⅷ. 대출 및 절세 전략</h4>
+                        <div id="report-section-8" class="markdown-content"></div>
+                    </div>
+                    
+                    <!-- 동적 인포그래픽 (첫번째 줄 2개, 두번째 줄 1개) -->
+                    <div style="display: flex; gap: 20px; width: 100%; flex-wrap: wrap; margin-bottom: 20px;">
+                        <div style="flex: 1; min-width: 300px; max-width: calc(50% - 10px);" class="report-item">
+                            <h4 style="font-size: 1rem;"><i class="fa-solid fa-chart-line"></i> 수익성 시뮬레이터</h4>
+                            <div id="dynamic-sensitivity-chart" class="infographic-container" style="display: none; margin-top: 10px;"></div>
+                        </div>
+                        <div style="flex: 1; min-width: 300px; max-width: calc(50% - 10px);" class="report-item">
+                            <h4 style="font-size: 1rem;"><i class="fa-solid fa-won-sign"></i> 투자금 폭포수</h4>
+                            <div id="dynamic-waterfall-chart" class="infographic-container" style="display: none; margin-top: 10px;"></div>
+                        </div>
+                        <div style="flex: 1; min-width: 100%;" class="report-item">
+                            <h4 style="font-size: 1rem;"><i class="fa-solid fa-bolt"></i> 명도 및 출구전략 흐름도</h4>
+                            <div id="dynamic-exit-flowchart" class="infographic-container" style="display: none; margin-top: 10px;"></div>
+                        </div>
+                    </div>
+
+                    <div class="report-item highlight-box" style="border-color: var(--neon-purple); background: rgba(187, 0, 255, 0.05);">
+                        <h4 style="color: var(--neon-purple); font-size: 1.3rem; font-weight: 800;"><i class="fa-solid fa-flag-checkered"></i> Ⅸ. 최종 결론</h4>
+                        <div id="report-section-9" class="markdown-content"></div>
+                    </div>
+
+                    <!-- Disclaimer -->
+                    <div style="margin-top: 20px; padding: 15px; text-align: center; color: var(--text-muted); font-size: 0.9rem; border-top: 1px dashed rgba(255, 255, 255, 0.2);">
+                        <p><i class="fa-solid fa-circle-exclamation" style="color: var(--warning);"></i> <strong>안내 말씀</strong>: 본 AI 분석 보고서는 투자 의사결정을 돕기 위한 <strong>참고 자료</strong>입니다. <br>실제 투자 시에는 반드시 현장 조사와 전문가 상담 등을 병행하시길 권장해 드리며, 본 자료를 바탕으로 한 투자 결과에 대해서는 법적 책임을 지지 않음을 너그럽게 양해 부탁드립니다.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js?v=10"></script>
+</body>
+</html>
