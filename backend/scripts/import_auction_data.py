@@ -1,9 +1,31 @@
 import pandas as pd
 import sqlite3
 import os
+import datetime
 
-EXCEL_PATH = os.path.join(os.path.dirname(__file__), '../../data/경공매데이터_260515.xlsx')
 DB_PATH = os.path.join(os.path.dirname(__file__), '../data/map_data.db')
+
+def get_latest_excel_path():
+    data_dir = os.path.join(os.path.dirname(__file__), '../../data')
+    if not os.path.exists(data_dir):
+        data_dir = 'data'
+    
+    if os.path.exists(data_dir):
+        excel_files = []
+        for f in os.listdir(data_dir):
+            if f.startswith('경공매데이터') and f.endswith('.xlsx'):
+                path = os.path.join(data_dir, f)
+                excel_files.append((os.path.getmtime(path), path))
+        if excel_files:
+            excel_files.sort(reverse=True)
+            # Log the selected path for visibility
+            print(f"Detected latest Excel file: {excel_files[0][1]}")
+            return excel_files[0][1]
+            
+    return os.path.join(data_dir, '경공매데이터_260515.xlsx')
+
+EXCEL_PATH = get_latest_excel_path()
+
 
 def import_auctions():
     print("Connecting to DB...")
@@ -30,7 +52,10 @@ def import_auctions():
             elite_school TEXT,
             households INTEGER,
             land_size REAL,
-            min_price_per_pyeong REAL
+            min_price_per_pyeong REAL,
+            special_notes TEXT,
+            official_land_price REAL,
+            sale_date TEXT
         )
     ''')
     cursor.execute('DELETE FROM auctions')
@@ -107,10 +132,40 @@ def import_auctions():
             except ValueError:
                 min_price_per_pyeong = 0
             
+            # special notes
+            notes = [
+                str(row.get('특이사항', '')),
+                str(row.get('특이사항1', '')),
+                str(row.get('특이코드', '')),
+                str(row.get('HUG포기', ''))
+            ]
+            special_notes = " ".join([n for n in notes if n != 'nan' and n.strip()])
+
+            # official land price (시가표준액)
+            try:
+                olp_str = str(row.get('시가표준액', '0')).replace(',', '').strip()
+                official_land_price = float(olp_str) if olp_str and olp_str != 'nan' else 0
+            except ValueError:
+                official_land_price = 0
+            
+            # sale date (입찰일)
+            sale_date_val = row.get('입찰일')
+            sale_date = ""
+            if pd.notna(sale_date_val):
+                if isinstance(sale_date_val, datetime.datetime):
+                    sale_date = sale_date_val.strftime('%Y-%m-%d')
+                else:
+                    try:
+                        dt = pd.to_datetime(sale_date_val)
+                        if pd.notna(dt):
+                            sale_date = dt.strftime('%Y-%m-%d')
+                    except Exception:
+                        sale_date = str(sale_date_val).strip()
+            
             cursor.execute('''
-                INSERT INTO auctions (case_no, sale_type, property_type, address, appraisal_price, min_price, min_bid_rate, lat, lng, area_size, subway_dist, univ_dist, ind_dist, elite_school, households, land_size, min_price_per_pyeong)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (case_no, sale_type, property_type, address, appraisal_price, min_price, min_bid_rate, lat, lng, area_size, subway_dist, univ_dist, ind_dist, elite_school, households, land_size, min_price_per_pyeong))
+                INSERT INTO auctions (case_no, sale_type, property_type, address, appraisal_price, min_price, min_bid_rate, lat, lng, area_size, subway_dist, univ_dist, ind_dist, elite_school, households, land_size, min_price_per_pyeong, special_notes, official_land_price, sale_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (case_no, sale_type, property_type, address, appraisal_price, min_price, min_bid_rate, lat, lng, area_size, subway_dist, univ_dist, ind_dist, elite_school, households, land_size, min_price_per_pyeong, special_notes, official_land_price, sale_date))
             count += 1
             
         except Exception as e:

@@ -301,7 +301,7 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
                 match_count = sum(1 for token in key_tokens if token in row_text or token.replace("도", "").replace("시", "") in row_text_clean)
                 
                 if key_tokens and match_count >= len(key_tokens):
-                    link = rows.nth(i).locator("a[href*='/view/']").first
+                    link = rows.nth(i).locator("a[href*='/view/'], a[href*='idx=']").first
                     if await link.count() > 0:
                         found_link = link
                         print(f"소재지 일치 물건 찾음: {address_hint}")
@@ -320,7 +320,7 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
                 if is_public_sale:
                     found_link = page.locator("[onclick*='detail_public.php']").first
                 else:
-                    found_link = page.locator("a[href*='/view/'], .result-list a, .list-table a").first
+                    found_link = page.locator("a[href*='/view/'], a[href*='idx='], .result-list a, .list-table a").first
                 
             if await found_link.count() > 0:
                 try:
@@ -418,6 +418,117 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
             from bs4 import BeautifulSoup
             soup2 = BeautifulSoup(html2, 'html.parser')
             
+            # 임차인 테이블 정밀 파서 및 주석 수집 도입
+            tenants = []
+            tenant_comments = []
+            
+            def parse_money_func(money_str):
+                import re
+                money_str = money_str.replace(",", "").strip()
+                deposit = 0
+                rent = 0
+                
+                # Check for rent first
+                rent_match = re.search(r'(?:\[월\]|월|월세)\s*([0-9]+(?:\.[0-9]+)?)\s*(억|만|원)?', money_str)
+                if rent_match:
+                    val = float(rent_match.group(1))
+                    unit = rent_match.group(2)
+                    if unit == '억':
+                        rent = int(val * 100000000)
+                    elif unit == '만':
+                        rent = int(val * 10000)
+                    else:
+                        if val < 100000:
+                            rent = int(val * 10000)
+                        else:
+                            rent = int(val)
+                    # Remove the rent portion from string
+                    money_str = money_str.replace(rent_match.group(0), "").strip()
+                    
+                # Now parse deposit
+                deposit_match = re.search(r'([0-9]+(?:\.[0-9]+)?)\s*(억|만|원)?', money_str)
+                if deposit_match:
+                    val = float(deposit_match.group(1))
+                    unit = deposit_match.group(2)
+                    if unit == '억':
+                        deposit = int(val * 100000000)
+                    elif unit == '만':
+                        deposit = int(val * 10000)
+                    else:
+                        if val < 100000:
+                            deposit = int(val * 10000)
+                        else:
+                            deposit = int(val)
+                            
+                return deposit, rent
+
+            # Find the tenant table
+            tenant_table = None
+            for tbl in soup2.find_all("table"):
+                tbl_text = tbl.get_text()
+                if "임차인" in tbl_text and "전입일자" in tbl_text and "보증금" in tbl_text:
+                    tenant_table = tbl
+                    break
+                    
+            if tenant_table:
+                print("임차인 현황 테이블 발견!")
+                trs = tenant_table.find_all("tr")
+                for tr in trs:
+                    header_cells = tr.find_all("th")
+                    if header_cells and any("임차인" in h.get_text() for h in header_cells):
+                        continue
+                    if any("임차인" in cell.get_text() for cell in tr.find_all("td")):
+                        continue
+                        
+                    cells = tr.find_all(["td", "th"])
+                    if not cells:
+                        continue
+                        
+                    first_cell_text = cells[0].get_text().strip()
+                    is_comment = False
+                    if len(cells) == 2 and (int(cells[1].get('colspan', 1)) >= 5 or any(k in first_cell_text for k in ["현황조사서", "매각물건", "비고", "기타"])):
+                        is_comment = True
+                    elif int(cells[0].get('colspan', 1)) >= 5:
+                        is_comment = True
+                        
+                    if is_comment:
+                        comment_text = " ".join([c.get_text().strip() for c in cells])
+                        tenant_comments.append(comment_text)
+                        print(f"임차인 비고/주석 수집: {comment_text}")
+                    elif len(cells) >= 6:
+                        name = cells[0].get_text().strip()
+                        usage = cells[1].get_text().strip() if len(cells) > 1 else ""
+                        transfer_date = cells[2].get_text().strip() if len(cells) > 2 else ""
+                        confirmation_date = cells[3].get_text().strip() if len(cells) > 3 else ""
+                        claim_date = cells[4].get_text().strip() if len(cells) > 4 else ""
+                        deposit_rent = cells[5].get_text().strip() if len(cells) > 5 else ""
+                        opposing_power = cells[6].get_text().strip() if len(cells) > 6 else ""
+                        remarks = cells[7].get_text().strip() if len(cells) > 7 else ""
+                        
+                        if not name or name == "임차인" or "조사된 임차내역" in name:
+                            continue
+                            
+                        dep, rnt = parse_money_func(deposit_rent)
+                        
+                        tenants.append({
+                            "name": name,
+                            "usage": usage,
+                            "transfer_date": transfer_date,
+                            "confirmation_date": confirmation_date,
+                            "claim_date": claim_date,
+                            "deposit_rent": deposit_rent,
+                            "deposit": dep,
+                            "rent": rnt,
+                            "has_opposing_power": opposing_power,
+                            "remarks": remarks
+                        })
+                        print(f"임차인 수집: {name}, 보증금: {dep}, 월세: {rnt}, 대항력: {opposing_power}")
+                        
+            parsed_data["tenants"] = tenants
+            parsed_data["tenant_comments"] = tenant_comments
+            parsed_data["viewing_suspended"] = False
+            parsed_data["suspended_documents"] = []
+
             for th in soup2.find_all('th'):
                 text = th.text.replace('\n', '').strip()
                 td = th.find_next_sibling('td')
@@ -499,7 +610,7 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
 
             # 문서 URL 생성 (idx 활용)
             import re
-            idx_match = re.search(r'/view/(\d+)', page.url)
+            idx_match = re.search(r'/view/(\d+)', page.url) or re.search(r'idx=(\d+)', page.url)
             idx = idx_match.group(1) if idx_match else None
             
             documents = []
@@ -630,9 +741,41 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
                     try:
                         # 백그라운드 탭에서 문서 열람 후 PDF 저장
                         doc_page = await context.new_page()
-                        await doc_page.goto(doc_url, wait_until="domcontentloaded", timeout=5000)
-                        await doc_page.wait_for_timeout(1500) # 이미지 등 렌더링 대기
                         
+                        alert_flag = False
+                        async def handle_doc_dialog(dialog):
+                            nonlocal alert_flag
+                            msg = dialog.message
+                            print(f"[{name}] Alert 대화상자 감지: {msg}")
+                            if "열람이 중지" in msg or "로그인" in msg:
+                                alert_flag = True
+                            await dialog.dismiss()
+                            
+                        doc_page.on("dialog", handle_doc_dialog)
+                        
+                        try:
+                            await doc_page.goto(doc_url, wait_until="domcontentloaded", timeout=5000)
+                        except Exception as e:
+                            print(f"[{name}] goto 실패 (Alert 차단 가능성): {e}")
+                            
+                        await doc_page.wait_for_timeout(1000)
+                        
+                        # 페이지 내 텍스트에서도 중지 문구 체크
+                        try:
+                            page_content = await doc_page.content()
+                            if "열람이 중지" in page_content or "로그인" in page_content:
+                                alert_flag = True
+                        except Exception as e:
+                            print(f"[{name}] content 추출 실패: {e}")
+                            
+                        if alert_flag:
+                            print(f"[{name}] 법원 서류 열람 중지/제한 감지됨. PDF 저장을 생략합니다.")
+                            parsed_data["viewing_suspended"] = True
+                            if name not in parsed_data["suspended_documents"]:
+                                parsed_data["suspended_documents"].append(name)
+                            await doc_page.close()
+                            continue
+                            
                         pdf_path = os.path.join(download_dir, f"{name}.pdf")
                         await doc_page.pdf(path=pdf_path, print_background=True)
                         await doc_page.close()

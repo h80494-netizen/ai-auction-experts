@@ -140,6 +140,16 @@
             background: var(--primary-hover);
         }
 
+        .search-place-box:focus-within {
+            border-color: var(--primary-blue) !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
+        }
+
+        @keyframes bounce {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-6px); }
+        }
+
         .sale-type-toggles {
             display: flex;
             gap: 5px;
@@ -548,6 +558,286 @@
             }
         }
         .neon-glow-marker { filter: drop-shadow(0 0 8px #bd00ff); }
+        .neon-glow-line {
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke-width 0.2s, stroke 0.2s, filter 0.2s;
+        }
+        .glow-rose {
+            filter: drop-shadow(0 0 5px rgba(244, 63, 94, 0.9)) drop-shadow(0 0 2px rgba(244, 63, 94, 0.4));
+        }
+        .glow-orange {
+            filter: drop-shadow(0 0 5px rgba(249, 115, 22, 0.9)) drop-shadow(0 0 2px rgba(249, 115, 22, 0.4));
+        }
+        .glow-gold {
+            filter: drop-shadow(0 0 5px rgba(234, 179, 8, 0.9)) drop-shadow(0 0 2px rgba(234, 179, 8, 0.4));
+        }
+        .glow-emerald {
+            filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.9)) drop-shadow(0 0 2px rgba(16, 185, 129, 0.4));
+        }
+
+        /* --- Demand Drawer Panel Styles --- */
+        .demand-drawer {
+            position: fixed;
+            top: 0;
+            right: -360px;
+            width: 340px;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.08);
+            z-index: 2500;
+            transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .demand-drawer.open {
+            right: 0;
+        }
+
+        .demand-drawer-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .demand-drawer-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+
+        .demand-drawer-close {
+            background: none;
+            border: none;
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s, background-color 0.2s;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .demand-drawer-close:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text-dark);
+        }
+
+        .demand-drawer-content {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Card layout */
+        .demand-card {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(226, 232, 240, 0.6);
+            border-radius: 12px;
+            padding: 14px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .demand-card-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Grid layout for stats */
+        .demand-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .demand-stat-item {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(226, 232, 240, 0.5);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .demand-stat-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 3px;
+        }
+
+        .demand-stat-value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Subway list styles */
+        .demand-subway-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .subway-grade-초역세권 {
+            background: #e6f4ea;
+            color: #137333;
+        }
+
+        .subway-grade-역세권 {
+            background: #e8f0fe;
+            color: #1a73e8;
+        }
+
+        .subway-grade-비역세권 {
+            background: #f1f3f4;
+            color: #5f6368;
+        }
+
+        /* Subway list */
+        .demand-subway-list {
+            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .demand-subway-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            padding: 5px 8px;
+            border-radius: 6px;
+            background: rgba(248, 250, 252, 0.6);
+        }
+
+        .demand-subway-name {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .demand-subway-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* Horizontal age chart */
+        .age-chart-row {
+            margin-bottom: 8px;
+        }
+
+        .age-chart-label-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            margin-bottom: 3px;
+        }
+
+        .age-chart-progress-bg {
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .age-chart-progress-bar {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.6s ease;
+        }
+
+        /* Evaluation layout */
+        .demand-eval-grade {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--primary-blue);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .demand-eval-detail {
+            font-size: 0.75rem;
+            color: var(--text-dark);
+            line-height: 1.4;
+            word-break: keep-all;
+        }
+
+        /* Skeleton Loading styles */
+        .skeleton {
+            animation: skeleton-loading 1.2s infinite ease-in-out;
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            border-radius: 4px;
+        }
+
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        @media (max-width: 768px) {
+            .demand-drawer {
+                right: 0 !important;
+                bottom: -80vh;
+                top: auto;
+                width: 100vw;
+                height: 70vh;
+                max-height: 70vh;
+                border-left: none;
+                border-top: 1px solid rgba(226, 232, 240, 0.8);
+                border-radius: 20px 20px 0 0;
+                box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.1);
+                transition: bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+            .demand-drawer.open {
+                bottom: 60px; /* Above the mobile tab bar */
+            }
+        }
+
+        /* Red Glowing Line heatmaps */
+        .neon-glow-line {
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke-width 0.2s, opacity 0.2s;
+        }
+        .glow-darkred {
+            filter: drop-shadow(0 0 5px rgba(153, 27, 27, 0.95)) drop-shadow(0 0 2px rgba(153, 27, 27, 0.5));
+        }
+        .glow-red {
+            filter: drop-shadow(0 0 5px rgba(220, 38, 38, 0.9)) drop-shadow(0 0 2px rgba(220, 38, 38, 0.4));
+        }
+        .glow-lightred {
+            filter: drop-shadow(0 0 5px rgba(248, 113, 113, 0.75)) drop-shadow(0 0 2px rgba(248, 113, 113, 0.3));
+        }
     </style>
 </head>
 
@@ -560,6 +850,42 @@
 
     <div id="zoom-warning" style="display: none; position: absolute; top: 90px; left: 50%; transform: translateX(-50%); z-index: 2000; background: rgba(225, 29, 72, 0.9); color: white; padding: 10px 20px; border-radius: 20px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: opacity 0.3s; pointer-events: none;">
         <i class="fa-solid fa-magnifying-glass-plus"></i> 지도를 동네 수준으로 확대해야 물건이 표시됩니다.
+    </div>
+    <!-- 유동동선 라인맵 5단계 범례 -->
+    <div id="road-flow-legend" style="display: none; position: absolute; top: 90px; right: 20px; z-index: 1000; background: white; padding: 12px 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid var(--border-color); font-family: 'Noto Sans KR', sans-serif; min-width: 140px; pointer-events: auto;">
+        <div style="font-weight: bold; font-size: 0.9rem; margin-bottom: 10px; color: #1e293b; text-align: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">유동 강도 범례</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 25px; height: 5px; background: #7f1d1d; border-radius: 2px;"></div>
+                    <span style="font-weight: 500; color: #334155;">매우 높음</span>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 25px; height: 4px; background: #ef4444; border-radius: 2px;"></div>
+                    <span style="font-weight: 500; color: #334155;">높음</span>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 25px; height: 3px; background: #f97316; border-radius: 2px;"></div>
+                    <span style="font-weight: 500; color: #334155;">중간</span>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 25px; height: 2px; background: #22c55e; border-radius: 2px;"></div>
+                    <span style="font-weight: 500; color: #334155;">낮음</span>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 25px; height: 1.5px; background: #a3e635; border-radius: 2px;"></div>
+                    <span style="font-weight: 500; color: #334155;">매우 낮음</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Map Container -->
@@ -582,18 +908,21 @@
                 <i class="fa-solid fa-location-crosshairs" style="color: #ef4444; margin-right: 8px;"></i>
                 <span id="center-address-text">위치 불러오는 중...</span>
             </div>
-            <div class="region-toggles" style="display: flex; gap: 15px; align-items: center; padding: 0 15px;">
+
+            <!-- 지명 명소 검색창 (방법 C 및 지명 입력 요구사항) -->
+            <div class="search-place-box" style="display: flex; align-items: center; background: #fff; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color); width: 260px; margin: 0 10px; transition: border-color 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted); margin-right: 8px; font-size: 0.9rem; cursor: pointer;" onclick="searchPlaceName()"></i>
+                <input type="text" id="search-place-input" placeholder="지명, 명소 검색 (예: 잠실야구장)" style="border: none; outline: none; width: 100%; font-size: 0.85rem; font-family: 'Noto Sans KR', sans-serif;" onkeydown="if(event.key === 'Enter') searchPlaceName()">
+            </div>
+            <div class="region-toggles" style="display: flex; gap: 10px; align-items: center; padding: 0 10px; flex-shrink: 0; white-space: nowrap; flex-wrap: nowrap;">
                 <label style="cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:bold; color:var(--text-dark);">
-                    <input type="checkbox" class="region-checkbox" value="서울" onchange="loadAuctions(); updateCenterAddress();
-                    fetchInfraData();" checked> 서울
+                    <input type="checkbox" class="region-checkbox" value="서울" onchange="loadAuctions(); updateCenterAddress(); fetchInfraData(); fetchPopulationHeatmap(); fetchResidentialHeatmap(); fetchWorkplaceHeatmap();" checked> 서울
                 </label>
                 <label style="cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:bold; color:var(--text-dark);">
-                    <input type="checkbox" class="region-checkbox" value="경기" onchange="loadAuctions(); updateCenterAddress();
-                    fetchInfraData();"> 경기
+                    <input type="checkbox" class="region-checkbox" value="경기" onchange="loadAuctions(); updateCenterAddress(); fetchInfraData(); fetchPopulationHeatmap(); fetchResidentialHeatmap(); fetchWorkplaceHeatmap();"> 경기
                 </label>
                 <label style="cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:bold; color:var(--text-dark);">
-                    <input type="checkbox" class="region-checkbox" value="인천" onchange="loadAuctions(); updateCenterAddress();
-                    fetchInfraData();"> 인천
+                    <input type="checkbox" class="region-checkbox" value="인천" onchange="loadAuctions(); updateCenterAddress(); fetchInfraData(); fetchPopulationHeatmap(); fetchResidentialHeatmap(); fetchWorkplaceHeatmap();"> 인천
                 </label>
             </div>
         </div>
@@ -605,7 +934,7 @@
         </div>
     </div>
 
-    <!-- Left Panel: Layer List -->
+<!-- Left Panel: Layer List -->
     <div class="floating-panel" id="left-panel">
         <div class="panel-header">
             <span><i class="fa-solid fa-layer-group"></i> 레이어 목록</span>
@@ -715,15 +1044,38 @@
                         class="slider"></span></label>
             </div>
 
-            <div class="toggle-row" style="background: #fff1f2; padding: 10px; border-radius: 8px; margin-top: 5px;">
+
+
+            <div class="toggle-row" style="background: #fffbeb; padding: 10px; border-radius: 8px; margin-top: 5px;">
                 <div class="toggle-label">
                     <div>
-                        <i class="fa-solid fa-fire" style="color: #e11d48;"></i> 유동인구 히트맵 (250m)
-                        <span class="toggle-desc" style="color: #be123c;">서울의 생활인구 변화를 시각화</span>
+                        <i class="fa-solid fa-house-user" style="color: #ea580c;"></i> 격자형 주거인구 히트맵
+                        <span class="toggle-desc" style="color: #c2410c;">지역별 격자 단위 거주 밀도 (노란/오렌지)</span>
                     </div>
                 </div>
-                <label class="switch"><input type="checkbox" id="toggle-heatmap"><span
+                <label class="switch"><input type="checkbox" id="toggle-residential-heatmap"><span
                         class="slider"></span></label>
+            </div>
+
+            <div class="toggle-row" style="background: #f5f3ff; padding: 10px; border-radius: 8px; margin-top: 5px;">
+                <div class="toggle-label">
+                    <div>
+                        <i class="fa-solid fa-briefcase" style="color: #6366f1;"></i> 격자형 직장인구 히트맵
+                        <span class="toggle-desc" style="color: #4f46e5;">상업 및 업무지구 종사자 밀집도 (보라/네온)</span>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="toggle-workplace-heatmap"><span
+                        class="slider"></span></label>
+            </div>
+
+            <div class="toggle-row" style="background: #ecfdf5; padding: 10px; border-radius: 8px; margin-top: 5px;">
+                <div class="toggle-label">
+                    <div>
+                        <i class="fa-solid fa-route" style="color: #059669;"></i> 소도로 유동동선 라인 맵
+                        <span class="toggle-desc" style="color: #047857;">이면도로 및 골목길 상위 3단계 핵심 유동 동선 (초경량 Canvas, 줌 레벨 15 이상 활성화)</span>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="toggle-road-flows"><span class="slider"></span></label>
             </div>
 
             <div class="toggle-row" style="background: #fff7ed; padding: 10px; border-radius: 8px; margin-top: 5px;">
@@ -765,7 +1117,7 @@
         <div class="panel-content">
 
             <div class="layer-group-title">부동산 종류 다중 선택</div>
-                                    <div class="checkbox-grid">
+            <div class="checkbox-grid" id="property-type-grid">
                 <label class="checkbox-item"><input type="checkbox" value="토지"> 토지</label>
                 <label class="checkbox-item"><input type="checkbox" value="지산"> 지산</label>
                 <label class="checkbox-item"><input type="checkbox" value="집합"> 집합</label>
@@ -776,6 +1128,27 @@
                 <label class="checkbox-item"><input type="checkbox" value="단독"> 단독</label>
                 <label class="checkbox-item"><input type="checkbox" value="기타"> 기타</label>
                 <label class="checkbox-item"><input type="checkbox" value="공장"> 공장</label>
+            </div>
+
+            <div class="layer-group-title" style="margin-top: 15px;">특수물건 다중 선택 (AND/OR 조건)</div>
+            <div class="checkbox-grid" id="special-rights-grid">
+                <label class="checkbox-item"><input type="checkbox" value="대항력없음"> 대항력없음</label>
+                <label class="checkbox-item"><input type="checkbox" value="유치권"> 유치권</label>
+                <label class="checkbox-item"><input type="checkbox" value="법정지상권"> 법정지상권</label>
+                <label class="checkbox-item"><input type="checkbox" value="지분경매"> 지분경매</label>
+                <label class="checkbox-item"><input type="checkbox" value="선순위"> 선순위</label>
+                <label class="checkbox-item"><input type="checkbox" value="대지권미등기"> 대지권미등기</label>
+                <label class="checkbox-item"><input type="checkbox" value="별도등기"> 별도등기</label>
+                <label class="checkbox-item"><input type="checkbox" value="HUG"> HUG인수조건변경</label>
+                <label class="checkbox-item"><input type="checkbox" value="농지취득자격증명"> 농지취득자격증명</label>
+                <label class="checkbox-item"><input type="checkbox" value="기타"> 기타</label>
+            </div>
+
+            <div class="layer-group-title" style="margin-top: 15px;">시가표준액(공시지가) 설정</div>
+            <div class="checkbox-grid" id="land-price-grid">
+                <label class="checkbox-item"><input type="checkbox" value="1억이하"> 1억 이하</label>
+                <label class="checkbox-item"><input type="checkbox" value="1억~2억"> 1~2억 이하</label>
+                <label class="checkbox-item"><input type="checkbox" value="2억~3억"> 2~3억 이하</label>
             </div>
 
             <div class="layer-group-title" style="margin-top: 15px;">최저가율 필터 (감정가 대비)</div>
@@ -828,11 +1201,30 @@
 
         </div>
     </div>
-    <!-- Leaflet JS -->
+    <!-- Demand Analysis Side Panel Drawer -->
+    <div id="demand-panel" class="demand-drawer">
+        <div class="demand-drawer-header">
+            <div class="demand-drawer-title">
+                <i class="fa-solid fa-chart-pie" style="color: var(--primary-blue);"></i>
+                <span>배후수요 & 인구 분석</span>
+            </div>
+            <button class="demand-drawer-close" onclick="closeDemandPanel()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="demand-drawer-content" id="demand-panel-content">
+            <!-- Content will be populated dynamically -->
+        </div>
+    </div>
+
+        <!-- Leaflet JS -->
     <script>
         // 1. Initialize Standard Light Map (Kakao Map Style)
         const map = L.map('map', { zoomControl: false, preferCanvas: true }).setView([37.4979, 127.0276], 13);
         L.control.zoom({ position: 'bottomright' }).addTo(map);
+        
+        // Define min zoom required for loading demographic grids and other features
+        const minZoomRequired = (L.Browser.mobile || window.innerWidth <= 768) ? 11 : 13;
 
         // Make popups draggable so users can see the map underneath
         map.on('popupopen', function(e) {
@@ -909,7 +1301,11 @@
             dev1: L.layerGroup(),
             dev2: L.layerGroup(),
             popHeatmap: L.layerGroup(),
+            resHeatmap: L.layerGroup(),
+            workHeatmap: L.layerGroup(),
             oldBuildings: L.layerGroup(),
+            roadFlows: L.layerGroup(),
+            eliteSchools: L.layerGroup(),
             auction: L.layerGroup().addTo(map)
         };
 
@@ -1085,7 +1481,7 @@
 
         // 4. Data Loading Logic
         async function fetchInfraData() {
-            if (map.getZoom() < 13) return;
+            if (map.getZoom() < minZoomRequired) return;
             const bounds = map.getBounds();
             const checkedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => cb.value);
             let url = `/api/map/pois?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}`;
@@ -1143,7 +1539,7 @@
                         });
                     }
                     
-                    if (document.getElementById('toggle-bus').checked && map.getZoom() >= 13 && data.bus_stops) {
+                    if (document.getElementById('toggle-bus').checked && map.getZoom() >= minZoomRequired && data.bus_stops) {
                         layers.bus.clearLayers();
                         let radius = parseInt(document.getElementById('buffer-bus').value) || 20;
                         data.bus_stops.forEach(b => {
@@ -1170,11 +1566,10 @@
                             const percentile = (idx + 1) / pops.length;
                             const tier = Math.ceil(percentile * 10) || 1; // 1 ~ 10 단계
                             
-                            if (tier <= 3) return null;
+                            if (tier <= 6) return null;
                             
                             const colors = {
-                                10: '#08306b', 9: '#08519c', 8: '#2171b5',
-                                7: '#4292c6', 6: '#6baed6', 5: '#9ecae1', 4: '#c6dbef'
+                                10: '#08306b', 9: '#08519c', 8: '#2171b5', 7: '#4292c6'
                             };
                             
                             return {
@@ -1254,7 +1649,7 @@
         }
 
         async function fetchHagwonPolygons() {
-            if (map.getZoom() < 13) return;
+            if (map.getZoom() < minZoomRequired) return;
             if (!document.getElementById('toggle-hagwons').checked) return;
             if (layers.hagwon.getLayers().length > 0) return;
             try {
@@ -1302,15 +1697,17 @@
                                 coordinates: [geojsonCoords]
                             }
                         };
-                        
                         polygonLayer.addTo(layers.hagwon);
                     });
+                    if (document.getElementById('toggle-hagwons').checked) {
+                        map.addLayer(layers.hagwon);
+                    }
                 }
             } catch (err) { console.error(err); } finally { triggerHighlighter(); }
         }
 
         async function fetchDistrictUnits() {
-            if (map.getZoom() < 13) return;
+            if (map.getZoom() < minZoomRequired) return;
             if (!document.getElementById('toggle-dev2').checked) return;
             const bounds = map.getBounds();
             try {
@@ -1333,56 +1730,297 @@
             } catch (err) { console.error(err); } finally { triggerHighlighter(); }
         }
 
-        async function fetchPopulationHeatmap() {
-            if (map.getZoom() < 13) return;
-            if (!document.getElementById('toggle-heatmap').checked) return;
+        let cachedRoadFlowBounds = null;
+        let cachedRoadFlowZoom = null;
+
+        async function fetchRoadFlows() {
+            const roadFlowMinZoom = 14;
+            const currentZoom = map.getZoom();
+            if (currentZoom < roadFlowMinZoom) {
+                layers.roadFlows.clearLayers();
+                cachedRoadFlowBounds = null;
+                cachedRoadFlowZoom = null;
+                return;
+            }
+            if (!document.getElementById('toggle-road-flows').checked) return;
+            
             const bounds = map.getBounds();
+            
+            // 스마트 캐싱: 줌 레벨이 동일하고, 현재 영역이 캐싱된 패딩 영역 내에 완전히 존재하면 재요청 생략
+            if (cachedRoadFlowZoom === currentZoom && cachedRoadFlowBounds && cachedRoadFlowBounds.contains(bounds)) {
+                console.log("Road flows loaded from cache (within bounds).");
+                return;
+            }
+            
+            // 25% 패딩을 주어 더 넓은 영역을 한 번에 가져오고 캐싱합니다 (미세 이동 시 뚝뚝 끊김 방지)
+            const southWest = bounds.getSouthWest();
+            const northEast = bounds.getNorthEast();
+            const latDiff = northEast.lat - southWest.lat;
+            const lngDiff = northEast.lng - southWest.lng;
+            
+            const padLat = latDiff * 0.25;
+            const padLng = lngDiff * 0.25;
+            
+            const paddedBounds = L.latLngBounds(
+                L.latLng(southWest.lat - padLat, southWest.lng - padLng),
+                L.latLng(northEast.lat + padLat, northEast.lng + padLng)
+            );
+            
             try {
-                const res = await fetch(`/api/map/population_heatmap?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}`);
+                const res = await fetch(`/api/map/road_flows?min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}`);
                 const json = await res.json();
                 if (json.status === 'success') {
-                    layers.popHeatmap.clearLayers();
+                    layers.roadFlows.clearLayers();
                     
-                    let heatData = [];
-                    let maxPop = 0;
-                    json.data.forEach(item => {
-                        if (item.avg_population > maxPop) maxPop = item.avg_population;
-                        heatData.push([item.lat, item.lng, item.avg_population]);
-                    });
+                    // 획기적인 메모리 절감: SVGRenderer 강제를 해제하여 DOM 엘리먼트 부담 없이 글로벌 Canvas에 직접 렌더링
+                    L.geoJSON(json.data, {
+                        style: function (feature) {
+                            const intensity = feature.properties.flow_intensity || 0.5;
+                            let color = '#a3e635'; // 매우 낮음: 연두색
+                            let strokeWidth = 1.1;
 
-                    if (heatData.length > 0) {
-                        const heatLayer = L.heatLayer(heatData, {
-                            radius: 40,
-                            blur: 30,
-                            maxZoom: 15,
-                            max: 9000,
-                            gradient: {
-                                0.1: '#fee5d9', 
-                                0.2: '#fcbba1', 
-                                0.3: '#fc9272', 
-                                0.4: '#fb6a4a', 
-                                0.5: '#ef3b2c', 
-                                0.6: '#cb181d', 
-                                0.7: '#a50f15', 
-                                0.8: '#85000e', 
-                                0.9: '#67000d', 
-                                1.0: '#4a000a'  // Dark Red
+                            if (intensity >= 0.8) {
+                                color = '#7f1d1d'; // 매우 높음: 진한 자주/붉은색
+                                strokeWidth = 4.5;
+                            } else if (intensity >= 0.6) {
+                                color = '#ef4444'; // 높음: 붉은색
+                                strokeWidth = 3.2;
+                            } else if (intensity >= 0.4) {
+                                color = '#f97316'; // 중간: 주황색
+                                strokeWidth = 2.2;
+                            } else if (intensity >= 0.2) {
+                                color = '#22c55e'; // 낮음: 초록색
+                                strokeWidth = 1.6;
                             }
-                        });
-                        heatLayer.addTo(layers.popHeatmap);
-                        if (heatLayer._canvas) {
-                            heatLayer._canvas.style.opacity = '0.5'; // 50% transparency for the entire heatmap
+
+                            return {
+                                color: color,
+                                weight: strokeWidth,
+                                opacity: 0.85
+                            };
+                        },
+                        onEachFeature: function (feature, layer) {
+                            const props = feature.properties;
+                            const flowDesc = props.flow_type || '이면도로 보행자';
+                            const hourlyCount = props.avg_hourly_flow || 0;
+                            const pctVal = Math.round(props.flow_intensity * 100);
+                            
+                            let popupContent = `
+                                <div style="font-family: 'Noto Sans KR', sans-serif; min-width: 180px; padding: 5px;">
+                                    <div style="font-weight: bold; font-size: 0.95rem; margin-bottom: 6px; color: #1e293b; display: flex; align-items: center; gap: 5px;">
+                                        <i class="fa-solid fa-route" style="color: #b91c1c;"></i>
+                                        <span>${props.road_name || '이면도로 보행동선'}</span>
+                                    </div>
+                                    <table style="width: 100%; font-size: 0.8rem; border-collapse: collapse;">
+                                        <tr>
+                                            <td style="color: #64748b; padding: 3px 0;">동선 구분</td>
+                                            <td style="text-align: right; font-weight: bold; color: #334155;">${flowDesc}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="color: #64748b; padding: 3px 0;">시간당 유동량</td>
+                                            <td style="text-align: right; font-weight: 800; color: #dc2626;">${hourlyCount.toLocaleString()}명/시간</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="color: #64748b; padding: 3px 0;">지역 내 유동 상위</td>
+                                            <td style="text-align: right; font-weight: bold; color: #ea580c;">상위 ${(100 - pctVal)}%</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            `;
+
+                            layer.bindPopup(popupContent);
+
+                            layer.on('mouseover', function (e) {
+                                e.target.setStyle({
+                                    weight: e.target.options.weight + 1.5,
+                                    opacity: 1.0
+                                });
+                            });
+
+                            layer.on('mouseout', function (e) {
+                                const intensity = feature.properties.flow_intensity || 0.5;
+                                let originalWeight = 1.1;
+                                if (intensity >= 0.8) originalWeight = 4.5;
+                                else if (intensity >= 0.6) originalWeight = 3.2;
+                                else if (intensity >= 0.4) originalWeight = 2.2;
+                                else if (intensity >= 0.2) originalWeight = 1.6;
+                                
+                                e.target.setStyle({
+                                    weight: originalWeight,
+                                    opacity: 0.85
+                                });
+                            });
                         }
+                    }).addTo(layers.roadFlows);
+                    
+                    // 캐싱 바운드 및 줌 레벨 업데이트
+                    cachedRoadFlowBounds = paddedBounds;
+                    cachedRoadFlowZoom = currentZoom;
+                }
+            } catch (err) {
+                console.error("Failed to fetch road flows:", err);
+            } finally {
+                triggerHighlighter();
+            }
+        }
+
+        async function fetchPopulationHeatmap() {
+            // No-op function (deleted population heatmap layer)
+            return;
+        }
+
+        async function fetchResidentialHeatmap() {
+            if (map.getZoom() < minZoomRequired) return;
+            if (!document.getElementById('toggle-residential-heatmap').checked) return;
+            const bounds = map.getBounds();
+            const checkedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => cb.value);
+            const regionsParam = checkedRegions.length > 0 ? `&regions=${checkedRegions.join(',')}` : '&regions=서울';
+            
+            try {
+                const res = await fetch(`/api/map/grid_demographics?type=residential&min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}${regionsParam}`);
+                const json = await res.json();
+                if (json.status === 'success') {
+                    layers.resHeatmap.clearLayers();
+                    
+                    const data = json.data;
+                    if (data && data.length > 0) {
+                        // region별 그룹화
+                        const groups = {};
+                        data.forEach(item => {
+                            const r = item.region || 'seoul';
+                            if (!groups[r]) groups[r] = [];
+                            groups[r].push(item);
+                        });
+
+                        // Modern 5-color palette for Residential (Yellow to Orange)
+                        const colors = ['#fef08a', '#fde047', '#facc15', '#ea580c', '#c2410c'];
+
+                        // 각 그룹별 독립 로컬 10단계 분위수 정규화
+                        Object.keys(groups).forEach(rName => {
+                            const groupData = groups[rName];
+                            
+                            // 분위수 기준 10단계 부여를 위해 오름차순 정렬
+                            const sortedGroupData = [...groupData].sort((a, b) => a.avg_population - b.avg_population);
+                            const N = sortedGroupData.length;
+
+                            sortedGroupData.forEach((item, index) => {
+                                let step = Math.floor((index / N) * 10) + 1;
+                                step = Math.min(step, 10);
+                                
+                                // 하위 5단계 삭제
+                                if (step <= 5) return;
+
+                                const colorIdx = step - 6;
+                                const color = colors[colorIdx] || colors[colors.length - 1];
+                                
+                                const lat = item.lat;
+                                const lng = item.lng;
+                                
+                                // 250m x 250m grid rectangle centered around lat/lng
+                                const halfLat = (json.lat_step || 0.00225) / 2;
+                                const halfLng = (json.lng_step || 0.0028) / 2;
+                                const rectBounds = [
+                                    [lat - halfLat, lng - halfLng],
+                                    [lat + halfLat, lng + halfLng]
+                                ];
+
+                                const regionLabel = rName === 'seoul' ? '서울' : (rName === 'gyeonggi' ? '경기' : '인천');
+
+                                L.rectangle(rectBounds, {
+                                    color: color,
+                                    weight: 0.5,
+                                    opacity: 0.3,
+                                    fillColor: color,
+                                    fillOpacity: 0.3
+                                }).bindPopup(`<b>거주인구 격자 (${regionLabel})</b><br>밀집도: ${step}단계 (상위 ${11 - step}0%)<br>인구수: ${Math.round(item.avg_population).toLocaleString()}명`)
+                                  .addTo(layers.resHeatmap);
+                            });
+                        });
                     }
                 }
-            } catch (err) { console.error("Heatmap fetch error:", err); }
+            } catch (err) { console.error("Residential Heatmap fetch error:", err); }
         }
+
+        async function fetchWorkplaceHeatmap() {
+            if (map.getZoom() < minZoomRequired) return;
+            if (!document.getElementById('toggle-workplace-heatmap').checked) return;
+            const bounds = map.getBounds();
+            const checkedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => cb.value);
+            const regionsParam = checkedRegions.length > 0 ? `&regions=${checkedRegions.join(',')}` : '&regions=서울';
+            
+            try {
+                const res = await fetch(`/api/map/grid_demographics?type=workplace&min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}${regionsParam}`);
+                const json = await res.json();
+                if (json.status === 'success') {
+                    layers.workHeatmap.clearLayers();
+                    
+                    const data = json.data;
+                    if (data && data.length > 0) {
+                        // region별 그룹화
+                        const groups = {};
+                        data.forEach(item => {
+                            const r = item.region || 'seoul';
+                            if (!groups[r]) groups[r] = [];
+                            groups[r].push(item);
+                        });
+
+                        // Modern 5-color palette for Workplace (Purple to Indigo)
+                        const colors = ['#e9d5ff', '#d8b4fe', '#c084fc', '#8b5cf6', '#6366f1'];
+
+                        // 각 그룹별 독립 로컬 10단계 분위수 정규화
+                        Object.keys(groups).forEach(rName => {
+                            const groupData = groups[rName];
+                            
+                            // 분위수 기준 10단계 부여를 위해 오름차순 정렬
+                            const sortedGroupData = [...groupData].sort((a, b) => a.avg_population - b.avg_population);
+                            const N = sortedGroupData.length;
+
+                            sortedGroupData.forEach((item, index) => {
+                                let step = Math.floor((index / N) * 10) + 1;
+                                step = Math.min(step, 10);
+                                
+                                // 하위 5단계 삭제
+                                if (step <= 5) return;
+
+                                const colorIdx = step - 6;
+                                const color = colors[colorIdx] || colors[colors.length - 1];
+                                
+                                const lat = item.lat;
+                                const lng = item.lng;
+                                
+                                // 250m x 250m grid rectangle centered around lat/lng
+                                const halfLat = (json.lat_step || 0.00225) / 2;
+                                const halfLng = (json.lng_step || 0.0028) / 2;
+                                const rectBounds = [
+                                    [lat - halfLat, lng - halfLng],
+                                    [lat + halfLat, lng + halfLng]
+                                ];
+
+                                const regionLabel = rName === 'seoul' ? '서울' : (rName === 'gyeonggi' ? '경기' : '인천');
+
+                                L.rectangle(rectBounds, {
+                                    color: color,
+                                    weight: 0.5,
+                                    opacity: 0.3,
+                                    fillColor: color,
+                                    fillOpacity: 0.3
+                                }).bindPopup(`<b>직장인구 격자 (${regionLabel})</b><br>밀집도: ${step}단계 (상위 ${11 - step}0%)<br>종사자수: ${Math.round(item.avg_population).toLocaleString()}명`)
+                                  .addTo(layers.workHeatmap);
+                            });
+                        });
+                    }
+                }
+            } catch (err) { console.error("Workplace Heatmap fetch error:", err); }
+        }
+
         function buildAuctionUrl(basePath) {
             const bounds = map.getBounds();
             const isAuctionActive = document.getElementById('btn-auction').classList.contains('active');
             const isPublicActive = document.getElementById('btn-public').classList.contains('active');
 
-            const checkedTypes = Array.from(document.querySelectorAll('.checkbox-item input:checked')).map(cb => cb.value);
+            const checkedTypes = Array.from(document.querySelectorAll('#property-type-grid input:checked')).map(cb => cb.value);
+            const checkedSpecialRights = Array.from(document.querySelectorAll('#special-rights-grid input:checked')).map(cb => cb.value);
+            const checkedLandPrices = Array.from(document.querySelectorAll('#land-price-grid input:checked')).map(cb => cb.value);
             const rateLimit = document.getElementById('rate-slider').value;
 
             if (!isAuctionActive && !isPublicActive) return null;
@@ -1420,6 +2058,9 @@
             if (useIndDist && indDist) url += `&ind_dist_max=${indDist}`;
             if (reqElite) url += `&req_elite_school=true`;
             if (minHouseholds) url += `&min_households=${minHouseholds}`;
+            
+            if (checkedSpecialRights.length > 0) url += `&special_rights=${checkedSpecialRights.join(',')}`;
+            if (checkedLandPrices.length > 0) url += `&land_prices=${checkedLandPrices.join(',')}`;
 
             return url;
         }
@@ -1427,7 +2068,7 @@
         async function loadAuctions() {
             const zoomWarning = document.getElementById('zoom-warning');
             
-            if (map.getZoom() < 13) {
+            if (map.getZoom() < minZoomRequired) {
                 layers.auction.clearLayers();
                 if (zoomWarning) {
                     zoomWarning.style.display = 'block';
@@ -1463,12 +2104,19 @@
                         marker.isPublic = isPublic;
                         marker.typeColor = typeColor;
 
+                        marker.on('click', function(e) {
+                            openDemandPanel(item.lat, item.lng, item.case_no, item.address, item.property_type);
+                        });
+
                         marker.bindPopup(function(layer) {
                             let d = layer.auctionData;
                             let isPub = layer.isPublic;
                             let tColor = layer.typeColor;
                             let typeLabelStr = isPub ? '공매' : '경매';
                             let typeLabel = `<span style="color:${tColor};font-weight:bold;">[${typeLabelStr}]</span>`;
+                            
+                            let cleanNotes = d.special_notes ? d.special_notes.replace(/0|#|A|미해당/gi, '').replace(/,/g, ' ').replace(/\s+/g, ' ').trim() : '';
+
                             return `
                                 <div style="font-family:'Noto Sans KR'; min-width: 220px; padding-bottom: 5px;">
                                     <div style="font-size:1.1rem;">${typeLabel} <b>${d.case_no}</b></div>
@@ -1476,8 +2124,11 @@
                                     <table style="width:100%; font-size:0.9rem; border-collapse: collapse; margin-bottom: 10px;">
                                         <tr><td style="color:gray; padding:3px 0;">감정가</td><td style="text-align:right; font-weight:bold;">${(d.appraisal_price / 100000000).toFixed(1)}억</td></tr>
                                         <tr><td style="color:gray; padding:3px 0;">최저가</td><td style="text-align:right; font-weight:bold; color:${tColor};">${d.min_bid_rate}% (${(d.min_price / 100000000).toFixed(1)}억)</td></tr>
+                                        <tr><td style="color:gray; padding:3px 0;">매각기일</td><td style="text-align:right; font-weight:bold;">${d.sale_date ? d.sale_date : '정보없음'}</td></tr>
                                         <tr><td style="color:gray; padding:3px 0;">건물/대지</td><td style="text-align:right;">${d.area_size ? d.area_size.toFixed(1) : 0}평 / ${d.land_size ? d.land_size.toFixed(1) : 0}평</td></tr>
                                         <tr><td style="color:gray; padding:3px 0;">최저가 평당가</td><td style="text-align:right;">${d.min_price_per_pyeong ? (d.min_price_per_pyeong).toFixed(0) + '만원' : '-'}</td></tr>
+                                        <tr><td style="color:gray; padding:3px 0;">공시지가</td><td style="text-align:right;">${d.official_land_price && d.official_land_price > 0 ? (d.official_land_price / 100000000).toFixed(2) + '억' : '정보없음'}</td></tr>
+                                        ${cleanNotes ? `<tr><td style="color:#ef4444; padding:3px 0; font-weight:bold;">특수권리</td><td style="text-align:right; font-size:0.8rem; color:#ef4444; word-break:keep-all;">${cleanNotes}</td></tr>` : ''}
                                     </table>
                                     <button onclick="window.innerWidth <= 768 ? window.location.href='/?case=${d.case_no}' : (window.opener ? (window.opener.location.href='/?case=${d.case_no}', window.opener.focus()) : window.open('/?case=${d.case_no}', '_blank'))" style="width:100%; background:var(--primary-blue); color:white; border:none; padding:12px 10px; border-radius:6px; cursor:pointer; font-size:1rem; font-weight:bold; touch-action:manipulation;">권리분석 리포트 보기</button>
                                 </div>
@@ -1494,9 +2145,11 @@
                                         <b>감정가:</b> ${(d.appraisal_price / 100000000).toFixed(1)}억<br>
                                         <b>최저가:</b> ${(d.min_price / 100000000).toFixed(1)}억<br>
                                         <b>최저가율:</b> ${d.min_bid_rate}%<br>
+                                        <b>매각기일:</b> ${d.sale_date ? d.sale_date : '정보없음'}<br>
                                         <b>건물평수:</b> ${d.area_size ? d.area_size.toFixed(1) : 0}평<br>
                                         <b>대지평수:</b> ${d.land_size ? d.land_size.toFixed(1) : 0}평<br>
-                                        <b>최저가 기준 평당가:</b> ${d.min_price_per_pyeong ? (d.min_price_per_pyeong).toFixed(0) + '만원' : '-'}
+                                        <b>최저가 기준 평당가:</b> ${d.min_price_per_pyeong ? (d.min_price_per_pyeong).toFixed(0) + '만원' : '-'}<br>
+                                        <b>공시지가:</b> ${d.official_land_price && d.official_land_price > 0 ? (d.official_land_price / 100000000).toFixed(2) + '억' : '정보없음'}
                                     </div>
                                 `;
                             }, { direction: 'top', className: 'custom-tooltip' });
@@ -1524,9 +2177,11 @@
                 'toggle-middles': [layers.middle],
                 'toggle-inds': [layers.ind],
                 'toggle-commercial': [layers.commercial],
-                'toggle-hagwons': [layers.hagwon],
                 'toggle-dev2': [layers.dev2],
-                'toggle-heatmap': [layers.popHeatmap]
+                
+                'toggle-residential-heatmap': [layers.resHeatmap],
+                'toggle-workplace-heatmap': [layers.workHeatmap],
+                'toggle-road-flows': [layers.roadFlows]
             };
 
             Object.keys(toggleMap).forEach(id => {
@@ -1591,6 +2246,61 @@
             // Re-center map to exactly the clicked center to provide feedback
             map.setView(center, map.getZoom());
         }
+
+        let placeMarker = null;
+
+        function searchPlaceName() {
+            const query = document.getElementById('search-place-input').value.trim();
+            if (!query) {
+                alert('검색할 지명이나 명소를 입력해주세요.');
+                return;
+            }
+            
+            fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}`, {
+                headers: { 'Authorization': 'KakaoAK 9e5265220f87e54e4379077cb60071bb' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.documents && data.documents.length > 0) {
+                    const place = data.documents[0];
+                    const lat = parseFloat(place.y);
+                    const lng = parseFloat(place.x);
+                    
+                    // 기존 검색 마커가 있다면 제거
+                    if (placeMarker) {
+                        map.removeLayer(placeMarker);
+                    }
+                    
+                    // 지도 중심 이동 및 줌 레벨 조정
+                    map.setView([lat, lng], 16);
+                    
+                    // 세련된 장소 표시 마커 생성
+                    placeMarker = L.marker([lat, lng], {
+                        icon: L.divIcon({
+                            html: '<div style="color: #ef4444; font-size: 28px; animation: bounce 0.5s infinite alternate;"><i class="fa-solid fa-location-dot"></i></div>',
+                            className: 'search-place-marker',
+                            iconSize: [28, 28],
+                            iconAnchor: [14, 28]
+                        })
+                    }).addTo(map);
+                    
+                    // 명소 팝업 피드백 바인딩 및 즉시 표시
+                    placeMarker.bindPopup(`
+                        <div style="font-family:'Noto Sans KR', sans-serif; padding:6px 12px; min-width:180px;">
+                            <strong style="color:var(--primary-blue); font-size:1.05rem; display:block; margin-bottom:4px;">${place.place_name}</strong>
+                            <div style="font-size:0.8rem; color:#64748b; line-height:1.3; margin-bottom:2px;">지명 검색 결과</div>
+                            <div style="font-size:0.85rem; color:#334155; font-weight:500;">${place.road_address_name || place.address_name}</div>
+                        </div>
+                    `).openPopup();
+                } else {
+                    alert('검색 결과를 찾을 수 없습니다. 지명을 좀 더 정확하게 입력해주세요. (예: 잠실야구장)');
+                }
+            })
+            .catch(err => {
+                console.error('Failed to search place via Kakao API', err);
+                alert('지명 검색 중 통신 오류가 발생했습니다.');
+            });
+        }
         
         // Initial call
         updateCenterAddress();
@@ -1602,21 +2312,50 @@
                     fetchInfraData();
                     fetchDistrictUnits();
                     fetchPopulationHeatmap();
+                    fetchResidentialHeatmap();
+                    fetchWorkplaceHeatmap();
+                    fetchRoadFlows();
                     loadAuctions();
                 }, 400); // 400ms debounce
             });
 
             document.getElementById('toggle-hagwons').addEventListener('change', (e) => {
-                if (e.target.checked && layers.hagwon.getLayers().length === 0) {
-                    fetchHagwonPolygons();
+                if (e.target.checked) {
+                    if (layers.hagwon.getLayers().length === 0) {
+                        fetchHagwonPolygons();
+                    } else {
+                        map.addLayer(layers.hagwon);
+                        triggerHighlighter();
+                    }
                 } else {
+                    map.removeLayer(layers.hagwon);
                     triggerHighlighter();
                 }
             });
 
-            document.getElementById('toggle-heatmap').addEventListener('change', (e) => {
+
+
+            document.getElementById('toggle-residential-heatmap').addEventListener('change', (e) => {
                 if (e.target.checked) {
-                    fetchPopulationHeatmap();
+                    fetchResidentialHeatmap();
+                }
+            });
+
+            document.getElementById('toggle-workplace-heatmap').addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    fetchWorkplaceHeatmap();
+                }
+            });
+
+            document.getElementById('toggle-road-flows').addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    fetchRoadFlows();
+                    document.getElementById('road-flow-legend').style.display = 'block';
+                } else {
+                    layers.roadFlows.clearLayers();
+                    cachedRoadFlowBounds = null;
+                    cachedRoadFlowZoom = null;
+                    document.getElementById('road-flow-legend').style.display = 'none';
                 }
             });
 
@@ -1706,6 +2445,49 @@
                 }
             });
 
+            document.getElementById('req-elite-school').addEventListener('change', async (e) => {
+                if (e.target.checked) {
+                    map.addLayer(layers.eliteSchools);
+                    if (layers.eliteSchools.getLayers().length === 0) {
+                        const loadingOverlay = document.getElementById('loading');
+                        if (loadingOverlay) loadingOverlay.style.display = 'flex';
+                        try {
+                            const res = await fetch('/data/elite_school_dongs.geojson');
+                            if (!res.ok) throw new Error('Network response was not ok');
+                            const geojsonData = await res.json();
+                            
+                            L.geoJSON(geojsonData, {
+                                style: function (feature) {
+                                    return {
+                                        fillColor: '#3b82f6', // 파란색
+                                        weight: 1.5,
+                                        opacity: 0.8,
+                                        color: '#2563eb', // 약간 더 진한 파란색
+                                        fillOpacity: 0.5 // 투명도 50%
+                                    };
+                                },
+                                onEachFeature: function (feature, layer) {
+                                    const props = feature.properties;
+                                    const districtsStr = (props.school_districts || []).join(', ');
+                                    layer.bindTooltip(`<b>명문학군 행정동</b><br>동이름: ${props.dong_name} (${props.sido_name} ${props.sgg_name})<br>배정 학군: ${districtsStr}`, {
+                                        sticky: true,
+                                        className: 'custom-tooltip'
+                                    });
+                                }
+                            }).addTo(layers.eliteSchools);
+                        } catch (error) {
+                            console.error('Error loading elite school dongs:', error);
+                            alert('명문학군 행정동 데이터를 불러오는 데 실패했습니다.');
+                        } finally {
+                            if (loadingOverlay) loadingOverlay.style.display = 'none';
+                        }
+                    }
+                } else {
+                    map.removeLayer(layers.eliteSchools);
+                    triggerHighlighter();
+                }
+            });
+
             // Load main auction data first to show results quickly
             loadAuctions().finally(() => {
                 const loadingOverlay = document.getElementById('loading');
@@ -1719,6 +2501,7 @@
                     fetchHagwonPolygons();
                     fetchDistrictUnits();
                     fetchPopulationHeatmap();
+                    fetchRoadFlows();
                 }, 100);
             });
 
@@ -1760,6 +2543,338 @@
                     rightPanel.classList.add('active-panel');
                     btns[2].classList.add('active');
                 }
+            }
+
+            // --- Demand Side Panel JavaScript Helpers ---
+            function showDemandSkeleton() {
+                const content = document.getElementById('demand-panel-content');
+                if (!content) return;
+                content.innerHTML = `
+                    <!-- Address & Meta Skeleton -->
+                    <div class="demand-card" style="border-left: 4px solid var(--primary-blue); background: rgba(255, 255, 255, 0.9);">
+                        <div class="skeleton" style="height: 18px; width: 60%; margin-bottom: 8px;"></div>
+                        <div class="skeleton" style="height: 14px; width: 80%; margin-bottom: 5px;"></div>
+                        <div class="skeleton" style="height: 12px; width: 40%;"></div>
+                    </div>
+
+                    <!-- 1km Radius Circular Demand Summary -->
+                    <div class="demand-card">
+                        <div class="demand-card-title">
+                            <i class="fa-solid fa-users" style="color: var(--primary-blue);"></i> 반경 1km 배후인구 및 가구
+                        </div>
+                        <div class="demand-grid">
+                            <div class="demand-stat-item">
+                                <div class="demand-stat-label">거주인구</div>
+                                <div class="skeleton" style="height: 20px; width: 70%; margin: 4px auto 0 auto;"></div>
+                            </div>
+                            <div class="demand-stat-item">
+                                <div class="demand-stat-label">세대수</div>
+                                <div class="skeleton" style="height: 20px; width: 70%; margin: 4px auto 0 auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Workplace & Business Summary -->
+                    <div class="demand-card">
+                        <div class="demand-card-title">
+                            <i class="fa-solid fa-briefcase" style="color: var(--primary-blue);"></i> 직장인 및 업체수
+                        </div>
+                        <div class="demand-grid">
+                            <div class="demand-stat-item">
+                                <div class="demand-stat-label">직장인구</div>
+                                <div class="skeleton" style="height: 20px; width: 70%; margin: 4px auto 0 auto;"></div>
+                            </div>
+                            <div class="demand-stat-item">
+                                <div class="demand-stat-label">업체수</div>
+                                <div class="skeleton" style="height: 20px; width: 70%; margin: 4px auto 0 auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Age Distribution -->
+                    <div class="demand-card">
+                        <div class="demand-card-title">
+                            <i class="fa-solid fa-chart-column" style="color: var(--primary-blue);"></i> 연령대별 인구 분포
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div class="skeleton" style="height: 18px; width: 100%;"></div>
+                            <div class="skeleton" style="height: 18px; width: 100%;"></div>
+                            <div class="skeleton" style="height: 18px; width: 100%;"></div>
+                            <div class="skeleton" style="height: 18px; width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Subway Proximity -->
+                    <div class="demand-card">
+                        <div class="demand-card-title">
+                            <i class="fa-solid fa-train-subway" style="color: var(--primary-blue);"></i> 인근 지하철역
+                        </div>
+                        <div class="skeleton" style="height: 24px; width: 50%; margin-bottom: 8px;"></div>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <div class="skeleton" style="height: 16px; width: 100%;"></div>
+                            <div class="skeleton" style="height: 16px; width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Comprehensive Evaluation -->
+                    <div class="demand-card" style="background: rgba(37, 99, 235, 0.05); border: 1px dashed rgba(37, 99, 235, 0.3);">
+                        <div class="skeleton" style="height: 18px; width: 40%; margin-bottom: 8px;"></div>
+                        <div class="skeleton" style="height: 14px; width: 90%; margin-bottom: 6px;"></div>
+                        <div class="skeleton" style="height: 14px; width: 85%;"></div>
+                    </div>
+                `;
+            }
+
+            function closeDemandPanel() {
+                const panel = document.getElementById('demand-panel');
+                if (panel) {
+                    panel.classList.remove('open');
+                }
+            }
+
+            async function openDemandPanel(lat, lng, caseNo, address, propType) {
+                const panel = document.getElementById('demand-panel');
+                if (!panel) return;
+
+                // Show the drawer panel
+                panel.classList.add('open');
+
+                // Display skeleton state while fetching
+                showDemandSkeleton();
+
+                try {
+                    const res = await fetch(`/api/map/demographics?lat=${lat}&lng=${lng}`);
+                    if (!res.ok) throw new Error('API request failed');
+                    const json = await res.json();
+                    
+                    if (json.status === 'success') {
+                        renderDemandData(json, caseNo, address, propType);
+                    } else {
+                        document.getElementById('demand-panel-content').innerHTML = `
+                            <div class="demand-card" style="text-align: center; padding: 25px; color: #ef4444;">
+                                <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                                <p style="font-weight: bold; margin: 0;">데이터 분석 실패</p>
+                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">${json.message || '인구 통계 데이터를 가져오지 못했습니다.'}</p>
+                            </div>
+                        `;
+                    }
+                } catch (err) {
+                    console.error("Failed to load demographics analysis:", err);
+                    document.getElementById('demand-panel-content').innerHTML = `
+                        <div class="demand-card" style="text-align: center; padding: 25px; color: #ef4444;">
+                            <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                            <p style="font-weight: bold; margin: 0;">네트워크 오류 발생</p>
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">백엔드 서버와 통신할 수 없습니다.</p>
+                        </div>
+                    `;
+                }
+            }
+
+            function renderDemandData(resData, caseNo, address, propType) {
+                const content = document.getElementById('demand-panel-content');
+                if (!content) return;
+
+                const sub = resData.subway_proximity;
+                const demo = resData.demographics;
+                const eval = resData.assessment;
+
+                let evalDetail = eval.detail || "";
+                if (eval.recom_biz && evalDetail.includes('[입지 기반 추천 업종]')) {
+                    evalDetail = evalDetail.split('[입지 기반 추천 업종]')[0].trim();
+                }
+
+                const resPop = demo.residential_population;
+                const house = demo.households;
+                const companies = demo.companies;
+                const workPop = demo.workplace_population;
+
+                // Age distribution calculations
+                const age = demo.age_distribution;
+                const totalAgePop = (age.under_20s || 0) + (age.twenties || 0) + (age.thirties || 0) + (age.forties || 0) + (age.fifties || 0) + (age.sixties_plus || 0);
+
+                const getAgePct = (val) => {
+                    if (!totalAgePop) return 0;
+                    return ((val / totalAgePop) * 100).toFixed(1);
+                };
+
+                // Subway stations render
+                let subwayListHtml = '';
+                if (sub.all_stations_in_1km && sub.all_stations_in_1km.length > 0) {
+                    subwayListHtml = sub.all_stations_in_1km.map(s => {
+                        const lineColor = getGlobalLineColor(s.line);
+                        return `
+                            <div class="demand-subway-item">
+                                <span class="demand-subway-name">
+                                    <span class="demand-subway-dot" style="background-color: ${lineColor};"></span>
+                                    <span>${s.name}역 (${s.line})</span>
+                                </span>
+                                <span style="font-weight: 700; color: var(--text-dark);">${s.distance}m</span>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    subwayListHtml = `<div style="text-align: center; color: var(--text-muted); font-size: 0.75rem; padding: 10px 0;">반경 1km 이내 지하철역이 없습니다.</div>`;
+                }
+
+                // Age groups list
+                const ageGroups = [
+                    { label: '20세 미만', val: age.under_20s || 0, color: '#3b82f6' },
+                    { label: '20대', val: age.twenties || 0, color: '#ec4899' },
+                    { label: '30대', val: age.thirties || 0, color: '#8b5cf6' },
+                    { label: '40대', val: age.forties || 0, color: '#10b981' },
+                    { label: '50대', val: age.fifties || 0, color: '#f59e0b' },
+                    { label: '60대 이상', val: age.sixties_plus || 0, color: '#64748b' }
+                ];
+
+                const ageChartHtml = ageGroups.map(grp => {
+                    const pct = getAgePct(grp.val);
+                    return `
+                        <div class="age-chart-row">
+                            <div class="age-chart-label-row">
+                                <span style="font-weight: 500;">${grp.label}</span>
+                                <span style="font-weight: bold; color: var(--text-dark);">${Number(grp.val).toLocaleString()}명 (${pct}%)</span>
+                            </div>
+                            <div class="age-chart-progress-bg">
+                                <div class="age-chart-progress-bar" style="width: ${pct}%; background-color: ${grp.color};"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Subway grade class & icon
+                let gradeBadgeClass = 'subway-grade-비역세권';
+                if (sub.grade === '초역세권') gradeBadgeClass = 'subway-grade-초역세권';
+                else if (sub.grade === '역세권') gradeBadgeClass = 'subway-grade-역세권';
+
+                // Source description badge
+                const sourceBadge = `<span style="font-size: 0.65rem; color: #fff; background-color: ${demo.source.includes('SGIS') ? '#10b981' : '#6366f1'}; padding: 2px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px;">${demo.source}</span>`;
+
+                content.innerHTML = `
+                    <!-- Address & Case Metadata -->
+                    <div class="demand-card" style="border-left: 4px solid var(--primary-blue); background: rgba(255, 255, 255, 0.9);">
+                        <div style="font-size: 0.75rem; font-weight: bold; color: var(--primary-blue); margin-bottom: 2px;">
+                            ${propType} | ${caseNo}
+                        </div>
+                        <div style="font-size: 0.95rem; font-weight: bold; color: var(--text-dark); margin-bottom: 4px; line-height: 1.3;">
+                            ${address}
+                        </div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+                            <i class="fa-solid fa-location-dot"></i> 반경 500m 배후수요 입지 분석 정보 ${sourceBadge}
+                        </div>
+                    </div>
+
+                    <!-- 500m Radius Circular Population & Households -->
+                    <div class="demand-card">
+                        <div class="demand-card-title">
+                            <i class="fa-solid fa-house-chimney-user" style="color: #ea580c;"></i> 반경 500m 주거 배후수요
+                        </div>
+                        <div class="demand-grid">
+                            <div class="demand-stat-item">
+                                <div class="demand-stat-label">거주인구</div>
+                                <div class="demand-stat-value" style="color: #ea580c;">${Number(resPop).toLocaleString()}<span style="font-size: 0.75rem; font-weight: normal; margin-left: 2px;">명</span></div>
+                            </div>
+                            <div class="demand-stat-item">
+                                <div class="demand-stat-label">세대수</div>
+                                <div class="demand-stat-value">${Number(house).toLocaleString()}<span style="font-size: 0.75rem; font-weight: normal; margin-left: 2px;">세대</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Business & Workplace Population -->
+                    <div class="demand-card">
+                        <div class="demand-card-title">
+                            <i class="fa-solid fa-building" style="color: #6366f1;"></i> 반경 500m 직장인 및 일자리 배후수요
+                        </div>
+                        <div class="demand-grid">
+                            <div class="demand-stat-item">
+                                <div class="demand-stat-label">직장인구</div>
+                                <div class="demand-stat-value" style="color: #6366f1;">${Number(workPop).toLocaleString()}<span style="font-size: 0.75rem; font-weight: normal; margin-left: 2px;">명</span></div>
+                            </div>
+                            <div class="demand-stat-item">
+                                <div class="demand-stat-label">등록업체수</div>
+                                <div class="demand-stat-value">${Number(companies).toLocaleString()}<span style="font-size: 0.75rem; font-weight: normal; margin-left: 2px;">개</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Age Distribution -->
+                    <div class="demand-card">
+                        <div class="demand-card-title">
+                            <i class="fa-solid fa-chart-column" style="color: #8b5cf6;"></i> 연령대별 인구 분포
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            ${ageChartHtml}
+                        </div>
+                    </div>
+
+                    <!-- Subway Proximity -->
+                    <div class="demand-card">
+                        <div class="demand-card-title" style="margin-bottom: 6px;">
+                            <i class="fa-solid fa-train-subway" style="color: #10b981;"></i> 대중교통 분석
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 0.8rem; font-weight: bold; color: var(--text-dark);">지하철 접근성</span>
+                            <span class="demand-subway-badge ${gradeBadgeClass}">${sub.grade}</span>
+                        </div>
+                        <div class="demand-subway-list">
+                            ${subwayListHtml}
+                        </div>
+                    </div>
+
+                    <!-- Expert Evaluation -->
+                    <div class="demand-card" style="background: rgba(37, 99, 235, 0.05); border: 1px dashed rgba(37, 99, 235, 0.3);">
+                        <div class="demand-card-title" style="color: var(--primary-blue); font-size: 0.9rem; margin-bottom: 5px;">
+                            <i class="fa-solid fa-ribbon"></i> AI 입지 종합 평가
+                        </div>
+                        <div class="demand-eval-grade">
+                            <i class="fa-solid fa-circle-check" style="color: var(--primary-blue);"></i>
+                            <span>${eval.class}</span>
+                        </div>
+                        <div class="demand-eval-detail" style="line-height: 1.5; font-size: 0.8rem; color: #334155;">
+                            ${evalDetail.replace(/\n/g, '<br>')}
+                        </div>
+
+                        <!-- Segmented Floating Population (250m Radius) -->
+                        <div id="demand-floating-box" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed rgba(37, 99, 235, 0.2);">
+                            <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-dark); margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+                                <i class="fa-solid fa-fire" style="color: #ef4444;"></i> 반경 250m 유동인구 세부 특징
+                            </div>
+                            <div class="floating-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <div class="floating-item" style="background: rgba(255, 255, 255, 0.8); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(226, 232, 240, 0.8);">
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">주중 일평균</div>
+                                    <div style="font-size: 0.85rem; font-weight: bold; color: #1e293b;">${Number(demo.floating_population_250.weekday).toLocaleString()}명</div>
+                                </div>
+                                <div class="floating-item" style="background: rgba(255, 255, 255, 0.8); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(226, 232, 240, 0.8);">
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">주말 일평균</div>
+                                    <div style="font-size: 0.85rem; font-weight: bold; color: #ea580c;">${Number(demo.floating_population_250.weekend).toLocaleString()}명</div>
+                                </div>
+                                <div class="floating-item" style="background: rgba(255, 255, 255, 0.8); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(226, 232, 240, 0.8);">
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">점심 (11~14시)</div>
+                                    <div style="font-size: 0.85rem; font-weight: bold; color: #0284c7;">${Number(demo.floating_population_250.lunch).toLocaleString()}명</div>
+                                </div>
+                                <div class="floating-item" style="background: rgba(255, 255, 255, 0.8); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(226, 232, 240, 0.8);">
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">저녁 (18~21시)</div>
+                                    <div style="font-size: 0.85rem; font-weight: bold; color: #4f46e5;">${Number(demo.floating_population_250.dinner).toLocaleString()}명</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recommended Business Card -->
+                    ${eval.recom_biz ? `
+                    <div class="demand-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(5, 150, 105, 0.03)); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; margin-top: 15px; padding: 14px;">
+                        <div class="demand-card-title" style="color: #059669; font-size: 0.88rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-store" style="color: #10b981;"></i> 입지 기반 추천 업종 및 활용 제안
+                        </div>
+                        <div style="font-size: 0.82rem; font-weight: 700; color: #065f46; margin-bottom: 6px; line-height: 1.4;">
+                            권장 업종: <span style="font-weight: 800; color: #047857;">${eval.recom_biz}</span>
+                        </div>
+                        <div style="font-size: 0.76rem; line-height: 1.5; color: #374151; word-break: keep-all;">
+                            ${eval.recom_desc}
+                        </div>
+                    </div>
+                    ` : ''}
+                `;
             }
         </script>
 

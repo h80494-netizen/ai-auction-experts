@@ -19,7 +19,7 @@ def generate_deep_research(data: dict) -> str:
 
     try:
         genai.configure(api_key=api_key)
-        # Use gemini-2.5-flash for massive token processing and deep research
+        # Use stable gemini-2.5-flash for high-speed premium deep research
         model = genai.GenerativeModel('gemini-2.5-flash')
         
         # Parse data safely
@@ -53,9 +53,63 @@ def generate_deep_research(data: dict) -> str:
         if not has_tenant:
             tenant_warning = "\n\n**[초강력 경고: 임차인 없음]**\n본 경매 물건은 법원 현황조사 결과 **임차인이 전혀 없는 물건**으로 확인되었습니다. 따라서 권리분석, 대항력, 인수 보증금, 가장임차인, 명도(세입자 퇴거) 등 **임차인과 관련된 그 어떠한 내용이나 단어도 보고서 전체에서 일절 언급하지 마십시오.** (임차인 관련 항목은 아예 지워버리세요.)\n"
         
+        # 법원 서류 열람 중지 대응 안내 문구 생성
+        viewing_suspended = data.get("viewing_suspended", False)
+        suspended_docs = data.get("suspended_documents", [])
+        
+        suspended_warning = ""
+        if viewing_suspended:
+            suspended_warning = f"\n\n**[중요: 법원 서류 열람 중지 상태]**\n본 경매 물건은 현재 법원에서 서류({', '.join(suspended_docs) if suspended_docs else '등기부등본, 물건명세서 등'}) 열람을 중지/제한한 상태입니다. 따라서 **'1. 요약' 및 '2. 기본정보', '4. 권리분석'의 가장 첫 머리에 반드시 '본 사건은 현재 법원 서류 열람이 중지/제한된 상태'임을 알리는 문구를 진하고 명확하게 표시**하고, 마이옥션에 등재된 1차 정보 및 정밀 수집된 임차인 현황 데이터를 근거로 삼아 최선의 권리분석 및 리스크 진단을 완수하십시오.\n"
 
-        # PDF or document text if provided (Deep Research context)
-        pdf_context = data.get('pdf_text', '첨부된 PDF 텍스트가 없습니다. 기본 스크래핑 정보만으로 분석합니다.')
+        # 로컬 PDF 텍스트 추출 우선 연동 (Dual-Engine)
+        pdf_texts = []
+        if 'downloaded_pdfs' in data and data['downloaded_pdfs']:
+            try:
+                from parser.pdf_extractor import extract_text_from_pdf
+                for pdf_path in data['downloaded_pdfs']:
+                    name = os.path.basename(pdf_path)
+                    print(f"로컬 PDF 텍스트 추출 중: {pdf_path}")
+                    txt = extract_text_from_pdf(pdf_path)
+                    if txt and not txt.startswith("Error"):
+                        pdf_texts.append(f"=== {name} 텍스트 시작 ===\n{txt}\n=== {name} 텍스트 끝 ===")
+                    else:
+                        print(f"로컬 텍스트 추출 실패/건너뜀 ({name}): {txt}")
+            except Exception as pe:
+                print(f"로컬 PDF 파서 로딩 에러: {pe}")
+                
+        if pdf_texts:
+            pdf_context = "\n\n".join(pdf_texts)
+        else:
+            if viewing_suspended:
+                pdf_context = f"⚠️ [법원 서류 열람 중지 안내]\n본 사건은 현재 법원 서류 열람이 중지/제한된 상태입니다 (열람 중지 서류: {', '.join(suspended_docs) if suspended_docs else '전체'}).\n따라서 마이옥션에 등재된 1차 정보 및 정밀 수집된 임차인 현황 데이터를 기반으로 분석을 수행하십시오."
+            else:
+                pdf_context = data.get('pdf_text', '첨부된 PDF 텍스트가 없습니다. 기본 스크래핑 정보만으로 분석합니다.')
+
+        # 구조화된 임차인 정보 포맷팅
+        tenants_list = data.get("tenants", [])
+        tenant_comments_list = data.get("tenant_comments", [])
+        
+        tenants_str = ""
+        if tenants_list:
+            tenants_str += "### [정밀 수집된 임차인 현황]\n"
+            for t in tenants_list:
+                tenants_str += f"- 임차인명: {t.get('name')}\n"
+                tenants_str += f"  * 점유부분/용도: {t.get('usage')}\n"
+                tenants_str += f"  * 전입일자: {t.get('transfer_date') or '미상'}\n"
+                tenants_str += f"  * 확정일자: {t.get('confirmation_date') or '미상'}\n"
+                tenants_str += f"  * 배당요구일: {t.get('claim_date') or '미상'}\n"
+                tenants_str += f"  * 보증금/월세 원문: {t.get('deposit_rent') or '미상'}\n"
+                tenants_str += f"  * 추출된 보증금: {t.get('deposit', 0):,} 원\n"
+                tenants_str += f"  * 추출된 월세: {t.get('rent', 0):,} 원\n"
+                tenants_str += f"  * 대항력 여부: {t.get('has_opposing_power') or 'X'}\n"
+                tenants_str += f"  * 비고: {t.get('remarks') or '없음'}\n"
+        else:
+            tenants_str += "### [정밀 수집된 임차인 현황]\n- 수집된 임차인 현황이 없거나 조사된 임차인 내역이 없습니다.\n"
+            
+        if tenant_comments_list:
+            tenants_str += "\n### [매각물건명세서 및 현황조사서 특이사항/주석]\n"
+            for c in tenant_comments_list:
+                tenants_str += f"- {c}\n"
 
         # 공매(Gongmae) 여부 판별
         is_gongmae = "-" in str(case_number) and "타경" not in str(case_number)
@@ -91,9 +145,12 @@ def generate_deep_research(data: dict) -> str:
 - 전용면적(건물면적): {building_area}
 - 식별된 리스크(키워드): {risks}
 - 매각물건명세서(공매재산명세서) 주의사항/특수권리 원문:
-{precautions}{tenant_warning}
+{precautions}{tenant_warning}{suspended_warning}
 - 규제지역 여부: {regulated_str}
 - 투자자 조건: {house_count}, {investor_type}, {investment_duration} 매도 전략, 목표수익률 연 {target_return}%
+
+### [정밀 수집된 임차인 및 점유 현황]
+{tenants_str}
 
 ### [첨부 PDF 데이터 (매각물건명세서/감정평가서 등)]
 {pdf_context}
@@ -133,14 +190,10 @@ def generate_deep_research(data: dict) -> str:
   6) 대지권 미등기
   7) 지분경매
 - 위 특수 권리/조건 중 **해당 사항이 있는 경우**, 단순히 존재 유무만 나열하지 말고 다음 사항들을 보고서(권리분석 섹션)에 **반드시** 추가하십시오:
-  * **성립조건 및 상황 추론:** 해당 권리가 성립할 수 있는 법적 요건을 검토하고, 문서상의 단서(배제특약, 소송내역, 건축연도, 감정평가 포함 여부 등)를 바탕으로 현재 상황을 심층 추론할 것.
-  * **절차상 협상전략 및 해결방법:** 낙찰자가 겪게 될 리스크를 해소하기 위한 구체적인 실무 대응 전략(예: 명도 소송, 부존재 확인 소송, 지료 청구, 지료 연체에 따른 철거 소송, 공유물 분할 청구, HUG와의 보증금 인수 면책 협의 절차 등)과 협상 방향을 제시할 것.
-- 개별 특수 권리에 대한 구체적인 확인 지침:
-  * **유치권 / 법정지상권:** 배제특약이나 관련 소송(예: 유치권 부존재의 소, 철거명령 등) 내용이 있다면 그 의미와 리스크를 상세 해석할 것.
-  * **HUG 대항력 포기:** 포기 물건인 경우 "대항력 임차인으로 인한 인수 보증금 위험 없음"을 명확히 기재할 것.
-  * **토지별도등기:** 해당 등기가 구분지상권(공익사업)인지, 저당권/가압류인지 파악하여 낙찰 후 토지 사용 제한 리스크를 분석할 것.
-  * **대지권 미등기:** 건축연도를 감안하여 감정평가 포함 여부 및 향후 대지권 확보를 위한 비용 추가 분쟁 소지(시행사 문제 등)를 경고할 것.
-  * **건물만 매각 / 토지만 매각 / 지분경매:** 온전한 소유권 취득 불가로 인한 재산권 행사 제약을 설명하고, 지료 청구나 지분 인수/공유물 분할 소송 등 실질적인 출구 전략을 제시할 것.
+  * **성�        try:
+            # 로컬 PDF 텍스트 추출 완료 및 프롬프트 주입으로 File API 업로드 필요 없음 (속도 3배 개선)
+            response = model.generate_content([prompt])
+            return response.text고, 지료 청구나 지분 인수/공유물 분할 소송 등 실질적인 출구 전략을 제시할 것.
 - 다음 항목들에 대해 [O] 또는 [X] 로 명확히 표시하고 판단 이유를 덧붙일 것:
   * 유치권 존재 및 성립 여부 [ ]
   * 법정지상권 존재 및 성립 여부 [ ]
@@ -158,6 +211,7 @@ def generate_deep_research(data: dict) -> str:
 # 6. 입지분석
 - 지하철 역과의 거리, 초/중/고 학교 거리.
 - 반경 5km 내 개발계획, 도로 건설, 지하철(철도)역 및 노선의 사업명 및 착공/완공 시기 조사 (웹 지식 활용).
+- **입지 기반 추천업종:** 해당 물건의 거주인구, 직장인구, 유동인구 밀집도 및 배후수요 성격에 가장 부합하는 권장 업종 3~5개와 그 구체적인 추천 사유(입지 활용 제안)를 명확히 작성하십시오.
 
 # 7. 추천입찰가
 - {investment_duration} 내 {target_return}%의 수익률을 목표로 할 때, 역산하여 도출한 추천 입찰가 기재 및 산출 근거 서술.
