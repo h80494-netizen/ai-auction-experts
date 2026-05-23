@@ -1835,7 +1835,7 @@ def get_road_flows(
                 max_score = score
                 
         candidate_roads.sort(key=lambda x: x["score"])
-        N = candidate_roads
+        N = len(candidate_roads)
         
         for index, rc in enumerate(candidate_roads):
             if N > 0:
