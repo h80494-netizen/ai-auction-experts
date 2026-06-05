@@ -705,7 +705,8 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
             print(f"기본 정보 파싱 완료: {parsed_data}")
 
             # 5. 서류(PDF) 및 사진 다운로드 로직
-            download_dir = os.path.join(os.getcwd(), "downloads", case_number)
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            download_dir = os.path.join(project_root, "downloads", case_number)
             os.makedirs(download_dir, exist_ok=True)
             
             try:

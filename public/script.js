@@ -453,6 +453,35 @@ startBtn.addEventListener('click', async () => {
                     }
                 });
             }
+
+            const viewIssuesBtn = document.getElementById('viewIssuesBtn');
+            if (viewIssuesBtn) {
+                const newIssuesBtn = viewIssuesBtn.cloneNode(true);
+                viewIssuesBtn.parentNode.replaceChild(newIssuesBtn, viewIssuesBtn);
+                
+                const extractRegionKeyword = (addr) => {
+                    if (!addr) return '';
+                    const guDongMatch = addr.match(/([가-힣]+구\s+[가-힣0-9]+(?:동|읍|면))/);
+                    if (guDongMatch) return guDongMatch[1];
+                    const dongMatch = addr.match(/([가-힣0-9]+(?:동|읍|면))/);
+                    if (dongMatch) return dongMatch[1];
+                    const guMatch = addr.match(/([가-힣]+구)/);
+                    if (guMatch) return guMatch[1];
+                    const parts = addr.split(/\s+/);
+                    if (parts.length >= 3) return parts[2];
+                    return addr;
+                };
+
+                newIssuesBtn.addEventListener('click', () => {
+                    const address = (currentCaseData && currentCaseData.address) || '';
+                    const region = extractRegionKeyword(address);
+                    if (region) {
+                        window.open(`/issues.html?region=${encodeURIComponent(region)}`, '_blank');
+                    } else {
+                        window.open('/issues.html', '_blank');
+                    }
+                });
+            }
             
         } else {
             let errorText = data ? (data.message || '알 수 없는 에러') : '알 수 없는 에러';

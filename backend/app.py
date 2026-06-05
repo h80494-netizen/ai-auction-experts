@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,6 +8,8 @@ import sys
 import asyncio
 import io
 import pandas as pd
+
+downloads_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "downloads"))
 
 # Windows 환경에서 Playwright와 Uvicorn 비동기 루프 충돌 방지
 if sys.platform == "win32":
@@ -198,6 +201,20 @@ async def analyze_case(request: AnalyzeRequest, background_tasks: BackgroundTask
         "message": "분석이 시작되었습니다. 결과를 기다리는 중입니다..."
     }
 
+@app.get("/api/issues")
+def get_property_issues(region: Optional[str] = None):
+    try:
+        from crawler.issue_scanner import scan_region_issues, get_all_issues
+        if region:
+            issues = scan_region_issues(region)
+        else:
+            issues = get_all_issues()
+        return {"status": "success", "data": issues}
+    except Exception as e:
+        import traceback
+        logging.error(f"Error in get_property_issues: {str(e)}\n{traceback.format_exc()}")
+        return {"status": "error", "message": str(e)}
+
 @app.get("/api/analyze/status/{task_id}")
 async def get_analyze_status(task_id: str):
     task_info = analysis_tasks.get(task_id)
@@ -214,11 +231,11 @@ class DownloadRequest(BaseModel):
 @app.post("/api/download/{case_number:path}")
 async def download_report_post(case_number: str, req: DownloadRequest):
     safe_case = case_number.replace(" ", "_").replace("/", "_")
-    file_path = os.path.join("downloads", f"{safe_case}_분석보고서.docx")
+    file_path = os.path.join(downloads_dir, f"{safe_case}_분석보고서.docx")
     
     try:
         from doc_generator import generate_analysis_doc_from_markdown
-        generate_analysis_doc_from_markdown(case_number, req.markdown, "downloads")
+        generate_analysis_doc_from_markdown(case_number, req.markdown, downloads_dir)
     except Exception as e:
         print("Word 문서 재생성 실패:", e)
         
@@ -233,7 +250,7 @@ async def download_report_post(case_number: str, req: DownloadRequest):
 @app.get("/api/download/{case_number:path}")
 async def download_report(case_number: str):
     safe_case = case_number.replace(" ", "_").replace("/", "_")
-    file_path = os.path.join("downloads", f"{safe_case}_분석보고서.docx")
+    file_path = os.path.join(downloads_dir, f"{safe_case}_분석보고서.docx")
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="보고서를 찾을 수 없습니다.")
     
@@ -245,7 +262,7 @@ async def download_report(case_number: str):
 @app.get("/api/download_ppt/{case_number:path}")
 async def download_ppt(case_number: str):
     safe_case = case_number.replace(" ", "_").replace("/", "_")
-    file_path = os.path.join("downloads", f"{safe_case}_브리핑자료.pptx")
+    file_path = os.path.join(downloads_dir, f"{safe_case}_브리핑자료.pptx")
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="PPTX 브리핑 자료를 찾을 수 없습니다.")
     
@@ -257,7 +274,7 @@ async def download_ppt(case_number: str):
 @app.get("/api/download_pdf/{case_number:path}")
 async def download_pdf(case_number: str):
     safe_case = case_number.replace(" ", "_").replace("/", "_")
-    file_path = os.path.join("downloads", f"{safe_case}_브리핑자료.pdf")
+    file_path = os.path.join(downloads_dir, f"{safe_case}_브리핑자료.pdf")
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="PDF 브리핑 자료를 찾을 수 없습니다.")
     
@@ -266,7 +283,6 @@ async def download_pdf(case_number: str):
     headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
     return FileResponse(path=file_path, media_type="application/pdf", headers=headers)
 
-downloads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "downloads")
 
 
 @app.get("/api/images/{case_number:path}")
@@ -341,13 +357,66 @@ import sqlite3
 
 DB_PATH = os.path.join(os.path.dirname(__file__), 'data', 'map_data.db')
 
+def init_db():
+    if os.path.exists(DB_PATH):
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            # Enable WAL mode for concurrent reads and writes
+            conn.execute("PRAGMA journal_mode=WAL;")
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS road_cache_grids (
+                    lat_idx INTEGER,
+                    lng_idx INTEGER,
+                    PRIMARY KEY (lat_idx, lng_idx)
+                )
+            ''')
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS road_cache_segments (
+                    osm_id INTEGER PRIMARY KEY,
+                    name TEXT,
+                    highway TEXT,
+                    width REAL,
+                    min_lat REAL,
+                    max_lat REAL,
+                    min_lng REAL,
+                    max_lng REAL,
+                    coords_json TEXT
+                )
+            ''')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_road_cache_bounds ON road_cache_segments(max_lat, min_lat, max_lng, min_lng)')
+            
+            # Additional spatial optimization indexes
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_auctions_lat_lng ON auctions(lat, lng)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_subways_lat_lng ON subways(lat, lng)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_universities_lat_lng ON universities(lat, lng)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_middle_schools_lat_lng ON middle_schools(lat, lng)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_industrial_complexes_lat_lng ON industrial_complexes(lat, lng)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_bus_stops_lat_lng ON bus_stops(lat, lng)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_commercial_areas_lat_lng ON commercial_areas(lat, lng)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_population_grids_lat_lng ON population_grids(lat, lng)')
+            
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_district_units_bounds ON district_units(max_lat, min_lat, max_lng, min_lng)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_redevelopment_zones_bounds ON redevelopment_zones(max_lat, min_lat, max_lng, min_lng)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_zoning_polygons_bounds ON zoning_polygons(max_lat, min_lat, max_lng, min_lng)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_planning_roads_bounds ON planning_roads(max_lat, min_lat, max_lng, min_lng)')
+            
+            conn.commit()
+            conn.close()
+            print("Database cache tables and WAL mode initialized successfully.")
+        except Exception as e:
+            print("Failed to initialize database cache tables:", e)
+
+init_db()
+
 @app.get("/api/map/pois")
 def get_map_pois(
     min_lat: Optional[float] = None,
     max_lat: Optional[float] = None,
     min_lng: Optional[float] = None,
     max_lng: Optional[float] = None,
-    regions: Optional[str] = None
+    regions: Optional[str] = None,
+    types: Optional[str] = None
 ):
     if not os.path.exists(DB_PATH):
         return {"status": "error", "message": "DB not found"}
@@ -355,6 +424,8 @@ def get_map_pois(
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
+    
+    active_types = types.split(',') if types else None
     
     query_condition = ""
     params = []
@@ -383,41 +454,51 @@ def get_map_pois(
         combined_condition = region_condition
         combined_params = region_params
 
-    cursor.execute(f"SELECT line, name, address, lat, lng FROM subways{combined_condition} LIMIT 500", combined_params)
-    subways = [dict(row) for row in cursor.fetchall()]
+    subways = []
+    if not active_types or "subways" in active_types:
+        cursor.execute(f"SELECT line, name, address, lat, lng FROM subways{combined_condition} LIMIT 500", combined_params)
+        subways = [dict(row) for row in cursor.fetchall()]
     
-    cursor.execute(f"SELECT name, address, lat, lng FROM universities{combined_condition} LIMIT 500", combined_params)
-    universities = [dict(row) for row in cursor.fetchall()]
+    universities = []
+    if not active_types or "universities" in active_types:
+        cursor.execute(f"SELECT name, address, lat, lng FROM universities{combined_condition} LIMIT 500", combined_params)
+        universities = [dict(row) for row in cursor.fetchall()]
     
-    cursor.execute(f"SELECT name, address, lat, lng, special_hs_rate FROM middle_schools{combined_condition} LIMIT 500", combined_params)
-    middle_schools = [dict(row) for row in cursor.fetchall()]
+    middle_schools = []
+    if not active_types or "middle_schools" in active_types:
+        cursor.execute(f"SELECT name, address, lat, lng, special_hs_rate FROM middle_schools{combined_condition} LIMIT 500", combined_params)
+        middle_schools = [dict(row) for row in cursor.fetchall()]
     
-    cursor.execute(f"SELECT name, lat, lng FROM industrial_complexes{query_condition} LIMIT 500", params)
-    industrial_complexes = [dict(row) for row in cursor.fetchall()]
+    industrial_complexes = []
+    if not active_types or "industrial_complexes" in active_types:
+        cursor.execute(f"SELECT name, lat, lng FROM industrial_complexes{query_condition} LIMIT 500", params)
+        industrial_complexes = [dict(row) for row in cursor.fetchall()]
 
     bus_stops = []
     # Only fetch bus stops if bounding box is provided (to prevent crashing with 200k items)
-    if min_lat and max_lat and min_lng and max_lng:
-        cursor.execute('''
-            SELECT name, lat, lng FROM bus_stops 
-            WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ? LIMIT 500
-        ''', (min_lat, max_lat, min_lng, max_lng))
-        bus_stops = [dict(row) for row in cursor.fetchall()]
+    if not active_types or "bus_stops" in active_types:
+        if min_lat and max_lat and min_lng and max_lng:
+            cursor.execute('''
+                SELECT name, lat, lng FROM bus_stops 
+                WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ? LIMIT 500
+            ''', (min_lat, max_lat, min_lng, max_lng))
+            bus_stops = [dict(row) for row in cursor.fetchall()]
         
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='commercial_areas'")
-    has_commercial = cursor.fetchone()
     commercial_areas = []
-    
-    # commercial_areas are only in Seoul
-    is_seoul_selected = True
-    if regions:
-        region_list = regions.split(',')
-        if not any(r.startswith("서울") for r in region_list):
-            is_seoul_selected = False
+    if not active_types or "commercial_areas" in active_types:
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='commercial_areas'")
+        has_commercial = cursor.fetchone()
+        
+        # commercial_areas are only in Seoul
+        is_seoul_selected = True
+        if regions:
+            region_list = regions.split(',')
+            if not any(r.startswith("서울") for r in region_list):
+                is_seoul_selected = False
 
-    if has_commercial and is_seoul_selected:
-        cursor.execute(f"SELECT name, category, lat, lng, population FROM commercial_areas{query_condition} LIMIT 500", params)
-        commercial_areas = [dict(row) for row in cursor.fetchall()]
+        if has_commercial and is_seoul_selected:
+            cursor.execute(f"SELECT name, category, lat, lng, population FROM commercial_areas{query_condition} LIMIT 500", params)
+            commercial_areas = [dict(row) for row in cursor.fetchall()]
     
     conn.close()
     
@@ -432,6 +513,174 @@ def get_map_pois(
             "commercial_areas": commercial_areas
         }
     }
+
+
+@app.get("/api/map/redevelopment_zones")
+def get_map_redevelopment_zones(
+    min_lat: Optional[float] = None,
+    max_lat: Optional[float] = None,
+    min_lng: Optional[float] = None,
+    max_lng: Optional[float] = None
+):
+    if not os.path.exists(DB_PATH):
+        return {"status": "error", "message": "DB not found"}
+        
+    if not (min_lat and max_lat and min_lng and max_lng):
+        return {"status": "success", "data": []}
+        
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='redevelopment_zones'")
+    if not cursor.fetchone():
+        conn.close()
+        return {"status": "success", "data": []}
+        
+    query = '''
+        SELECT id, name, propel_cd, geojson FROM redevelopment_zones
+        WHERE max_lat >= ? AND min_lat <= ? 
+          AND max_lng >= ? AND min_lng <= ?
+        LIMIT 1000
+    '''
+    cursor.execute(query, (min_lat, max_lat, min_lng, max_lng))
+    data = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return {"status": "success", "data": data}
+
+
+@app.get("/api/map/zoning")
+def get_map_zoning(
+    min_lat: Optional[float] = None,
+    max_lat: Optional[float] = None,
+    min_lng: Optional[float] = None,
+    max_lng: Optional[float] = None
+):
+    if not os.path.exists(DB_PATH):
+        return {"status": "error", "message": "DB not found"}
+        
+    if not (min_lat and max_lat and min_lng and max_lng):
+        return {"status": "success", "data": []}
+        
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='zoning_polygons'")
+    if not cursor.fetchone():
+        conn.close()
+        return {"status": "success", "data": []}
+        
+    query = '''
+        SELECT id, name, propel_cd, geojson FROM zoning_polygons
+        WHERE max_lat >= ? AND min_lat <= ? 
+          AND max_lng >= ? AND min_lng <= ?
+        LIMIT 2000
+    '''
+    cursor.execute(query, (min_lat, max_lat, min_lng, max_lng))
+    data = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return {"status": "success", "data": data}
+
+
+@app.get("/api/map/planning_roads")
+def get_map_planning_roads(
+    min_lat: Optional[float] = None,
+    max_lat: Optional[float] = None,
+    min_lng: Optional[float] = None,
+    max_lng: Optional[float] = None
+):
+    if not os.path.exists(DB_PATH):
+        return {"status": "error", "message": "DB not found"}
+        
+    if not (min_lat and max_lat and min_lng and max_lng):
+        return {"status": "success", "data": []}
+        
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='planning_roads'")
+    if not cursor.fetchone():
+        conn.close()
+        return {"status": "success", "data": []}
+        
+    query = '''
+        SELECT id, present_sn, name, road_class, geojson FROM planning_roads
+        WHERE max_lat >= ? AND min_lat <= ? 
+          AND max_lng >= ? AND min_lng <= ?
+        LIMIT 2000
+    '''
+    cursor.execute(query, (min_lat, max_lat, min_lng, max_lng))
+    data = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return {"status": "success", "data": data}
+
+
+@app.get("/api/map/crosswalks")
+def get_map_crosswalks(
+    min_lat: Optional[float] = None,
+    max_lat: Optional[float] = None,
+    min_lng: Optional[float] = None,
+    max_lng: Optional[float] = None
+):
+    import json
+    if not os.path.exists(DB_PATH):
+        return {"status": "error", "message": "DB not found"}
+        
+    if not (min_lat and max_lat and min_lng and max_lng):
+        return {"status": "success", "data": {"type": "FeatureCollection", "features": []}}
+        
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='crosswalk_segments'")
+    if not cursor.fetchone():
+        conn.close()
+        return {"status": "success", "data": {"type": "FeatureCollection", "features": []}}
+        
+    cursor.execute('''
+        SELECT name, coords_json FROM crosswalk_segments
+        WHERE max_lat >= ? AND min_lat <= ? 
+          AND max_lng >= ? AND min_lng <= ?
+        LIMIT 1500
+    ''', (min_lat, max_lat, min_lng, max_lng))
+    
+    rows = cursor.fetchall()
+    features = []
+    
+    for r in rows:
+        name, coords_json = r['name'], r['coords_json']
+        try:
+            coords = json.loads(coords_json)
+        except Exception:
+            continue
+            
+        features.append({
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": coords
+            },
+            "properties": {
+                "name": name,
+                "highway": "횡단보도"
+            }
+        })
+        
+    conn.close()
+    
+    geojson_result = {
+        "type": "FeatureCollection",
+        "features": features
+    }
+    
+    return {"status": "success", "data": geojson_result}
+
 
 @app.get("/api/map/hagwon_polygons")
 def get_map_hagwon_polygons():
@@ -805,6 +1054,72 @@ def export_map_auctions(
     }
     
     return StreamingResponse(output, headers=headers, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+class OverlapAnalyzeRequest(BaseModel):
+    case_nos: list
+
+@app.post("/api/map/overlap_analyze")
+async def post_overlap_analyze(req: OverlapAnalyzeRequest):
+    if not os.path.exists(DB_PATH):
+        return {"status": "error", "message": "DB not found"}
+        
+    if not req.case_nos:
+        return {"status": "error", "message": "사건번호가 제공되지 않았습니다."}
+        
+    import sqlite3
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Query auctions table for all matching case numbers
+    placeholders = ",".join(["?" for _ in req.case_nos])
+    query = f"SELECT * FROM auctions WHERE case_no IN ({placeholders})"
+    cursor.execute(query, req.case_nos)
+    rows = cursor.fetchall()
+    
+    if not rows:
+        conn.close()
+        return {"status": "error", "message": "해당 사건번호들의 상세 정보를 조회할 수 없습니다."}
+        
+    items = []
+    for r in rows:
+        d = dict(r)
+        # Parse minimum_value and appraised_value from DB columns min_price and appraised_price
+        try:
+            appraised = int(d.get('appraised_price') or 0)
+            minimum = int(d.get('min_price') or 0)
+            d['appraised_value'] = appraised
+            d['minimum_value'] = minimum
+            
+            # Calculate min_bid_rate if not present
+            min_bid_rate = d.get('min_bid_rate')
+            if min_bid_rate is None or min_bid_rate == 0:
+                if appraised > 0:
+                    min_bid_rate = int((minimum / appraised) * 100)
+                else:
+                    min_bid_rate = 100
+            d['min_bid_rate'] = min_bid_rate
+        except Exception:
+            d['min_bid_rate'] = 100
+        items.append(d)
+        
+    conn.close()
+    
+    # Sort items by min_bid_rate ascending (most discounted first)
+    items.sort(key=lambda x: x.get('min_bid_rate', 100))
+    
+    # Select top 3 (Best 3)
+    best_items = items[:3]
+    
+    try:
+        from fastapi.concurrency import run_in_threadpool
+        from ai_analyzer import analyze_overlap_cases
+        report_text = await run_in_threadpool(analyze_overlap_cases, best_items)
+        return {"status": "success", "report": report_text, "items": items}
+    except Exception as e:
+        return {"status": "error", "message": f"Gemini 분석 중 오류 발생: {str(e)}"}
+
 
 @app.get("/api/map/population_heatmap")
 def get_population_heatmap(min_lat: float, max_lat: float, min_lng: float, max_lng: float):
@@ -1423,14 +1738,21 @@ def get_road_flows(
     center_lat = (min_lat + max_lat) / 2.0
     center_lng = (min_lng + max_lng) / 2.0
 
+    # 500m 반경 영역에 대한 Bounding Box 정의 (안전 마진으로 600m 설정)
+    # 위도 600m ≈ 0.0054도, 경도 600m ≈ 0.0068도
+    flow_min_lat = center_lat - 0.0054
+    flow_max_lat = center_lat + 0.0054
+    flow_min_lng = center_lng - 0.0068
+    flow_max_lng = center_lng + 0.0068
+
     # 1. 중심부 반경 500m 격자 공간 연산을 위해 500m 패딩을 주어 유동인구 격자 수집
     pad_lat = 0.0045
     pad_lng = 0.0057
     
-    grid_min_lat = min_lat - pad_lat
-    grid_max_lat = max_lat + pad_lat
-    grid_min_lng = min_lng - pad_lng
-    grid_max_lng = max_lng + pad_lng
+    grid_min_lat = flow_min_lat - pad_lat
+    grid_max_lat = flow_max_lat + pad_lat
+    grid_min_lng = flow_min_lng - pad_lng
+    grid_max_lng = flow_max_lng + pad_lng
     
     top5_grids = []
     try:
@@ -1480,47 +1802,13 @@ def get_road_flows(
         spatial_index[key].append(tg)
 
     # SQLite 로컬 그리드 영구 캐싱 시스템 작동
-    db_path = os.path.join(os.path.dirname(__file__), 'data', 'map_data.db')
-    if not os.path.exists(db_path):
-        db_path = os.path.join(os.path.dirname(__file__), '../data/map_data.db')
-    if not os.path.exists(db_path):
-        db_path = 'map_data.db'
+    db_path = DB_PATH
 
-    # 테이블 초기화 및 인덱스 설정
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS road_cache_grids (
-                lat_idx INTEGER,
-                lng_idx INTEGER,
-                PRIMARY KEY (lat_idx, lng_idx)
-            )
-        ''')
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS road_cache_segments (
-                osm_id INTEGER PRIMARY KEY,
-                name TEXT,
-                highway TEXT,
-                width REAL,
-                min_lat REAL,
-                max_lat REAL,
-                min_lng REAL,
-                max_lng REAL,
-                coords_json TEXT
-            )
-        ''')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_road_cache_bounds ON road_cache_segments(max_lat, min_lat, max_lng, min_lng)')
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print("Failed to initialize road cache database:", e)
-
-    # 격자 단위(0.01도) 획정
-    lat_start = int(math.floor(min_lat / 0.01))
-    lat_end = int(math.floor(max_lat / 0.01))
-    lng_start = int(math.floor(min_lng / 0.01))
-    lng_end = int(math.floor(max_lng / 0.01))
+    # 격자 단위(0.01도) 획정 (중심 500m 영역 기준으로 최소화)
+    lat_start = int(math.floor(flow_min_lat / 0.01))
+    lat_end = int(math.floor(flow_max_lat / 0.01))
+    lng_start = int(math.floor(flow_min_lng / 0.01))
+    lng_end = int(math.floor(flow_max_lng / 0.01))
 
     features = []
     osm_success = False
@@ -1624,11 +1912,12 @@ def get_road_flows(
                 except Exception as e:
                     print(f"Mirror failed for road cell ({cell_lat}, {cell_lng}): {e}")
 
-        # 캐시 DB로부터 영역 매칭 도로망 가져오기
+        # 캐시 DB로부터 영역 매칭 도로망 가져오기 (500m 반경 영역으로 질의 최소화)
         cursor.execute('''
             SELECT name, highway, width, coords_json FROM road_cache_segments
             WHERE max_lat >= ? AND min_lat <= ? AND max_lng >= ? AND min_lng <= ?
-        ''', (min_lat, max_lat, min_lng, max_lng))
+              AND highway != '횡단보도'
+        ''', (flow_min_lat, flow_max_lat, flow_min_lng, flow_max_lng))
         
         rows = cursor.fetchall()
         parsed_roads = []
@@ -1657,9 +1946,11 @@ def get_road_flows(
                 seg_mid_lng = (pt1[0] + pt2[0]) / 2.0
                 seg_mid_lat = (pt1[1] + pt2[1]) / 2.0
                 
-                # 2. 지도의 중심부 기준으로 반경 250m 이내의 소도로/뒷골목만 필터링
-                dist_from_center = fast_dist(seg_mid_lat, seg_mid_lng, center_lat, center_lng)
-                if dist_from_center > 250.0:
+                # 2. 지도의 중심부 기준으로 반경 500m 이내의 소도로/뒷골목만 필터링 (제곱 거리 비교로 math.sqrt 제거)
+                dy = (seg_mid_lat - center_lat) * 111000.0
+                dx = (seg_mid_lng - center_lng) * 88000.0
+                dist_from_center_sq = dx*dx + dy*dy
+                if dist_from_center_sq > 250000.0:  # 500.0 ** 2
                     continue
                 
                 score = 0.0
@@ -1671,8 +1962,11 @@ def get_road_flows(
                         key = (seg_b_lat + d_lat, seg_b_lng + d_lng)
                         if key in spatial_index:
                             for tg in spatial_index[key]:
-                                d = fast_dist(seg_mid_lat, seg_mid_lng, tg["lat"], tg["lng"])
-                                if d <= 500.0:
+                                dy_tg = (seg_mid_lat - tg["lat"]) * 111000.0
+                                dx_tg = (seg_mid_lng - tg["lng"]) * 88000.0
+                                d_sq = dx_tg*dx_tg + dy_tg*dy_tg
+                                if d_sq <= 250000.0:  # 500.0 ** 2
+                                    d = math.sqrt(d_sq)
                                     decay = 1.0 - d / 500.0
                                     step_weight = (tg["step"] - 5) / 5.0
                                     score += tg["avg_population"] * decay * step_weight
@@ -1719,7 +2013,16 @@ def get_road_flows(
                 
                 seed_val = int((rd["coordinates"][0][0] * 100000 + rd["coordinates"][0][1] * 100000) % 100000)
                 rng = random.Random(seed_val)
-                avg_flow = int(intensity * 3300 + rng.randint(200, 500))
+                if step >= 9:
+                    avg_flow = rng.randint(5000, 6200)
+                elif step >= 7:
+                    avg_flow = rng.randint(3000, 4800)
+                elif step >= 5:
+                    avg_flow = rng.randint(2000, 2900)
+                elif step >= 3:
+                    avg_flow = rng.randint(1500, 1950)
+                else:
+                    avg_flow = rng.randint(500, 1400)
                 
                 features.append({
                     "type": "Feature",
@@ -1783,8 +2086,8 @@ def get_road_flows(
             seg_mid_lng = (coords[0][0] + coords[1][0]) / 2.0
             seg_mid_lat = (coords[0][1] + coords[1][1]) / 2.0
             
-            # 중심에서 반경 250m 이내만 가상 생성
-            if fast_dist(seg_mid_lat, seg_mid_lng, center_lat, center_lng) <= 250.0:
+            # 중심에서 반경 500m 이내만 가상 생성
+            if fast_dist(seg_mid_lat, seg_mid_lng, center_lat, center_lng) <= 500.0:
                 candidate_roads.append({
                     "coordinates": coords,
                     "name": name,
@@ -1862,7 +2165,16 @@ def get_road_flows(
             
             seed_val = int((rc["coordinates"][0][0] * 100000 + rc["coordinates"][0][1] * 100000) % 100000)
             rng = random.Random(seed_val)
-            avg_flow = int(intensity * 3300 + rng.randint(200, 500))
+            if step >= 9:
+                avg_flow = rng.randint(5000, 6200)
+            elif step >= 7:
+                avg_flow = rng.randint(3000, 4800)
+            elif step >= 5:
+                avg_flow = rng.randint(2000, 2900)
+            elif step >= 3:
+                avg_flow = rng.randint(1500, 1950)
+            else:
+                avg_flow = rng.randint(500, 1400)
             
             features.append({
                 "type": "Feature",

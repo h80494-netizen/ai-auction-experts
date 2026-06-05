@@ -107,7 +107,8 @@ async def scrape_madangs_case(case_number: str, address_hint: str = ""):
     target_url = f"https://madangs.com/goview?g_code={clean_case}"
     print(f"[{case_number}] 마당스 상세 크롤링 및 PDF 다운로드: {target_url}")
     
-    download_dir = os.path.join(os.getcwd(), "downloads", case_number)
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    download_dir = os.path.join(project_root, "downloads", case_number)
     os.makedirs(download_dir, exist_ok=True)
     
     async with async_playwright() as p:
@@ -226,7 +227,8 @@ async def scrape_madangs_images(case_number: str, madangs_url: str):
     """
     print(f"[{case_number}] 마당스 팝업 이미지 스크래핑 시작: {madangs_url}")
     
-    download_dir = os.path.join(os.getcwd(), "downloads", case_number)
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    download_dir = os.path.join(project_root, "downloads", case_number)
     os.makedirs(download_dir, exist_ok=True)
     
     async with async_playwright() as p:

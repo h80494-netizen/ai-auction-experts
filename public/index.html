@@ -41,9 +41,14 @@
                     <h1 class="title">AI Auction <span class="neon-text">Expert 2.0</span></h1>
                     <p class="subtitle">20년 경력 실전 경매 전문가 사고모델 탑재</p>
                 </div>
-                <button onclick="window.open('/map.html?v=1', '_blank')" class="primary-btn" style="background:var(--neon-blue); border-color:var(--neon-blue); font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;">
-                    <i class="fa-solid fa-map-location-dot"></i> 지도보기
-                </button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button onclick="window.open('/issues.html', '_blank')" class="primary-btn" style="background:var(--neon-purple); border-color:var(--neon-purple); font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;">
+                        <i class="fa-solid fa-newspaper"></i> 이슈보기
+                    </button>
+                    <button onclick="window.open('/map.html?v=1', '_blank')" class="primary-btn" style="background:var(--neon-blue); border-color:var(--neon-blue); font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;">
+                        <i class="fa-solid fa-map-location-dot"></i> 지도보기
+                    </button>
+                </div>
             </div>
 
             <div class="search-container" style="display:flex; flex-direction:column; gap:10px;">
@@ -156,6 +161,7 @@
                 </div>
                 
                 <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;" id="downloadButtonsContainer">
+                    <button id="viewIssuesBtn" class="primary-btn" style="background: var(--neon-purple); border-color: var(--neon-purple); color: white;"><i class="fa-solid fa-newspaper"></i> 이슈보기</button>
                     <button id="downloadBtn" class="primary-btn" style="background: var(--success); border-color: var(--success); color: white;"><i class="fa-solid fa-file-word"></i> 전문 리포트(Word) 다운로드</button>
                     <button id="downloadPdfBtn" class="primary-btn" style="background: var(--danger); border-color: var(--danger); color: white;"><i class="fa-solid fa-file-pdf"></i> 화면 캡쳐(PDF) 다운로드</button>
                 </div>
@@ -199,8 +205,8 @@
                     </div>
                 </div>
 
-                <!-- 2단계부터 9단계까지 각 한 행(row)씩 세로로 배치 -->
-                <div class="report-grid" style="display: flex; flex-direction: column; gap: 20px; width: 100%;">
+                <!-- 2단계부터 9단계까지 2열 대시보드 그리드 배치 -->
+                <div class="report-grid-dashboard">
                     <div class="report-item">
                         <h4 style="font-size: 1.3rem; font-weight: 800;"><i class="fa-solid fa-hammer"></i> Ⅱ. 물리적 현황</h4>
                         <div id="report-section-2" class="markdown-content"></div>
@@ -232,7 +238,7 @@
                     </div>
                     
                     <!-- 동적 인포그래픽 (첫번째 줄 2개, 두번째 줄 1개) -->
-                    <div style="display: flex; gap: 20px; width: 100%; flex-wrap: wrap; margin-bottom: 20px;">
+                    <div class="conclusion-box" style="display: flex; gap: 20px; width: 100%; flex-wrap: wrap; margin-bottom: 20px;">
                         <div style="flex: 1; min-width: 300px; max-width: calc(50% - 10px);" class="report-item">
                             <h4 style="font-size: 1rem;"><i class="fa-solid fa-chart-line"></i> 수익성 시뮬레이터</h4>
                             <div id="dynamic-sensitivity-chart" class="infographic-container" style="display: none; margin-top: 10px;"></div>
@@ -247,7 +253,7 @@
                         </div>
                     </div>
 
-                    <div class="report-item highlight-box" style="border-color: var(--neon-purple); background: rgba(187, 0, 255, 0.05);">
+                    <div class="report-item highlight-box conclusion-box" style="border-color: var(--neon-purple); background: rgba(187, 0, 255, 0.05);">
                         <h4 style="color: var(--neon-purple); font-size: 1.3rem; font-weight: 800;"><i class="fa-solid fa-flag-checkered"></i> Ⅸ. 최종 결론</h4>
                         <div id="report-section-9" class="markdown-content"></div>
                     </div>

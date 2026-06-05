@@ -6,7 +6,9 @@ from docx.shared import Inches, RGBColor
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
-def generate_analysis_doc(data, output_dir="downloads"):
+DEFAULT_DOWNLOADS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "downloads"))
+
+def generate_analysis_doc(data, output_dir=DEFAULT_DOWNLOADS_DIR):
     """
     분석 데이터를 기반으로 심층 분석 Word 문서(.docx)를 생성합니다.
     """
@@ -34,9 +36,9 @@ def generate_analysis_doc(data, output_dir="downloads"):
     
     # 썸네일/지도 추가 (crawler가 다운로드한 실제 파일 경로 사용)
     safe_case = case_number.replace(" ", "_").replace("/", "_")
-    img_path_photo = os.path.join("downloads", safe_case, "photo.jpg")
-    img_path_map = os.path.join("downloads", safe_case, "map.jpg")
-    img_path_structure = os.path.join("downloads", safe_case, "structure.jpg")
+    img_path_photo = os.path.join(output_dir, safe_case, "photo.jpg")
+    img_path_map = os.path.join(output_dir, safe_case, "map.jpg")
+    img_path_structure = os.path.join(output_dir, safe_case, "structure.jpg")
     
     # (표지에 들어갔던 3장 사진은 권리분석 양식에 맞춰 아래로 이동할 것이므로 삭제)
     p_cover = doc.add_paragraph()
@@ -374,7 +376,7 @@ def generate_analysis_doc(data, output_dir="downloads"):
 
     return file_path
 
-def generate_analysis_doc_from_markdown(case_number, markdown_text, output_dir="downloads"):
+def generate_analysis_doc_from_markdown(case_number, markdown_text, output_dir=DEFAULT_DOWNLOADS_DIR):
     """
     프론트엔드의 화면 내용(마크다운)을 100% 반영하여 워드 문서를 즉석 재생성합니다.
     (이미지 3장은 가로 1열 표에 나란히 배치)
