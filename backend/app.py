@@ -44,7 +44,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 class AnalyzeRequest(BaseModel):
     case_number: str
@@ -1057,7 +1057,10 @@ def export_map_auctions(
 
 
 class OverlapAnalyzeRequest(BaseModel):
-    case_nos: list
+    case_nos: List[str]
+    scores: Optional[Dict[str, int]] = None
+    overlap_counts: Optional[Dict[str, int]] = None
+    matched_layers: Optional[Dict[str, List[str]]] = None
 
 @app.post("/api/map/overlap_analyze")
 async def post_overlap_analyze(req: OverlapAnalyzeRequest):
@@ -1082,7 +1085,7 @@ async def post_overlap_analyze(req: OverlapAnalyzeRequest):
         conn.close()
         return {"status": "error", "message": "해당 사건번호들의 상세 정보를 조회할 수 없습니다."}
         
-    items = []
+    items_map = {}
     for r in rows:
         d = dict(r)
         # Parse minimum_value and appraised_value from DB columns min_price and appraised_price
@@ -1102,21 +1105,37 @@ async def post_overlap_analyze(req: OverlapAnalyzeRequest):
             d['min_bid_rate'] = min_bid_rate
         except Exception:
             d['min_bid_rate'] = 100
-        items.append(d)
+            
+        # Attach frontend-provided metadata if available
+        c_no = d.get('case_no')
+        if req.scores and c_no in req.scores:
+            d['score'] = req.scores[c_no]
+        if req.overlap_counts and c_no in req.overlap_counts:
+            d['overlap_count'] = req.overlap_counts[c_no]
+        if req.matched_layers and c_no in req.matched_layers:
+            d['matched_layers'] = req.matched_layers[c_no]
+            
+        items_map[c_no] = d
         
     conn.close()
     
-    # Sort items by min_bid_rate ascending (most discounted first)
-    items.sort(key=lambda x: x.get('min_bid_rate', 100))
-    
+    # Sort items based on the input order of req.case_nos (which is already sorted on the frontend)
+    sorted_items = []
+    for c_no in req.case_nos:
+        if c_no in items_map:
+            sorted_items.append(items_map[c_no])
+            
+    if not sorted_items:
+        return {"status": "error", "message": "조회된 사건 정보가 없습니다."}
+        
     # Select top 3 (Best 3)
-    best_items = items[:3]
+    best_items = sorted_items[:3]
     
     try:
         from fastapi.concurrency import run_in_threadpool
         from ai_analyzer import analyze_overlap_cases
         report_text = await run_in_threadpool(analyze_overlap_cases, best_items)
-        return {"status": "success", "report": report_text, "items": items}
+        return {"status": "success", "report": report_text, "items": sorted_items}
     except Exception as e:
         return {"status": "error", "message": f"Gemini 분석 중 오류 발생: {str(e)}"}
 
@@ -1567,10 +1586,72 @@ def get_grid_demographics(
         
         # 초고속 메모리 Euclidean Approximation 함수
         # 위도 37.5도 기준: 위도 1도=111,000m, 경도 1도=88,000m
-        def fast_dist(lat1, lng1, lat2, lng2):
+        # (제곱 거리 반환하여 math.sqrt 배제)
+        def fast_dist_sq(lat1, lng1, lat2, lng2):
             dy = (lat1 - lat2) * 111000.0
             dx = (lng1 - lng2) * 88000.0
-            return math.sqrt(dx*dx + dy*dy)
+            return dx*dx + dy*dy
+
+        # 1-3. POI들을 공간 그리드 버킷(크기: 0.006도)에 매핑하여 spatial index 구축
+        bucket_size = 0.006
+        
+        # 지하철역
+        subway_spatial = {}
+        for s in subways:
+            b_lat = int(s["lat"] / bucket_size)
+            b_lng = int(s["lng"] / bucket_size)
+            key = (b_lat, b_lng)
+            if key not in subway_spatial:
+                subway_spatial[key] = []
+            subway_spatial[key].append(s)
+            
+        # 버스정류장
+        bus_spatial = {}
+        for b in bus_stops:
+            b_lat = int(b["lat"] / bucket_size)
+            b_lng = int(b["lng"] / bucket_size)
+            key = (b_lat, b_lng)
+            if key not in bus_spatial:
+                bus_spatial[key] = []
+            bus_spatial[key].append(b)
+            
+        # 경공매 물건지
+        auction_spatial = {}
+        for a in auctions:
+            b_lat = int(a["lat"] / bucket_size)
+            b_lng = int(a["lng"] / bucket_size)
+            key = (b_lat, b_lng)
+            if key not in auction_spatial:
+                auction_spatial[key] = []
+            auction_spatial[key].append(a)
+            
+        # 학교/대학
+        school_spatial = {}
+        for sch in schools:
+            b_lat = int(sch["lat"] / bucket_size)
+            b_lng = int(sch["lng"] / bucket_size)
+            key = (b_lat, b_lng)
+            if key not in school_spatial:
+                school_spatial[key] = []
+            school_spatial[key].append(sch)
+            
+        # 지역 탐색용 통합 POI (지하철, 학교, 경매 통합)
+        region_pois = []
+        for s in subways:
+            region_pois.append((s["lat"], s["lng"], s.get("address", "") or ""))
+        for sch in schools:
+            region_pois.append((sch["lat"], sch["lng"], sch.get("address", "") or ""))
+        for a in auctions:
+            region_pois.append((a["lat"], a["lng"], a.get("address", "") or ""))
+            
+        region_spatial = {}
+        for lat, lng, addr in region_pois:
+            b_lat = int(lat / bucket_size)
+            b_lng = int(lng / bucket_size)
+            key = (b_lat, b_lng)
+            if key not in region_spatial:
+                region_spatial[key] = []
+            region_spatial[key].append((lat, lng, addr))
 
         # BBox 내에 250m 간격으로 중심점 그리드 매핑
         grid_id_counter = 0
@@ -1589,31 +1670,26 @@ def get_grid_demographics(
         while curr_lat <= max_lat:
             curr_lng = min_lng
             while curr_lng <= max_lng:
-                # 1. 주변 가장 가까운 지하철역 또는 학교의 주소를 조회해 경기/인천 여부 판정
+                # 1. 주변 가장 가까운 POI(지하철, 학교, 경매)의 주소를 조회해 경기/인천 여부 판정
                 nearest_poi = None
-                min_poi_d = float('inf')
+                min_poi_d_sq = float('inf')
                 
-                # 지하철역에서 검색
-                for s in subways:
-                    d = fast_dist(curr_lat, curr_lng, s["lat"], s["lng"])
-                    if d < min_poi_d:
-                        min_poi_d = d
-                        nearest_poi = s
-                        
-                # 학교에서 검색
-                for sch in schools:
-                    d = fast_dist(curr_lat, curr_lng, sch["lat"], sch["lng"])
-                    if d < min_poi_d:
-                        min_poi_d = d
-                        nearest_poi = sch
-                        
-                # 경매 물건지에서 검색
-                for auc in auctions:
-                    d = fast_dist(curr_lat, curr_lng, auc["lat"], auc["lng"])
-                    if d < min_poi_d:
-                        min_poi_d = d
-                        nearest_poi = auc
-
+                grid_b_lat = int(curr_lat / bucket_size)
+                grid_b_lng = int(curr_lng / bucket_size)
+                
+                # 인접 9개 버킷 검색
+                for d_lat in [-1, 0, 1]:
+                    for d_lng in [-1, 0, 1]:
+                        key = (grid_b_lat + d_lat, grid_b_lng + d_lng)
+                        if key in region_spatial:
+                            for lat, lng, addr in region_spatial[key]:
+                                dy = (curr_lat - lat) * 111000.0
+                                dx = (curr_lng - lng) * 88000.0
+                                d_sq = dx*dx + dy*dy
+                                if d_sq < min_poi_d_sq:
+                                    min_poi_d_sq = d_sq
+                                    nearest_poi = {"address": addr}
+                                    
                 # 소속 지역 판단
                 grid_region = None
                 if nearest_poi:
@@ -1623,14 +1699,14 @@ def get_grid_demographics(
                     elif "경기" in address_str or "경기도" in address_str:
                         grid_region = "gyeonggi"
                     elif "서울" in address_str or "서울특별시" in address_str:
-                        grid_region = "seoul"  # 서울로 판정되면 서울 고정 격자와 중복되므로 제외
+                        grid_region = "seoul"
                 else:
                     # 인접 POI가 전혀 없으면 순수 외곽지역 좌표로 단순 추정
                     if curr_lng < 126.734:
                         grid_region = "incheon"
                     else:
                         grid_region = "gyeonggi"
-
+                        
                 # 경기 혹은 인천 그리드이면서, 유저가 클릭해 활성화된 지역인 경우에만 연산 수행
                 if grid_region and grid_region != "seoul":
                     is_active = (grid_region == "incheon" and show_incheon) or (grid_region == "gyeonggi" and show_gyeonggi)
@@ -1647,37 +1723,72 @@ def get_grid_demographics(
                         else: # floating
                             w_sub, w_bus, w_auc, w_sch = 1.4, 1.3, 0.8, 0.7
                             
-                        # 지하철 기여도
-                        for s in subways:
-                            d = fast_dist(curr_lat, curr_lng, s["lat"], s["lng"])
-                            if d <= 500:
-                                score += 12000 * (1 - d / 500.0) * w_sub
-                                
-                        # 버스정류장 기여도
-                        for b in bus_stops:
-                            d = fast_dist(curr_lat, curr_lng, b["lat"], b["lng"])
-                            if d <= 200:
-                                score += 2500 * (1 - d / 200.0) * w_bus
-                                
-                        # 경공매 물건지 (거주/건물 밀도) 기여도
-                        for auc in auctions:
-                            d = fast_dist(curr_lat, curr_lng, auc["lat"], auc["lng"])
-                            if d <= 300:
-                                # 상업용 지산/집합/일반 등 종류에 따라 직장/주거 인구 매칭 보정
-                                p_type = auc.get("property_type", "주택")
-                                multi = 1.0
-                                if type == "workplace" and p_type in ["지산", "집합", "공장", "일반"]:
-                                    multi = 1.5
-                                elif type == "residential" and p_type in ["아파트", "다세대", "오피스텔", "단독"]:
-                                    multi = 1.5
-                                score += 5000 * (1 - d / 300.0) * w_auc * multi
-                                
-                        # 학교 기여도
-                        for sch in schools:
-                            d = fast_dist(curr_lat, curr_lng, sch["lat"], sch["lng"])
-                            if d <= 300:
-                                score += 3500 * (1 - d / 300.0) * w_sch
-
+                        # 지하철 기여도 (500m)
+                        for d_lat in [-1, 0, 1]:
+                            for d_lng in [-1, 0, 1]:
+                                key = (grid_b_lat + d_lat, grid_b_lng + d_lng)
+                                if key in subway_spatial:
+                                    for s in subway_spatial[key]:
+                                        dy = (curr_lat - s["lat"]) * 111000.0
+                                        if abs(dy) > 500.0: continue
+                                        dx = (curr_lng - s["lng"]) * 88000.0
+                                        if abs(dx) > 500.0: continue
+                                        d_sq = dx*dx + dy*dy
+                                        if d_sq <= 250000.0:
+                                            d = math.sqrt(d_sq)
+                                            score += 12000 * (1 - d / 500.0) * w_sub
+                                            
+                        # 버스정류장 기여도 (200m)
+                        for d_lat in [-1, 0, 1]:
+                            for d_lng in [-1, 0, 1]:
+                                key = (grid_b_lat + d_lat, grid_b_lng + d_lng)
+                                if key in bus_spatial:
+                                    for b in bus_spatial[key]:
+                                        dy = (curr_lat - b["lat"]) * 111000.0
+                                        if abs(dy) > 200.0: continue
+                                        dx = (curr_lng - b["lng"]) * 88000.0
+                                        if abs(dx) > 200.0: continue
+                                        d_sq = dx*dx + dy*dy
+                                        if d_sq <= 40000.0:
+                                            d = math.sqrt(d_sq)
+                                            score += 2500 * (1 - d / 200.0) * w_bus
+                                            
+                        # 경공매 물건지 기여도 (300m)
+                        for d_lat in [-1, 0, 1]:
+                            for d_lng in [-1, 0, 1]:
+                                key = (grid_b_lat + d_lat, grid_b_lng + d_lng)
+                                if key in auction_spatial:
+                                    for auc in auction_spatial[key]:
+                                        dy = (curr_lat - auc["lat"]) * 111000.0
+                                        if abs(dy) > 300.0: continue
+                                        dx = (curr_lng - auc["lng"]) * 88000.0
+                                        if abs(dx) > 300.0: continue
+                                        d_sq = dx*dx + dy*dy
+                                        if d_sq <= 90000.0:
+                                            d = math.sqrt(d_sq)
+                                            p_type = auc.get("property_type", "주택")
+                                            multi = 1.0
+                                            if type == "workplace" and p_type in ["지산", "집합", "공장", "일반"]:
+                                                multi = 1.5
+                                            elif type == "residential" and p_type in ["아파트", "다세대", "오피스텔", "단독"]:
+                                                multi = 1.5
+                                            score += 5000 * (1 - d / 300.0) * w_auc * multi
+                                            
+                        # 학교 기여도 (300m)
+                        for d_lat in [-1, 0, 1]:
+                            for d_lng in [-1, 0, 1]:
+                                key = (grid_b_lat + d_lat, grid_b_lng + d_lng)
+                                if key in school_spatial:
+                                    for sch in school_spatial[key]:
+                                        dy = (curr_lat - sch["lat"]) * 111000.0
+                                        if abs(dy) > 300.0: continue
+                                        dx = (curr_lng - sch["lng"]) * 88000.0
+                                        if abs(dx) > 300.0: continue
+                                        d_sq = dx*dx + dy*dy
+                                        if d_sq <= 90000.0:
+                                            d = math.sqrt(d_sq)
+                                            score += 3500 * (1 - d / 300.0) * w_sch
+                                            
                         # 3. 사실적 분포 연산 및 결과 저장
                         # 숲이나 외딴 비주거 무인 지역(score < 2000)은 그리드를 아예 그리지 않아 속도 향상
                         if score >= 2000:
@@ -1711,7 +1822,8 @@ def get_grid_demographics(
 
 @app.get("/api/map/road_flows")
 def get_road_flows(
-    min_lat: float, max_lat: float, min_lng: float, max_lng: float
+    min_lat: float, max_lat: float, min_lng: float, max_lng: float,
+    day: Optional[str] = "weekday", time_of_day: Optional[str] = "day"
 ):
     """
     지도의 중심부 좌표를 기준으로 반경 250m 이내의 실제 이면도로 및 뒷골목(OSM 8m 이하 소도로)을
@@ -1738,16 +1850,16 @@ def get_road_flows(
     center_lat = (min_lat + max_lat) / 2.0
     center_lng = (min_lng + max_lng) / 2.0
 
-    # 500m 반경 영역에 대한 Bounding Box 정의 (안전 마진으로 600m 설정)
-    # 위도 600m ≈ 0.0054도, 경도 600m ≈ 0.0068도
-    flow_min_lat = center_lat - 0.0054
-    flow_max_lat = center_lat + 0.0054
-    flow_min_lng = center_lng - 0.0068
-    flow_max_lng = center_lng + 0.0068
+    # 250m 반경 영역에 대한 Bounding Box 정의 (안전 마진으로 300m 설정)
+    # 위도 300m ≈ 0.0027도, 경도 300m ≈ 0.0034도
+    flow_min_lat = center_lat - 0.0027
+    flow_max_lat = center_lat + 0.0027
+    flow_min_lng = center_lng - 0.0034
+    flow_max_lng = center_lng + 0.0034
 
-    # 1. 중심부 반경 500m 격자 공간 연산을 위해 500m 패딩을 주어 유동인구 격자 수집
-    pad_lat = 0.0045
-    pad_lng = 0.0057
+    # 1. 중심부 반경 250m 격자 공간 연산을 위해 250m 패딩을 주어 유동인구 격자 수집
+    pad_lat = 0.00225
+    pad_lng = 0.00285
     
     grid_min_lat = flow_min_lat - pad_lat
     grid_max_lat = flow_max_lat + pad_lat
@@ -1815,27 +1927,35 @@ def get_road_flows(
 
     try:
         conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA busy_timeout = 5000;")
         cursor = conn.cursor()
 
         # 캐시 그리드 조회
         cursor.execute('SELECT lat_idx, lng_idx FROM road_cache_grids')
         cached_cells = set(cursor.fetchall())
 
-        # 미캐싱된 셀 식별
+        # Identify region of center
+        is_seoul = (37.43 <= center_lat <= 37.7) and (126.75 <= center_lng <= 127.2)
+
+        # 미캐싱된 셀 식별 (서울, 경기, 인천 전체 영역에 대해 OSM 미러 캐싱을 지원)
         cells_to_fetch = []
         for lat_idx in range(lat_start, lat_end + 1):
             for lng_idx in range(lng_start, lng_end + 1):
                 if (lat_idx, lng_idx) not in cached_cells:
                     cells_to_fetch.append((lat_idx, lng_idx))
 
-        # API 부하 방지 및 속도 유지를 위해 1회 맵 이동시 캐싱 쿼리를 최대 6개 셀로 제한
-        if len(cells_to_fetch) > 6:
-            cells_to_fetch = cells_to_fetch[:6]
+        # API 부하 방지 및 속도 유지를 위해 1회 맵 이동시 캐싱 쿼리를 최대 4개 셀로 제한
+        if len(cells_to_fetch) > 4:
+            cells_to_fetch = cells_to_fetch[:4]
+
+        # 줌 레벨 방어: BBox가 크면 (줌 레벨 15 이하) 실시간 인터넷 페칭을 비활성화하여 속도 강제 방어
+        is_zoomed_out = (max_lat - min_lat > 0.015) or (max_lng - min_lng > 0.018)
+        if is_zoomed_out:
+            cells_to_fetch = []
 
         urls = [
             "https://overpass-api.de/api/interpreter",
             "https://lz4.overpass-api.de/api/interpreter",
-            "https://overpass.osm.ch/api/interpreter",
             "https://overpass.kumi.systems/api/interpreter"
         ]
 
@@ -1845,29 +1965,32 @@ def get_road_flows(
             "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7"
         }
 
-        for cell_lat, cell_lng in cells_to_fetch:
+        # Define parallel fetch helper function
+        def fetch_and_parse_cell(cell_lat, cell_lng):
             c_min_lat = cell_lat * 0.01
             c_max_lat = (cell_lat + 1) * 0.01
             c_min_lng = cell_lng * 0.01
             c_max_lng = (cell_lng + 1) * 0.01
 
+            segments = []
+            fetched = False
+
+            # 1. Try Overpass mirrors first (lightweight, tag-filtered)
             query = f"""
-            [out:json][timeout:2];
+            [out:json][timeout:10];
             (
               way["highway"~"residential|service|unclassified|pedestrian|path|footway|living_street"]({c_min_lat},{c_min_lng},{c_max_lat},{c_max_lng});
             );
             out geom;
             """
-            
-            cell_fetched = False
             for url in urls:
                 try:
-                    response = requests.post(url, data={"data": query}, headers=headers, timeout=2.0)
+                    print(f"Fetching road network via Overpass Mirror (Parallel): {url}")
+                    response = requests.post(url, data={"data": query}, headers=headers, timeout=3.0)
                     if response.status_code == 200:
                         osm_data = response.json()
                         elements = osm_data.get("elements", [])
                         
-                        # DB에 저장
                         for el in elements:
                             if el.get("type") == "way" and "geometry" in el:
                                 osm_id = el["id"]
@@ -1877,10 +2000,9 @@ def get_road_flows(
                                     continue
                                 
                                 tags = el.get("tags", {})
-                                name = tags.get("name") or tags.get("name:ko", "이면도로")
+                                name = tags.get("name") or tags.get("name:ko", "소도로")
                                 highway = tags.get("highway", "소도로")
                                 
-                                # 도로폭 파싱
                                 width_val = None
                                 width_str = tags.get("width")
                                 if width_str:
@@ -1891,26 +2013,105 @@ def get_road_flows(
                                     except Exception:
                                         pass
                                 
-                                lats = [pt[1] for pt in geom]
-                                lngs = [pt[0] for pt in geom]
-                                min_lat_val = min(lats)
-                                max_lat_val = max(lats)
-                                min_lng_val = min(lngs)
-                                max_lng_val = max(lngs)
-                                
-                                cursor.execute('''
-                                    INSERT OR REPLACE INTO road_cache_segments 
-                                    (osm_id, name, highway, width, min_lat, max_lat, min_lng, max_lng, coords_json)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                ''', (osm_id, name, highway, width_val, min_lat_val, max_lat_val, min_lng_val, max_lng_val, json.dumps(coords)))
-                        
-                        cursor.execute('INSERT OR REPLACE INTO road_cache_grids (lat_idx, lng_idx) VALUES (?, ?)', (cell_lat, cell_lng))
-                        conn.commit()
-                        cell_fetched = True
-                        print(f"Cached road cell ({cell_lat}, {cell_lng}) from {url}")
+                                lats = [pt["lat"] for pt in geom]
+                                lngs = [pt["lon"] for pt in geom]
+                                segments.append({
+                                    "osm_id": osm_id,
+                                    "name": name,
+                                    "highway": highway,
+                                    "width": width_val,
+                                    "min_lat": min(lats),
+                                    "max_lat": max(lats),
+                                    "min_lng": min(lngs),
+                                    "max_lng": max(lngs),
+                                    "coords_json": json.dumps(coords)
+                                })
+                        fetched = True
+                        print(f"Parallel fetch success: Overpass Mirror {url} for ({cell_lat}, {cell_lng}) - {len(segments)} segments parsed.")
                         break
                 except Exception as e:
-                    print(f"Mirror failed for road cell ({cell_lat}, {cell_lng}): {e}")
+                    print(f"Parallel fetch Overpass Mirror {url} failed/timed out for ({cell_lat}, {cell_lng}): {e}")
+
+            # 2. Try OSM Main API as fallback if Overpass mirrors failed
+            if not fetched:
+                try:
+                    osm_url = f"https://api.openstreetmap.org/api/0.6/map?bbox={c_min_lng},{c_min_lat},{c_max_lng},{c_max_lat}"
+                    print(f"Fetching road network via OSM Main API Fallback (Parallel): {osm_url}")
+                    response = requests.get(osm_url, headers=headers, timeout=5.0)
+                    if response.status_code == 200:
+                        import xml.etree.ElementTree as ET
+                        root = ET.fromstring(response.content)
+                        
+                        nodes = {}
+                        for node in root.findall('node'):
+                            nodes[node.get('id')] = [float(node.get('lon')), float(node.get('lat'))]
+                            
+                        for w in root.findall('way'):
+                            tags = {tag.get('k'): tag.get('v') for tag in w.findall('tag')}
+                            highway = tags.get('highway')
+                            
+                            if highway and any(h_type in highway for h_type in ["residential", "service", "unclassified", "pedestrian", "path", "footway", "living_street"]):
+                                osm_id = int(w.get('id'))
+                                node_refs = [nd.get('ref') for nd in w.findall('nd')]
+                                coords = [nodes[ref] for ref in node_refs if ref in nodes]
+                                
+                                if len(coords) < 2:
+                                    continue
+                                    
+                                name = tags.get("name") or tags.get("name:ko") or "소도로"
+                                
+                                width_val = None
+                                width_str = tags.get("width")
+                                if width_str:
+                                    try:
+                                        match = re.search(r"([0-9.]+)", width_str)
+                                        if match:
+                                            width_val = float(match.group(1))
+                                    except Exception:
+                                        pass
+                                        
+                                lats = [pt[1] for pt in coords]
+                                lngs = [pt[0] for pt in coords]
+                                segments.append({
+                                    "osm_id": osm_id,
+                                    "name": name,
+                                    "highway": highway,
+                                    "width": width_val,
+                                    "min_lat": min(lats),
+                                    "max_lat": max(lats),
+                                    "min_lng": min(lngs),
+                                    "max_lng": max(lngs),
+                                    "coords_json": json.dumps(coords)
+                                })
+                        fetched = True
+                        print(f"Parallel fetch success: OSM Main API Fallback for ({cell_lat}, {cell_lng}) - {len(segments)} segments parsed.")
+                except Exception as e:
+                    print(f"Parallel fetch OSM Main API Fallback failed/timed out for ({cell_lat}, {cell_lng}): {e}")
+
+            return cell_lat, cell_lng, fetched, segments
+
+        # Fetch cells in parallel using ThreadPoolExecutor
+        from concurrent.futures import ThreadPoolExecutor
+        if cells_to_fetch:
+            print(f"Starting parallel fetching for {len(cells_to_fetch)} uncached road cells...")
+            with ThreadPoolExecutor(max_workers=len(cells_to_fetch)) as executor:
+                futures = [executor.submit(fetch_and_parse_cell, lat_idx, lng_idx) for lat_idx, lng_idx in cells_to_fetch]
+                results = [f.result() for f in futures]
+            
+            # Write results to SQLite sequentially in the main thread to avoid DB locking
+            for cell_lat, cell_lng, fetched, segments in results:
+                if fetched:
+                    for seg in segments:
+                        cursor.execute('''
+                            INSERT OR REPLACE INTO road_cache_segments 
+                            (osm_id, name, highway, width, min_lat, max_lat, min_lng, max_lng, coords_json)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (seg["osm_id"], seg["name"], seg["highway"], seg["width"], seg["min_lat"], seg["max_lat"], seg["min_lng"], seg["max_lng"], seg["coords_json"]))
+                    
+                    cursor.execute('INSERT OR REPLACE INTO road_cache_grids (lat_idx, lng_idx) VALUES (?, ?)', (cell_lat, cell_lng))
+                    conn.commit()
+                    print(f"Successfully cached {len(segments)} segments for cell ({cell_lat}, {cell_lng}) in DB.")
+
 
         # 캐시 DB로부터 영역 매칭 도로망 가져오기 (500m 반경 영역으로 질의 최소화)
         cursor.execute('''
@@ -1946,11 +2147,11 @@ def get_road_flows(
                 seg_mid_lng = (pt1[0] + pt2[0]) / 2.0
                 seg_mid_lat = (pt1[1] + pt2[1]) / 2.0
                 
-                # 2. 지도의 중심부 기준으로 반경 500m 이내의 소도로/뒷골목만 필터링 (제곱 거리 비교로 math.sqrt 제거)
+                # 2. 지도의 중심부 기준으로 반경 250m 이내의 소도로/뒷골목만 필터링 (제곱 거리 비교로 math.sqrt 제거)
                 dy = (seg_mid_lat - center_lat) * 111000.0
                 dx = (seg_mid_lng - center_lng) * 88000.0
                 dist_from_center_sq = dx*dx + dy*dy
-                if dist_from_center_sq > 250000.0:  # 500.0 ** 2
+                if dist_from_center_sq > 62500.0:  # 250.0 ** 2
                     continue
                 
                 score = 0.0
@@ -1965,9 +2166,9 @@ def get_road_flows(
                                 dy_tg = (seg_mid_lat - tg["lat"]) * 111000.0
                                 dx_tg = (seg_mid_lng - tg["lng"]) * 88000.0
                                 d_sq = dx_tg*dx_tg + dy_tg*dy_tg
-                                if d_sq <= 250000.0:  # 500.0 ** 2
+                                if d_sq <= 62500.0:  # 250.0 ** 2
                                     d = math.sqrt(d_sq)
-                                    decay = 1.0 - d / 500.0
+                                    decay = 1.0 - d / 250.0
                                     step_weight = (tg["step"] - 5) / 5.0
                                     score += tg["avg_population"] * decay * step_weight
                                     
@@ -1994,17 +2195,26 @@ def get_road_flows(
                 else:
                     step = 1
                 
+                # Apply multipliers to step based on day and time_of_day
+                step_multiplier = 1.0
+                if day == "weekend":
+                    step_multiplier *= 0.85
+                if time_of_day == "night":
+                    step_multiplier *= 0.90
+                
+                adjusted_step = max(1, min(10, int(step * step_multiplier)))
+                
                 # 5단계의 분위수 매핑
-                if step >= 9:
+                if adjusted_step >= 9:
                     flow_type = "매우 높음"
                     intensity = 0.9
-                elif step >= 7:
+                elif adjusted_step >= 7:
                     flow_type = "높음"
                     intensity = 0.7
-                elif step >= 5:
+                elif adjusted_step >= 5:
                     flow_type = "중간"
                     intensity = 0.5
-                elif step >= 3:
+                elif adjusted_step >= 3:
                     flow_type = "낮음"
                     intensity = 0.3
                 else:
@@ -2013,16 +2223,25 @@ def get_road_flows(
                 
                 seed_val = int((rd["coordinates"][0][0] * 100000 + rd["coordinates"][0][1] * 100000) % 100000)
                 rng = random.Random(seed_val)
-                if step >= 9:
+                if adjusted_step >= 9:
                     avg_flow = rng.randint(5000, 6200)
-                elif step >= 7:
+                elif adjusted_step >= 7:
                     avg_flow = rng.randint(3000, 4800)
-                elif step >= 5:
+                elif adjusted_step >= 5:
                     avg_flow = rng.randint(2000, 2900)
-                elif step >= 3:
+                elif adjusted_step >= 3:
                     avg_flow = rng.randint(1500, 1950)
                 else:
                     avg_flow = rng.randint(500, 1400)
+                
+                # Apply fine-grained scaling to avg_flow to make numbers look smooth and dynamic
+                flow_multiplier = 1.0
+                if day == "weekend":
+                    flow_multiplier *= rng.uniform(0.8, 0.9)
+                if time_of_day == "night":
+                    flow_multiplier *= rng.uniform(0.9, 0.95)
+                
+                final_flow = max(100, int(avg_flow * flow_multiplier))
                 
                 features.append({
                     "type": "Feature",
@@ -2034,7 +2253,7 @@ def get_road_flows(
                         "road_name": rd["road_name"],
                         "road_class": rd["road_class"],
                         "flow_intensity": intensity,
-                        "avg_hourly_flow": avg_flow,
+                        "avg_hourly_flow": final_flow,
                         "flow_type": flow_type
                     }
                 })
@@ -2047,20 +2266,21 @@ def get_road_flows(
     if not osm_success:
         print("Running procedural road flow generator fallback...")
         conn = sqlite3.connect(db_path)
+        conn.execute("PRAGMA busy_timeout = 5000;")
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
         cursor.execute('''
             SELECT name, lat, lng FROM subways
             WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-            LIMIT 30
+            LIMIT 50
         ''', (min_lat, max_lat, min_lng, max_lng))
         subways = [dict(r) for r in cursor.fetchall()]
         
         cursor.execute('''
             SELECT name, lat, lng FROM bus_stops
             WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-            LIMIT 40
+            LIMIT 150
         ''', (min_lat, max_lat, min_lng, max_lng))
         bus_stops = [dict(r) for r in cursor.fetchall()]
         
@@ -2074,7 +2294,7 @@ def get_road_flows(
         cursor.execute('''
             SELECT case_no, property_type, lat, lng FROM auctions
             WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-            LIMIT 20
+            LIMIT 100
         ''', (min_lat, max_lat, min_lng, max_lng))
         auctions = [dict(r) for r in cursor.fetchall()]
         
@@ -2082,12 +2302,31 @@ def get_road_flows(
         
         candidate_roads = []
         
+        # 도로명 생성용 데이터베이스 및 헬퍼 함수 정의
+        gg_streets = [
+            "분당로", "판교역로", "성남대로", "서현로", "정자일로", "야탑로", "금곡로", "백현로", "수내로", "황새울로", 
+            "돌마로", "동판교로", "서판교로", "운중로", "고기동길", "수지동로", "신봉길", "죽전로", "보정로", "구성로", 
+            "마북로", "동백로", "기흥로", "영덕로", "서천로", "신갈로", "구갈로", "상갈로", "보라로", "공세로", 
+            "지곡로", "유림로", "고림로", "역북로", "삼가로", "포곡로", "모현로", "양지로", "백암로", "원삼로"
+        ]
+        ic_streets = [
+            "예술로", "인하로", "경원대로", "남동대로", "호구포로", "앵고개로", "소래로", "논고개로", "아암대로", "청능대로", 
+            "함박뫼로", "비류대로", "독배로", "미추홀대로", "매소홀로", "한나루로", "석정로", "경인로", "참외전로", "제물량로", 
+            "우현로", "개항로", "화도진로", "송림로", "인중로", "서해대로", "축항대로", "방축로", "중봉대로", "가정로"
+        ]
+        street_pool = ic_streets if center_lng < 126.75 else gg_streets
+        
+        def get_road_name(lat, lng, prefix=""):
+            h = int((lat * 10000 + lng * 10000) % len(street_pool))
+            b = int((lat * 50000 + lng * 50000) % 150) + 1
+            return f"{prefix}{street_pool[h]} {b}번길"
+        
         def add_candidate(coords, name, r_class, def_intensity, f_type):
             seg_mid_lng = (coords[0][0] + coords[1][0]) / 2.0
             seg_mid_lat = (coords[0][1] + coords[1][1]) / 2.0
             
-            # 중심에서 반경 500m 이내만 가상 생성
-            if fast_dist(seg_mid_lat, seg_mid_lng, center_lat, center_lng) <= 500.0:
+            # 중심에서 반경 250m 이내만 가상 생성
+            if fast_dist(seg_mid_lat, seg_mid_lng, center_lat, center_lng) <= 250.0:
                 candidate_roads.append({
                     "coordinates": coords,
                     "name": name,
@@ -2096,29 +2335,95 @@ def get_road_flows(
                     "flow_type": f_type
                 })
 
+        # 1. 지하철역 배후 보행로망 생성
         for s in subways:
             s_name = s["name"]
             lat, lng = s["lat"], s["lng"]
-            add_candidate([[lng - 0.003, lat], [lng + 0.003, lat]], f"{s_name}역 메인 보행로", "보행로", 0.85, "오피스동선")
-            add_candidate([[lng, lat - 0.003], [lng, lat + 0.003]], f"{s_name}역 연결 인도", "인도", 0.82, "오피스동선")
-            add_candidate([[lng - 0.002, lat + 0.0007], [lng + 0.002, lat + 0.0007]], f"{s_name}역 북측 먹자거리", "소도로", 0.83, "먹자골목")
-            add_candidate([[lng - 0.002, lat - 0.0007], [lng + 0.002, lat - 0.0007]], f"{s_name}역 남측 맛집거리", "소도로", 0.81, "먹자골목")
+            add_candidate([[lng - 0.0035, lat], [lng + 0.0035, lat]], f"{s_name}역 메인광장로", "보행자전용도로", 0.9, "오피스동선")
+            add_candidate([[lng, lat - 0.0028], [lng, lat + 0.0028]], f"{s_name}역 중앙보행로", "보행자전용도로", 0.88, "오피스동선")
+            add_candidate([[lng, lat], [lng + 0.002, lat + 0.0016]], f"{s_name}역 맛집골목", "소도로", 0.85, "먹자골목")
+            add_candidate([[lng, lat], [lng - 0.002, lat - 0.0016]], f"{s_name}역 서측카페거리", "소도로", 0.83, "먹자골목")
+            add_candidate([[lng, lat], [lng + 0.002, lat - 0.0016]], f"{s_name}역 남측먹자거리", "소도로", 0.84, "먹자골목")
+            add_candidate([[lng, lat], [lng - 0.002, lat + 0.0016]], f"{s_name}역 북측상가길", "소도로", 0.82, "먹자골목")
             
+        # 2. 상업지구 보행망 생성 (서울 지역에 유효)
         for c in commercials:
             c_name = c["name"]
             lat, lng = c["lat"], c["lng"]
             add_candidate([[lng - 0.0015, lat], [lng + 0.0015, lat]], f"{c_name} 상가 메인거리", "소도로", 0.84, "먹자골목")
             add_candidate([[lng, lat - 0.001], [lng, lat + 0.001]], f"{c_name} 상업 이면도로", "소도로", 0.71, "먹자골목")
             
+        # 3. 경공매 물건지 진입소로 생성
         for a in auctions:
             a_type = a["property_type"]
             lat, lng = a["lat"], a["lng"]
-            add_candidate([[lng - 0.0008, lat - 0.0004], [lng + 0.0008, lat + 0.0004]], f"{a_type} 물건지 진입로", "골목길", 0.45, "생활이동")
+            add_candidate([[lng - 0.0008, lat - 0.0004], [lng + 0.0008, lat - 0.0004]], get_road_name(lat, lng, "물건지 앞 "), "골목길", 0.45, "생활이동")
+            add_candidate([[lng - 0.0008, lat + 0.0004], [lng + 0.0008, lat + 0.0004]], get_road_name(lat + 0.0001, lng, "물건지 뒤 "), "골목길", 0.43, "생활이동")
+            add_candidate([[lng, lat - 0.0005], [lng, lat + 0.0005]], f"{a_type} 진입로", "골목길", 0.47, "생활이동")
             
+        # 4. 버스정류장 교통 연계로 생성
         for b in bus_stops:
             b_name = b["name"]
             lat, lng = b["lat"], b["lng"]
-            add_candidate([[lng - 0.0005, lat], [lng + 0.0005, lat]], f"{b_name} 정류장 연계로", "골목길", 0.49, "생활이동")
+            add_candidate([[lng - 0.0015, lat], [lng + 0.0015, lat]], f"{b_name} 정류장 연계로", "인도", 0.6, "생활이동")
+            add_candidate([[lng, lat - 0.0008], [lng, lat + 0.0008]], get_road_name(lat, lng, "정류장배후 "), "골목길", 0.5, "생활이동")
+
+        # 5. 상위 유동인구 5단계 격자 내 고밀도 상업 골목길 생성
+        for tg in top5_grids:
+            lat, lng = tg["lat"], tg["lng"]
+            step = tg["step"]
+            add_candidate([[lng - 0.0015, lat - 0.0008], [lng + 0.0015, lat - 0.0008]], get_road_name(lat, lng, "상권 배후"), "소도로", 0.7 + (step-6)*0.05, "먹자골목")
+            add_candidate([[lng - 0.0015, lat + 0.0008], [lng + 0.0015, lat + 0.0008]], get_road_name(lat + 0.0002, lng, "상권 이면"), "소도로", 0.68 + (step-6)*0.05, "먹자골목")
+            add_candidate([[lng - 0.0008, lat - 0.0012], [lng - 0.0008, lat + 0.0012]], get_road_name(lat, lng - 0.0002, "상가골목 "), "소도로", 0.72 + (step-6)*0.05, "먹자골목")
+            add_candidate([[lng + 0.0008, lat - 0.0012], [lng + 0.0008, lat + 0.0012]], get_road_name(lat, lng + 0.0002, "번화가길 "), "소도로", 0.71 + (step-6)*0.05, "먹자골목")
+
+        # 6. 영역 전체를 커버하는 커스텀 격자 형태의 이면도로망 생성 (유기적 골목길 형성)
+        lats = [flow_min_lat + i * (flow_max_lat - flow_min_lat) / 8.0 for i in range(9)]
+        lngs = [flow_min_lng + i * (flow_max_lng - flow_min_lng) / 8.0 for i in range(9)]
+        
+        # 가로 격자 노선 생성
+        for r_idx, r_lat in enumerate(lats):
+            for s_idx in range(4):
+                lng_start_seg = flow_min_lng + s_idx * (flow_max_lng - flow_min_lng) / 4.0
+                lng_end_seg = flow_min_lng + (s_idx + 1) * (flow_max_lng - flow_min_lng) / 4.0
+                
+                # 좌표 기반의 고정 난수를 활용하여 도로가 Pan할 때마다 뒤틀리지 않도록 보장
+                seed_seg = int((r_lat * 100000 + lng_start_seg * 100000) % 100000)
+                rng_seg = random.Random(seed_seg)
+                if rng_seg.random() > 0.70: # ~70% 노선 유지 (30%는 T자형 및 불규칙 골목으로 끊김 효과)
+                    continue
+                
+                # 자연스러운 굴곡 효과 (Bend)
+                offset_lat1 = rng_seg.uniform(-0.00015, 0.00015)
+                offset_lat2 = rng_seg.uniform(-0.00015, 0.00015)
+                
+                name = get_road_name(r_lat, lng_start_seg, "주거지 ")
+                add_candidate(
+                    [[lng_start_seg, r_lat + offset_lat1], [lng_end_seg, r_lat + offset_lat2]],
+                    name, "소도로", 0.52, "생활이동"
+                )
+                
+        # 세로 격자 노선 생성
+        for c_idx, c_lng in enumerate(lngs):
+            for s_idx in range(4):
+                lat_start_seg = flow_min_lat + s_idx * (flow_max_lat - flow_min_lat) / 4.0
+                lat_end_seg = flow_min_lat + (s_idx + 1) * (flow_max_lat - flow_min_lat) / 4.0
+                
+                # 좌표 기반의 고정 난수 활용
+                seed_seg = int((lat_start_seg * 100000 + c_lng * 100000) % 100000)
+                rng_seg = random.Random(seed_seg)
+                if rng_seg.random() > 0.70:
+                    continue
+                
+                # 자연스러운 굴곡 효과 (Bend)
+                offset_lng1 = rng_seg.uniform(-0.00018, 0.00018)
+                offset_lng2 = rng_seg.uniform(-0.00018, 0.00018)
+                
+                name = get_road_name(lat_start_seg, c_lng, "마을 ")
+                add_candidate(
+                    [[c_lng + offset_lng1, lat_start_seg], [c_lng + offset_lng2, lat_end_seg]],
+                    name, "소도로", 0.51, "생활이동"
+                )
 
         max_score = 0.0
         for rc in candidate_roads:
@@ -2127,12 +2432,22 @@ def get_road_flows(
             mid_lng = sum(pt[0] for pt in geom) / len(geom)
             
             score = 0.0
-            for tg in top5_grids:
-                d = fast_dist(mid_lat, mid_lng, tg["lat"], tg["lng"])
-                if d <= 500.0:
-                    decay = 1.0 - d / 500.0
-                    step_weight = (tg["step"] - 5) / 5.0
-                    score += tg["avg_population"] * decay * step_weight
+            seg_b_lat = int(mid_lat / bucket_size_lat)
+            seg_b_lng = int(mid_lng / bucket_size_lng)
+            
+            for d_lat in [-1, 0, 1]:
+                for d_lng in [-1, 0, 1]:
+                    key = (seg_b_lat + d_lat, seg_b_lng + d_lng)
+                    if key in spatial_index:
+                        for tg in spatial_index[key]:
+                            dy_tg = (mid_lat - tg["lat"]) * 111000.0
+                            dx_tg = (mid_lng - tg["lng"]) * 88000.0
+                            d_sq = dx_tg*dx_tg + dy_tg*dy_tg
+                            if d_sq <= 62500.0:  # 250.0 ** 2
+                                d = math.sqrt(d_sq)
+                                decay = 1.0 - d / 250.0
+                                step_weight = (tg["step"] - 5) / 5.0
+                                score += tg["avg_population"] * decay * step_weight
             rc["score"] = score
             if score > max_score:
                 max_score = score
@@ -2147,16 +2462,25 @@ def get_road_flows(
             else:
                 step = 1
                 
-            if step >= 9:
+            # Apply multipliers to step based on day and time_of_day
+            step_multiplier = 1.0
+            if day == "weekend":
+                step_multiplier *= 0.85
+            if time_of_day == "night":
+                step_multiplier *= 0.90
+            
+            adjusted_step = max(1, min(10, int(step * step_multiplier)))
+            
+            if adjusted_step >= 9:
                 flow_type = "매우 높음"
                 intensity = 0.9
-            elif step >= 7:
+            elif adjusted_step >= 7:
                 flow_type = "높음"
                 intensity = 0.7
-            elif step >= 5:
+            elif adjusted_step >= 5:
                 flow_type = "중간"
                 intensity = 0.5
-            elif step >= 3:
+            elif adjusted_step >= 3:
                 flow_type = "낮음"
                 intensity = 0.3
             else:
@@ -2165,16 +2489,25 @@ def get_road_flows(
             
             seed_val = int((rc["coordinates"][0][0] * 100000 + rc["coordinates"][0][1] * 100000) % 100000)
             rng = random.Random(seed_val)
-            if step >= 9:
+            if adjusted_step >= 9:
                 avg_flow = rng.randint(5000, 6200)
-            elif step >= 7:
+            elif adjusted_step >= 7:
                 avg_flow = rng.randint(3000, 4800)
-            elif step >= 5:
+            elif adjusted_step >= 5:
                 avg_flow = rng.randint(2000, 2900)
-            elif step >= 3:
+            elif adjusted_step >= 3:
                 avg_flow = rng.randint(1500, 1950)
             else:
                 avg_flow = rng.randint(500, 1400)
+            
+            # Apply fine-grained scaling to avg_flow to make numbers look smooth and dynamic
+            flow_multiplier = 1.0
+            if day == "weekend":
+                flow_multiplier *= rng.uniform(0.8, 0.9)
+            if time_of_day == "night":
+                flow_multiplier *= rng.uniform(0.9, 0.95)
+            
+            final_flow = max(100, int(avg_flow * flow_multiplier))
             
             features.append({
                 "type": "Feature",
@@ -2186,7 +2519,7 @@ def get_road_flows(
                     "road_name": rc["name"],
                     "road_class": rc["road_class"],
                     "flow_intensity": intensity,
-                    "avg_hourly_flow": avg_flow,
+                    "avg_hourly_flow": final_flow,
                     "flow_type": flow_type
                 }
             })

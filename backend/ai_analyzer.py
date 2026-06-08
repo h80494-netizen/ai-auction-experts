@@ -337,15 +337,37 @@ def analyze_overlap_cases(items: list) -> str:
             min_bid_rate = item.get('min_bid_rate', 100)
             if min_bid_rate is None:
                 min_bid_rate = 100
+                
+            # Extra fields from frontend if present
+            score_str = ""
+            if 'score' in item:
+                score_str = f"\n- AI 추천 지수: {item['score']}점 (100점 만점)"
+            
+            overlap_str = ""
+            if 'overlap_count' in item:
+                layers_str = ", ".join(item['matched_layers']) if item.get('matched_layers') else '없음'
+                overlap_str = f"\n- 중첩된 개발계획/입지 레이어: {item['overlap_count']}개 중첩 ({layers_str})"
+            
+            # Get database fields
+            special_notes_val = item.get('special_notes') or '없음'
+            area_size = item.get('area_size', 0)
+            land_size = item.get('land_size', 0)
+            subway_dist = item.get('subway_dist')
+            subway_dist_str = f"{subway_dist:.1f}m" if subway_dist is not None else "정보없음"
+            official_land_price = item.get('official_land_price', 0)
+            min_price_per_pyeong = item.get('min_price_per_pyeong', 0)
             
             items_context += f"""
 ### 물건 {idx+1}. {item.get('case_no', '알 수 없음')} ({source})
 - 소재지: {item.get('address', '알 수 없음')}
 - 부동산 종류: {item.get('property_type', '알 수 없음')}
 - 감정가: {item.get('appraised_value', 0):,} 원
-- 최저가: {item.get('minimum_value', 0):,} 원 (감정가 대비 {min_bid_rate}%)
-- 특이사항/권리분석내역: {item.get('risks', '특이사항 없음') or '특이사항 없음'}
-- 비고/주의사항: {item.get('precautions', '없음') or '없음'}
+- 최저가: {item.get('minimum_value', 0):,} 원 (감정가 대비 {min_bid_rate}%){score_str}{overlap_str}
+- 특별권리분석 특이사항 (DB): {special_notes_val}
+- 면적 정보: 건물 {area_size}㎡ / 대지 {land_size}㎡
+- 인근 지하철역 거리: {subway_dist_str}
+- 공시지가: {official_land_price:,} 원/㎡
+- 평당 최저가: {min_price_per_pyeong:,} 원/평
 """
 
         prompt = f"""
@@ -356,13 +378,19 @@ def analyze_overlap_cases(items: list) -> str:
 ### [중첩 분석 대상 물건 정보]
 {items_context}
 
-### [리포트 작성 가이드라인]
+### [리포트 작성 가이드라인 - 각 물건별 차별화 및 선순위 정밀 분석]
 1. **서론**: 분석 대상 지역의 개발 호재(중첩된 개발 정보들)의 시너지 효과를 2-3줄로 요약하십시오.
 2. **개별 물건 분석 (Best 3)**:
-   - 각 물건별로 다음 세 가지 핵심 지표를 약식 분석하십시오:
-     * **개발계획 리스크 및 예상 인수금액**: (예: 선순위 임차보증금 인수 가능성, 공시지가 대비 최저가 수준 등 개발계획 구역 내 규제 여부)
-     * **시세대비 최저가율**: (감정가 대비 최저가 수준이 시세대비 얼마나 매력적인지 분석)
-     * **수익률 및 투자 타당성**: (단기 매도 또는 장기 임대 세팅 시 예상 ROI)
+   - 각 물건별로 동일한 문구 템플릿 사용을 절대 금하고, 물건 고유의 소재지, 면적, 지하철역 거리, 공시지가, 특별권리사항 데이터를 사용하여 **개별적이고 차별화된 입지/개발 가치 분석**을 제공하십시오.
+   - 각 물건별로 다음 세 가지 항목을 상세히 분석하여 구체적으로 작성하십시오:
+     * **개발 가치 및 구체적 개발계획 수혜**: ('중첩된 개발계획/입지 레이어'와 '인근 지하철역 거리'를 참고하여, 특정 지구 개발이나 정비구역 입지가 가져올 구체적인 지가 상승률, 인프라 개발 영향 및 차별화된 수혜 강도를 서술하십시오.)
+     * **선순위 키워드 분석 및 권리 리스크 (인수금액 정밀 진단)**:
+       - **인수금액이 진짜 없는가?** '특별권리분석 특이사항 (DB)'에 기재된 키워드(예: '선순위임차인', '대항력', '유치권', '법정지상권', '위반건축물' 등)를 세심히 파악하여 분석하십시오.
+       - '선순위임차인'이나 '대항력' 등 인수 가능한 선순위 권리가 명시되어 있다면, 감정가 및 최저가 수준을 고려하여 예상 선순위 인수 보증금액 또는 부담하게 될 리스크 크기(인수 예상 금액)를 정밀 분석하여 적으십시오.
+       - 인수할 선순위 권리가 전혀 없다면, 말소기준권리를 근거로 낙찰 후 소멸되는 깨끗한 권리임을 명시하고 왜 인수금액이 0원(없음)인지를 논리적으로 서술하십시오.
+     * **감정가, 최저가, 예상 시세 및 수익률**:
+       - 각 물건의 감정가, 최저가 정보를 바탕으로 **예상 시세**를 추정하여 기재하십시오. (개발 호재가 있는 곳은 시세가 감정가 내외이거나 그 이상일 가능성이 큼)
+       - 최저가가 감정가/시세 대비 얼마나 매력적인 할인율(최저가율)인지 기재하고, 단기 매도 또는 임대 세팅 시 목표 ROI 및 사업 타당성을 구체적 수치와 함께 서술하십시오.
    - 경매 물건은 **마이옥션**, 공매 물건은 **온비드** 데이터를 참조하여 분석했다는 점을 명시하십시오.
 3. **종합 추천 평점 (별 5개 평점 부여)**:
    - 전체 리스트에 대해 최종 투자 매력도를 평가하여 5성급 평점(예: ⭐⭐⭐⭐⭐)을 부여하고, 그 사유를 명시하십시오. (중첩 개수가 많은 만큼 무조건 높은 평점인 별 5개 만점을 기준으로 추천하고 논리를 서술하십시오.)
@@ -377,3 +405,4 @@ def analyze_overlap_cases(items: list) -> str:
         return response.text
     except Exception as e:
         return f"⚠️ 중첩 분석 중 오류 발생: {str(e)}"
+

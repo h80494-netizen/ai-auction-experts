@@ -4,6 +4,8 @@ import tempfile
 import glob
 import geopandas as gpd
 import pandas as pd
+import argparse
+from shapely.geometry import Polygon
 
 def extract_and_load(zip_patterns, data_dir, temp_dir):
     """
@@ -44,20 +46,99 @@ def extract_and_load(zip_patterns, data_dir, temp_dir):
         return pd.concat(gdfs, ignore_index=True).drop_duplicates(subset=['gid'])
     return gpd.GeoDataFrame()
 
+def subdivide_to_250m(gdf, threshold_val_250m):
+    """
+    Subdivides 1km grid cells into 16 smaller 250m cells.
+    Distributes total_val and val uniformly (divided by 16) and filters.
+    """
+    print(f"Simulating 250m subdivision from 1km data (threshold: {threshold_val_250m}+ total buildings)...")
+    sub_records = []
+    
+    # Drop rows with NaN values to prevent NaN comparisons
+    gdf = gdf.dropna(subset=['val', 'total_val', 'ratio']).copy()
+    
+    # Ensure correct CRS for metric coordinates
+    if gdf.crs != 'EPSG:5179':
+        gdf = gdf.to_crs(epsg=5179)
+        
+    for idx, row in gdf.iterrows():
+        geom = row['geometry']
+        if geom.geom_type != 'Polygon':
+            continue
+            
+        minx, miny, maxx, maxy = geom.bounds
+        # A 1km grid is 1000m x 1000m. Let's create a 4x4 grid of 250m cells
+        for i in range(4):
+            for j in range(4):
+                total_sub = row['total_val'] / 16.0
+                if total_sub < threshold_val_250m:
+                    continue
+                    
+                ratio_sub = row['ratio']
+                if ratio_sub < 0.6 or ratio_sub > 1.0:
+                    continue
+                    
+                val_sub = row['val'] / 16.0
+                
+                x1 = minx + i * 250
+                y1 = miny + j * 250
+                x2 = x1 + 250
+                y2 = y1 + 250
+                
+                sub_poly = Polygon([(x1, y1), (x1, y2), (x2, y2), (x2, y1), (x1, y1)])
+                
+                sub_records.append({
+                    'gid': f"{row['gid']}_{i}_{j}",
+                    'val': val_sub,
+                    'total_val': total_sub,
+                    'ratio': ratio_sub,
+                    'geometry': sub_poly
+                })
+                
+    if not sub_records:
+        return gpd.GeoDataFrame(columns=['gid', 'val', 'total_val', 'ratio', 'geometry'], crs='EPSG:5179')
+        
+    sub_gdf = gpd.GeoDataFrame(sub_records, crs='EPSG:5179')
+    return sub_gdf
+
 def process_data():
+    parser = argparse.ArgumentParser(description="Process old buildings grid data.")
+    parser.add_argument('--simulate', action='store_true', help="Force simulated 250m subdivision from 1km data")
+    parser.add_argument('--threshold', type=float, default=250.0, help="Total buildings threshold for 250m grid (default: 250.0)")
+    args = parser.parse_args()
+
     data_dir = 'data'
     output_dir = 'public/data'
     os.makedirs(output_dir, exist_ok=True)
     output_file = os.path.join(output_dir, 'old_buildings_ratio.geojson')
     
-    old_patterns = [
-        '*(B100)국토통계_건축물-시기별 건축물 수(35년 이상)-(격자)*.zip'
-    ]
-    total_patterns = [
-        '*(B100)국토통계_건축물-건축물 수 합계 통계-(격자)*.zip',
-        '서울건축물수.zip'
-    ]
+    # 1. Detect 250M zip files
+    old_250m_files = glob.glob(os.path.join(data_dir, '*(B100)국토통계_건축물-시기별 건축물 수(35년 이상)-(격자) 250M_*.zip'))
+    total_250m_files = glob.glob(os.path.join(data_dir, '*(B100)국토통계_건축물-건축물 수 합계 통계-(격자) 250M_*.zip'))
     
+    has_250m_files = len(old_250m_files) > 0 and len(total_250m_files) > 0
+    
+    resolution = '1km'
+    
+    if has_250m_files and not args.simulate:
+        print("Detected 250M grid files. Running in official 250m grid mode.")
+        resolution = '250m'
+        old_patterns = ['*(B100)국토통계_건축물-시기별 건축물 수(35년 이상)-(격자) 250M_*.zip']
+        total_patterns = ['*(B100)국토통계_건축물-건축물 수 합계 통계-(격자) 250M_*.zip']
+    else:
+        if args.simulate:
+            print("Force simulation option enabled. Loading 1KM grid files for 250m simulation...")
+            resolution = '250m_sim'
+        else:
+            print("250M grid files not found. Running in fallback 1KM grid mode.")
+            resolution = '1km'
+            
+        old_patterns = ['*(B100)국토통계_건축물-시기별 건축물 수(35년 이상)-(격자) 1KM_*.zip']
+        total_patterns = [
+            '*(B100)국토통계_건축물-건축물 수 합계 통계-(격자) 1KM_*.zip',
+            '서울건축물수.zip'
+        ]
+        
     with tempfile.TemporaryDirectory() as temp_dir:
         print("Loading 35+ year buildings data...")
         old_gdf = extract_and_load(old_patterns, data_dir, temp_dir)
@@ -70,18 +151,27 @@ def process_data():
         return
         
     print("Merging data on 'gid'...")
-    # Drop geometry from total_gdf for merging
     total_df = total_gdf.drop(columns=['geometry']).rename(columns={'val': 'total_val'})
-    
     merged_gdf = old_gdf.merge(total_df, on='gid', how='inner')
-    
-    # Calculate ratio
     merged_gdf['ratio'] = merged_gdf['val'] / merged_gdf['total_val']
     
-    # Filter where (ratio >= 0.6 and total_val >= 500) OR (val >= 1000)
-    filtered_gdf = merged_gdf[((merged_gdf['total_val'] >= 500) & (merged_gdf['ratio'] >= 0.6)) | (merged_gdf['val'] >= 1000)].copy()
-    
-    print(f"Found {len(filtered_gdf)} grids matching old building criteria.")
+    # Apply filtering/subdivision based on mode
+    if resolution == '250m':
+        # Official 250M grid filter: ratio >= 60% and total_val >= 250
+        filtered_gdf = merged_gdf[(merged_gdf['ratio'] >= 0.6) & (merged_gdf['total_val'] >= 250)].copy()
+        filtered_gdf['resolution'] = '250m'
+        
+    elif resolution == '250m_sim':
+        # Simulated 250m subdivision.
+        filtered_gdf = subdivide_to_250m(merged_gdf, threshold_val_250m=args.threshold)
+        filtered_gdf['resolution'] = '250m'
+        
+    else:
+        # Fallback 1KM grid filter: (ratio >= 60% and total_val >= 500) or old_val >= 1000
+        filtered_gdf = merged_gdf[((merged_gdf['total_val'] >= 500) & (merged_gdf['ratio'] >= 0.6)) | (merged_gdf['val'] >= 1000)].copy()
+        filtered_gdf['resolution'] = '1km'
+        
+    print(f"Found {len(filtered_gdf)} grids matching criteria.")
     
     if filtered_gdf.empty:
         print("No grids found matching the criteria.")
@@ -92,11 +182,15 @@ def process_data():
     
     # Keep necessary columns
     filtered_gdf['ratio_pct'] = (filtered_gdf['ratio'] * 100).round(1)
-    final_gdf = filtered_gdf[['gid', 'val', 'total_val', 'ratio_pct', 'geometry']]
+    # Convert numeric fields to clean types
+    filtered_gdf['val'] = filtered_gdf['val'].round(1)
+    filtered_gdf['total_val'] = filtered_gdf['total_val'].round(1)
+    
+    final_gdf = filtered_gdf[['gid', 'val', 'total_val', 'ratio_pct', 'resolution', 'geometry']]
     
     print("Saving to GeoJSON...")
     final_gdf.to_file(output_file, driver='GeoJSON')
-    print(f"Successfully saved to {output_file}")
+    print(f"Successfully saved to {output_file} (Resolution: {resolution})")
 
 if __name__ == '__main__':
     process_data()

@@ -39,6 +39,23 @@
             /* Purple for Academy */
         }
 
+        .road-flow-pill {
+            background: #f1f5f9;
+            color: #475569;
+            font-weight: 500;
+            border: 1px solid transparent;
+            user-select: none;
+        }
+        .road-flow-pill:hover {
+            background: #e2e8f0;
+        }
+        .road-flow-pill:has(input:checked) {
+            background: #059669 !important;
+            color: white !important;
+            font-weight: 700;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+
         .custom-tooltip {
             background: var(--bg-panel);
             border: 1px solid var(--border-color);
@@ -852,38 +869,46 @@
         <i class="fa-solid fa-magnifying-glass-plus"></i> 지도를 동네 수준으로 확대해야 물건이 표시됩니다.
     </div>
     <!-- 유동동선 라인맵 5단계 범례 -->
-    <div id="road-flow-legend" style="display: none; position: absolute; top: 90px; right: 20px; z-index: 1000; background: white; padding: 12px 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid var(--border-color); font-family: 'Noto Sans KR', sans-serif; min-width: 140px; pointer-events: auto;">
-        <div style="font-weight: bold; font-size: 0.9rem; margin-bottom: 10px; color: #1e293b; text-align: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">유동 강도 범례</div>
+    <div id="road-flow-legend" style="display: none; position: absolute; top: 90px; right: 20px; z-index: 1000; background: white; padding: 12px 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid var(--border-color); font-family: 'Noto Sans KR', sans-serif; min-width: 160px; pointer-events: auto; user-select: none;">
+        <div id="road-flow-legend-header" style="font-weight: bold; font-size: 0.9rem; margin-bottom: 10px; color: #1e293b; text-align: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; cursor: move; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <i class="fa-solid fa-grip-vertical" style="color: #94a3b8; font-size: 0.8rem;"></i>
+            <span>유동 강도 범례</span>
+        </div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 25px; height: 5px; background: #7f1d1d; border-radius: 2px;"></div>
-                    <span style="font-weight: 500; color: #334155;">매우 높음</span>
-                </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; transition: opacity 0.2s;" id="legend-item-5">
+                <div style="width: 25px; height: 5px; background: #7f1d1d; border-radius: 2px;"></div>
+                <span style="font-weight: 500; color: #334155;">4,000명 이상</span>
             </div>
-            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 25px; height: 4px; background: #ef4444; border-radius: 2px;"></div>
-                    <span style="font-weight: 500; color: #334155;">높음</span>
-                </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; transition: opacity 0.2s;" id="legend-item-4">
+                <div style="width: 25px; height: 4px; background: #ef4444; border-radius: 2px;"></div>
+                <span style="font-weight: 500; color: #334155;">3,000명 이상</span>
             </div>
-            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 25px; height: 3px; background: #f97316; border-radius: 2px;"></div>
-                    <span style="font-weight: 500; color: #334155;">중간</span>
-                </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; transition: opacity 0.2s;" id="legend-item-3">
+                <div style="width: 25px; height: 3px; background: #f97316; border-radius: 2px;"></div>
+                <span style="font-weight: 500; color: #334155;">2,000명 이상</span>
             </div>
-            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 25px; height: 2px; background: #22c55e; border-radius: 2px;"></div>
-                    <span style="font-weight: 500; color: #334155;">낮음</span>
-                </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; transition: opacity 0.2s;" id="legend-item-2">
+                <div style="width: 25px; height: 2px; background: #22c55e; border-radius: 2px;"></div>
+                <span style="font-weight: 500; color: #334155;">1,000명 이상</span>
             </div>
-            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 25px; height: 1.5px; background: #a3e635; border-radius: 2px;"></div>
-                    <span style="font-weight: 500; color: #334155;">매우 낮음</span>
-                </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; transition: opacity 0.2s;" id="legend-item-1">
+                <div style="width: 25px; height: 1.5px; background: #a3e635; border-radius: 2px;"></div>
+                <span style="font-weight: 500; color: #334155;">1,000명 미만</span>
+            </div>
+        </div>
+        <!-- Slidable Intensity Filter -->
+        <div style="border-top: 1px solid #f1f5f9; padding-top: 8px; margin-top: 8px;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; font-weight: bold; color: var(--text-muted); margin-bottom: 4px;">
+                <span>최소 유동량 필터</span>
+                <span id="legend-filter-val" style="color: var(--primary-blue); font-weight: 700;">전체</span>
+            </div>
+            <input type="range" min="1" max="5" value="1" id="legend-flow-filter" oninput="filterRoadFlowsByLegend(this.value)" style="width: 100%; height: 6px; cursor: pointer; accent-color: var(--primary-blue);">
+            <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); margin-top: 2px; font-family: monospace;">
+                <span>전체</span>
+                <span>1천+</span>
+                <span>2천+</span>
+                <span>3천+</span>
+                <span>4천+</span>
             </div>
         </div>
     </div>
@@ -919,17 +944,24 @@
                     <input type="checkbox" class="region-checkbox" value="서울" onchange="loadAuctions(); updateCenterAddress(); fetchInfraData(); fetchPopulationHeatmap(); fetchResidentialHeatmap(); fetchWorkplaceHeatmap();" checked> 서울
                 </label>
                 <label style="cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:bold; color:var(--text-dark);">
-                    <input type="checkbox" class="region-checkbox" value="경기" onchange="loadAuctions(); updateCenterAddress(); fetchInfraData(); fetchPopulationHeatmap(); fetchResidentialHeatmap(); fetchWorkplaceHeatmap();"> 경기
+                    <input type="checkbox" class="region-checkbox" value="경기" onchange="loadAuctions(); updateCenterAddress(); fetchInfraData(); fetchPopulationHeatmap(); fetchResidentialHeatmap(); fetchWorkplaceHeatmap();" checked> 경기
                 </label>
                 <label style="cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:bold; color:var(--text-dark);">
-                    <input type="checkbox" class="region-checkbox" value="인천" onchange="loadAuctions(); updateCenterAddress(); fetchInfraData(); fetchPopulationHeatmap(); fetchResidentialHeatmap(); fetchWorkplaceHeatmap();"> 인천
+                    <input type="checkbox" class="region-checkbox" value="인천" onchange="loadAuctions(); updateCenterAddress(); fetchInfraData(); fetchPopulationHeatmap(); fetchResidentialHeatmap(); fetchWorkplaceHeatmap();" checked> 인천
                 </label>
             </div>
         </div>
 
-        <div class="top-actions">
-            <span id="highlight-count" style="display: none; font-size: 0.85rem; font-weight: bold; color: #c026d3; margin-right: 10px; background: #fdf4ff; padding: 4px 8px; border-radius: 12px; border: 1px solid #c026d3; cursor: pointer; transition: all 0.2s;" onclick="openOverlapAnalysis()">0건 중첩</span>
+        <div class="top-actions" style="display: flex; align-items: center; gap: 8px;">
+            <span id="highlight-count" style="display: none; font-size: 0.85rem; font-weight: bold; color: #c026d3; background: #fdf4ff; padding: 4px 8px; border-radius: 12px; border: 1px solid #c026d3; cursor: pointer; transition: all 0.2s;" onclick="openOverlapAnalysis()">0건 중첩</span>
             <div class="icon-btn" id="btn-show-analysis" title="AI 중첩 분석 보고서 보기" style="display: none; color: #ec4899; border-color: #ec4899; background: #fdf2f8;" onclick="openOverlapAnalysis()"><i class="fa-solid fa-brain"></i></div>
+            
+            <!-- 형광펜 AND/OR 모드 선택 버튼 -->
+            <div class="highlighter-mode-toggle" id="highlighter-mode-container" style="display: none; align-items: center; background: #f1f5f9; border-radius: 20px; padding: 2px; border: 1px solid var(--border-color); font-size: 0.75rem; font-weight: bold; height: 32px; box-sizing: border-box; align-self: center;">
+                <span class="mode-btn active" id="btn-mode-and" style="padding: 4px 10px; border-radius: 15px; cursor: pointer; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); color: var(--text-dark); transition: all 0.2s;" onclick="setHighlighterMode('AND')">AND</span>
+                <span class="mode-btn" id="btn-mode-or" style="padding: 4px 10px; border-radius: 15px; cursor: pointer; color: #64748b; transition: all 0.2s;" onclick="setHighlighterMode('OR')">OR</span>
+            </div>
+            
             <div class="icon-btn" id="btn-highlighter" title="형광펜 켜기/끄기 (필터와 중첩된 물건 강조)" style="color: #94a3b8;"><i class="fa-solid fa-highlighter"></i></div>
             <div class="icon-btn" title="경공매 필터 설정" onclick="toggleRightPanel()"><i class="fa-solid fa-filter" style="color: var(--primary-blue);"></i></div>
         </div>
@@ -1047,36 +1079,102 @@
 
 
 
-            <div class="toggle-row" style="background: #fffbeb; padding: 10px; border-radius: 8px; margin-top: 5px;">
-                <div class="toggle-label">
-                    <div>
-                        <i class="fa-solid fa-house-user" style="color: #ea580c;"></i> 격자형 주거인구 히트맵
-                        <span class="toggle-desc" style="color: #c2410c;">지역별 격자 단위 거주 밀도 (노란/오렌지)</span>
+            <div class="toggle-row" style="background: #fffbeb; padding: 10px; border-radius: 8px; margin-top: 5px; flex-direction: column; align-items: stretch;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div class="toggle-label">
+                        <div>
+                            <i class="fa-solid fa-house-user" style="color: #ea580c;"></i> 격자형 주거인구 히트맵
+                            <span class="toggle-desc" style="color: #c2410c;">지역별 격자 단위 거주 밀도 (노란/오렌지)</span>
+                        </div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="toggle-residential-heatmap"><span class="slider"></span></label>
+                </div>
+                <div id="residential-legend" style="display: none; margin-top: 8px; font-size: 0.75rem; border-top: 1px dashed rgba(234, 88, 12, 0.2); padding-top: 8px;">
+                    <div style="font-weight: bold; color: #c2410c; margin-bottom: 5px; display: flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-circle-info"></i> 거주 밀집도 범례 (상위 분위수)
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <div style="width: 12px; height: 12px; background: #facc15; border-radius: 3px; border: 1px solid rgba(0,0,0,0.1);"></div>
+                            <span style="font-size: 0.75rem; color: #475569;">상위 30% 이내</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <div style="width: 12px; height: 12px; background: #ea580c; border-radius: 3px; border: 1px solid rgba(0,0,0,0.1);"></div>
+                            <span style="font-size: 0.75rem; color: #475569;">상위 10% 이내</span>
+                        </div>
                     </div>
                 </div>
-                <label class="switch"><input type="checkbox" id="toggle-residential-heatmap"><span
-                        class="slider"></span></label>
             </div>
 
-            <div class="toggle-row" style="background: #f5f3ff; padding: 10px; border-radius: 8px; margin-top: 5px;">
-                <div class="toggle-label">
-                    <div>
-                        <i class="fa-solid fa-briefcase" style="color: #6366f1;"></i> 격자형 직장인구 히트맵
-                        <span class="toggle-desc" style="color: #4f46e5;">상업 및 업무지구 종사자 밀집도 (보라/네온)</span>
+            <div class="toggle-row" style="background: #f5f3ff; padding: 10px; border-radius: 8px; margin-top: 5px; flex-direction: column; align-items: stretch;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div class="toggle-label">
+                        <div>
+                            <i class="fa-solid fa-briefcase" style="color: #6366f1;"></i> 격자형 직장인구 히트맵
+                            <span class="toggle-desc" style="color: #4f46e5;">상업 및 업무지구 종사자 밀집도 (보라/네온)</span>
+                        </div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="toggle-workplace-heatmap"><span class="slider"></span></label>
+                </div>
+                <div id="workplace-legend" style="display: none; margin-top: 8px; font-size: 0.75rem; border-top: 1px dashed rgba(99, 102, 241, 0.2); padding-top: 8px;">
+                    <div style="font-weight: bold; color: #4f46e5; margin-bottom: 5px; display: flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-circle-info"></i> 직장인 밀집도 범례 (상위 분위수)
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <div style="width: 12px; height: 12px; background: #c084fc; border-radius: 3px; border: 1px solid rgba(0,0,0,0.1);"></div>
+                            <span style="font-size: 0.75rem; color: #475569;">상위 30% 이내</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <div style="width: 12px; height: 12px; background: #6366f1; border-radius: 3px; border: 1px solid rgba(0,0,0,0.1);"></div>
+                            <span style="font-size: 0.75rem; color: #475569;">상위 10% 이내</span>
+                        </div>
                     </div>
                 </div>
-                <label class="switch"><input type="checkbox" id="toggle-workplace-heatmap"><span
-                        class="slider"></span></label>
+
             </div>
 
-            <div class="toggle-row" style="background: #ecfdf5; padding: 10px; border-radius: 8px; margin-top: 5px;">
-                <div class="toggle-label">
-                    <div>
-                        <i class="fa-solid fa-route" style="color: #059669;"></i> 소도로 유동동선 라인 맵
-                        <span class="toggle-desc" style="color: #047857;">이면도로 및 골목길 상위 3단계 핵심 유동 동선 (초경량 Canvas, 줌 레벨 15 이상 활성화)</span>
+            <div class="toggle-row" style="background: #ecfdf5; padding: 10px; border-radius: 8px; margin-top: 5px; flex-direction: column; align-items: stretch; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div class="toggle-label">
+                        <div>
+                            <i class="fa-solid fa-route" style="color: #059669;"></i> 소도로 유동동선 라인 맵
+                            <span class="toggle-desc" style="color: #047857;">이면도로 및 골목길 상위 3단계 핵심 유동 동선 (초경량 Canvas, 줌 레벨 15 이상 활성화)</span>
+                        </div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="toggle-road-flows"><span class="slider"></span></label>
+                </div>
+                <div id="road-flows-sub-container" style="display: none; padding-left: 20px; margin-top: 4px;">
+                    <div style="font-size: 0.75rem; color: #047857; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; font-weight: bold;">
+                        <span>분석 요일/시간대 필터</span>
+                    </div>
+                    <div style="border: 1px solid rgba(5, 150, 105, 0.2); border-radius: 6px; padding: 8px; background: #fff; display: flex; flex-direction: column; gap: 8px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">
+                        <!-- Day of Week selection -->
+                        <div style="display: flex; gap: 12px; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 6px;">
+                            <span style="font-size: 0.72rem; font-weight: bold; color: var(--text-dark); min-width: 55px;">요일 구분:</span>
+                            <div style="display: flex; background: #f1f5f9; border-radius: 6px; padding: 2px; gap: 2px;">
+                                <label style="display: flex; align-items: center; justify-content: center; width: 50px; height: 24px; font-size: 0.75rem; cursor: pointer; border-radius: 4px; transition: all 0.2s;" class="road-flow-pill">
+                                    <input type="radio" name="road-flow-day" class="road-flow-filter-radio" value="weekday" checked onchange="updateRoadFlowFilters()" style="display: none;"> 주중
+                                </label>
+                                <label style="display: flex; align-items: center; justify-content: center; width: 50px; height: 24px; font-size: 0.75rem; cursor: pointer; border-radius: 4px; transition: all 0.2s;" class="road-flow-pill">
+                                    <input type="radio" name="road-flow-day" class="road-flow-filter-radio" value="weekend" onchange="updateRoadFlowFilters()" style="display: none;"> 주말
+                                </label>
+                            </div>
+                        </div>
+                        <!-- Time of Day selection -->
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <span style="font-size: 0.72rem; font-weight: bold; color: var(--text-dark); min-width: 55px;">시간대:</span>
+                            <div style="display: flex; background: #f1f5f9; border-radius: 6px; padding: 2px; gap: 2px;">
+                                <label style="display: flex; align-items: center; justify-content: center; width: 50px; height: 24px; font-size: 0.75rem; cursor: pointer; border-radius: 4px; transition: all 0.2s;" class="road-flow-pill">
+                                    <input type="radio" name="road-flow-time" class="road-flow-filter-radio" value="day" checked onchange="updateRoadFlowFilters()" style="display: none;"> 낮
+                                </label>
+                                <label style="display: flex; align-items: center; justify-content: center; width: 50px; height: 24px; font-size: 0.75rem; cursor: pointer; border-radius: 4px; transition: all 0.2s;" class="road-flow-pill">
+                                    <input type="radio" name="road-flow-time" class="road-flow-filter-radio" value="night" onchange="updateRoadFlowFilters()" style="display: none;"> 밤
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <label class="switch"><input type="checkbox" id="toggle-road-flows"><span class="slider"></span></label>
             </div>
 
             <div class="toggle-row" style="background: #fff7ed; padding: 10px; border-radius: 8px; margin-top: 5px;">
@@ -1374,6 +1472,43 @@
         map.createPane('auctionPane');
         map.getPane('auctionPane').style.zIndex = 650;
 
+        // --- Smart Caching Bounds and Data ---
+        let cachedPoisData = null;
+        let cachedPoisBounds = null;
+        let cachedPoisZoom = null;
+        let cachedPoisRegions = '';
+
+        let cachedDistrictUnitsData = null;
+        let cachedDistrictUnitsBounds = null;
+        let cachedDistrictUnitsZoom = null;
+
+        let cachedRedevelopmentZonesData = null;
+        let cachedRedevelopmentZonesBounds = null;
+        let cachedRedevelopmentZonesZoom = null;
+
+        let cachedZoningPolygonsData = null;
+        let cachedZoningPolygonsBounds = null;
+        let cachedZoningPolygonsZoom = null;
+
+        let cachedPlanningRoadsData = null;
+        let cachedPlanningRoadsBounds = null;
+        let cachedPlanningRoadsZoom = null;
+
+        let cachedResHeatmapData = null;
+        let cachedResHeatmapBounds = null;
+        let cachedResHeatmapZoom = null;
+        let cachedResHeatmapRegions = '';
+
+        let cachedWorkHeatmapData = null;
+        let cachedWorkHeatmapBounds = null;
+        let cachedWorkHeatmapZoom = null;
+        let cachedWorkHeatmapRegions = '';
+
+        let cachedAuctionsData = null;
+        let cachedAuctionsBounds = null;
+        let cachedAuctionsZoom = null;
+        let cachedAuctionsFilterState = '';
+
         // 2. Layer Groups
         const layers = {
             subway: L.layerGroup().addTo(map),
@@ -1449,17 +1584,91 @@
 
         document.getElementById('btn-highlighter').addEventListener('click', function() {
             this.classList.toggle('active');
+            const modeContainer = document.getElementById('highlighter-mode-container');
             if (this.classList.contains('active')) {
                 this.style.color = '#c026d3';
                 this.style.borderColor = '#c026d3';
                 this.style.background = '#fdf4ff';
+                if (modeContainer) modeContainer.style.display = 'inline-flex';
             } else {
                 this.style.color = '#94a3b8';
                 this.style.borderColor = 'var(--border-color)';
                 this.style.background = 'transparent';
+                if (modeContainer) modeContainer.style.display = 'none';
             }
             triggerHighlighter();
         });
+
+        window.highlighterMode = 'AND';
+        window.setHighlighterMode = function(mode) {
+            window.highlighterMode = mode;
+            const btnAnd = document.getElementById('btn-mode-and');
+            const btnOr = document.getElementById('btn-mode-or');
+            if (mode === 'AND') {
+                btnAnd.classList.add('active');
+                btnAnd.style.background = '#fff';
+                btnAnd.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
+                btnAnd.style.color = 'var(--text-dark)';
+                
+                btnOr.classList.remove('active');
+                btnOr.style.background = 'transparent';
+                btnOr.style.boxShadow = 'none';
+                btnOr.style.color = '#64748b';
+            } else {
+                btnOr.classList.add('active');
+                btnOr.style.background = '#fff';
+                btnOr.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
+                btnOr.style.color = 'var(--text-dark)';
+                
+                btnAnd.classList.remove('active');
+                btnAnd.style.background = 'transparent';
+                btnAnd.style.boxShadow = 'none';
+                btnAnd.style.color = '#64748b';
+            }
+            triggerHighlighter();
+        };
+
+        function getClosestPointOnSegment(p, v, w) {
+            const sqr = x => x * x;
+            const l2 = sqr(v.lat - w.lat) + sqr(v.lng - w.lng);
+            if (l2 === 0) return v;
+            let t = ((p.lat - v.lat) * (w.lat - v.lat) + (p.lng - v.lng) * (w.lng - v.lng)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return {
+                lat: v.lat + t * (w.lat - v.lat),
+                lng: v.lng + t * (w.lng - v.lng)
+            };
+        }
+
+        function checkPointNearPolyline(p, polyline, maxDistanceMeters = 20) {
+            const latlngs = polyline.getLatLngs();
+            if (!latlngs || latlngs.length === 0) return false;
+            
+            function getSegments(arr) {
+                let segments = [];
+                if (arr[0] instanceof L.LatLng || (arr[0] && typeof arr[0].lat === 'number')) {
+                    for (let i = 0; i < arr.length - 1; i++) {
+                        segments.push([arr[i], arr[i+1]]);
+                    }
+                } else if (Array.isArray(arr)) {
+                    arr.forEach(sub => {
+                        segments = segments.concat(getSegments(sub));
+                    });
+                }
+                return segments;
+            }
+            
+            const segments = getSegments(latlngs);
+            for (let i = 0; i < segments.length; i++) {
+                const [v, w] = segments[i];
+                const closest = getClosestPointOnSegment(p, v, w);
+                const dist = map.distance(p, L.latLng(closest.lat, closest.lng));
+                if (dist <= maxDistanceMeters) {
+                    return true;
+                }
+            }
+            return false;
+        }
 
         function checkPointInLayerGroup(pt, layerGroup, latlng) {
             let isInside = false;
@@ -1482,6 +1691,10 @@
                             }
                         }
                     }
+                } else if (layer.getLatLngs && typeof layer.getLatLngs === 'function') {
+                    if (checkPointNearPolyline(latlng, layer, 20)) {
+                        isInside = true;
+                    }
                 }
             });
             return isInside;
@@ -1492,6 +1705,7 @@
         function applyHighlighter() {
             const btnHighlighter = document.getElementById('btn-highlighter');
             const countEl = document.getElementById('highlight-count');
+            const modeContainer = document.getElementById('highlighter-mode-container');
             highlightedCaseNos = [];
 
             if (!btnHighlighter || !btnHighlighter.classList.contains('active')) {
@@ -1501,29 +1715,38 @@
                     });
                 });
                 if (countEl) countEl.style.display = 'none';
+                if (modeContainer) modeContainer.style.display = 'none';
                 return;
             }
 
+            if (modeContainer) modeContainer.style.display = 'inline-flex';
+
             const activeFilterIds = [
-                { id: 'toggle-subways', layer: layers.subway },
-                { id: 'toggle-univs', layer: layers.univ },
-                { id: 'toggle-inds', layer: layers.ind },
-                { id: 'toggle-middles', layer: layers.middle },
-                { id: 'toggle-commercial', layer: layers.commercial },
-                { id: 'toggle-hagwons', layer: layers.hagwon },
-                { id: 'toggle-dev1', layer: layers.dev1 },
-                { id: 'toggle-dev2', layer: layers.dev2 },
-                { id: 'toggle-dev3', layer: layers.dev3 },
-                { id: 'toggle-zoning', layer: layers.zoning },
-                { id: 'toggle-planning-road', layer: layers.planningRoad },
-                { id: 'toggle-old-buildings', layer: layers.oldBuildings }
+                { id: 'toggle-subways', layer: layers.subway, isLine: false },
+                { id: 'toggle-bus', layer: layers.bus, isLine: false },
+                { id: 'toggle-univs', layer: layers.univ, isLine: false },
+                { id: 'toggle-inds', layer: layers.ind, isLine: false },
+                { id: 'toggle-middles', layer: layers.middle, isLine: false },
+                { id: 'toggle-commercial', layer: layers.commercial, isLine: false },
+                { id: 'toggle-hagwons', layer: layers.hagwon, isLine: false },
+                { id: 'toggle-dev1', layer: layers.dev1, isLine: false },
+                { id: 'toggle-dev2', layer: layers.dev2, isLine: false },
+                { id: 'toggle-dev3', layer: layers.dev3, isLine: false },
+                { id: 'toggle-zoning', layer: layers.zoning, isLine: false },
+                { id: 'toggle-planning-road', layer: layers.planningRoad, isLine: true },
+                { id: 'toggle-road-flows', layer: layers.roadFlows, isLine: true },
+                { id: 'toggle-old-buildings', layer: layers.oldBuildings, isLine: false }
             ];
             
             const activeLayers = [];
+            const activeNonLineLayers = [];
             activeFilterIds.forEach(f => {
                 const el = document.getElementById(f.id);
                 if (el && el.checked) {
                     activeLayers.push(f.layer);
+                    if (!f.isLine) {
+                        activeNonLineLayers.push(f.layer);
+                    }
                 }
             });
 
@@ -1533,19 +1756,37 @@
                         radius: 6, color: '#fff', weight: 2, fillColor: marker.typeColor, fillOpacity: 1
                     });
                 });
+                if (countEl) countEl.style.display = 'none';
                 return;
             }
+
+            const mode = window.highlighterMode || 'AND';
 
             layers.auction.eachLayer(marker => {
                 const latlng = marker.getLatLng();
                 const pt = window.turf ? turf.point([latlng.lng, latlng.lat]) : null;
-                let isInside = true;
-
-                for (let i = 0; i < activeLayers.length; i++) {
-                    if (!checkPointInLayerGroup(pt, activeLayers[i], latlng)) {
-                        isInside = false;
-                        break;
+                
+                const matchedLayersList = [];
+                const matchedNonLineLayersList = [];
+                activeFilterIds.forEach(f => {
+                    const el = document.getElementById(f.id);
+                    if (el && el.checked) {
+                        if (checkPointInLayerGroup(pt, f.layer, latlng)) {
+                            matchedLayersList.push(f.layer);
+                            if (!f.isLine) {
+                                matchedNonLineLayersList.push(f.layer);
+                            }
+                        }
                     }
+                });
+
+                let isInside = false;
+                if (mode === 'AND') {
+                    // AND는 유동동선 등 라인을 빼고 레이어목록의 조건을 모두 충족할 때
+                    isInside = (activeNonLineLayers.length > 0 && matchedNonLineLayersList.length === activeNonLineLayers.length);
+                } else {
+                    // OR은 하나라도 중첩되는 경우
+                    isInside = (matchedLayersList.length >= 1);
                 }
 
                 if (isInside) {
@@ -1566,25 +1807,14 @@
                     countEl.innerText = `${highlightedCaseNos.length}건 중첩`;
                     countEl.style.display = 'inline-block';
                     
-                    if (activeLayers.length >= 3) {
-                        countEl.style.cursor = 'pointer';
-                        countEl.style.background = '#c026d3';
-                        countEl.style.color = '#ffffff';
-                        countEl.style.borderColor = '#c026d3';
-                        countEl.title = 'AI 입지/개발 심층 중첩 분석 보고서 보기';
-                        
-                        const btnAnalysis = document.getElementById('btn-show-analysis');
-                        if (btnAnalysis) btnAnalysis.style.display = 'inline-flex';
-                    } else {
-                        countEl.style.cursor = 'default';
-                        countEl.style.background = '#fdf4ff';
-                        countEl.style.color = '#c026d3';
-                        countEl.style.borderColor = '#c026d3';
-                        countEl.title = '';
-                        
-                        const btnAnalysis = document.getElementById('btn-show-analysis');
-                        if (btnAnalysis) btnAnalysis.style.display = 'none';
-                    }
+                    countEl.style.cursor = 'pointer';
+                    countEl.style.background = '#c026d3';
+                    countEl.style.color = '#ffffff';
+                    countEl.style.borderColor = '#c026d3';
+                    countEl.title = 'AI 입지/개발 중첩 분석 보고서 보기';
+                    
+                    const btnAnalysis = document.getElementById('btn-show-analysis');
+                    if (btnAnalysis) btnAnalysis.style.display = 'inline-flex';
                 } else {
                     countEl.style.display = 'none';
                     const btnAnalysis = document.getElementById('btn-show-analysis');
@@ -1596,51 +1826,73 @@
         window.openOverlapAnalysis = function() {
             const btnHighlighter = document.getElementById('btn-highlighter');
             if (!btnHighlighter || !btnHighlighter.classList.contains('active')) {
-                alert('형광펜을 켠 후 필터를 3개 이상 선택해주세요.');
+                alert('형광펜을 켠 후 필터를 선택해주세요.');
                 return;
             }
 
             const activeFilterIds = [
-                { id: 'toggle-subways', layer: layers.subway, name: '지하철역' },
-                { id: 'toggle-univs', layer: layers.univ, name: '대학교' },
-                { id: 'toggle-inds', layer: layers.ind, name: '산업단지' },
-                { id: 'toggle-middles', layer: layers.middle, name: '중학교' },
-                { id: 'toggle-commercial', layer: layers.commercial, name: '상권' },
-                { id: 'toggle-hagwons', layer: layers.hagwon, name: '학원가' },
-                { id: 'toggle-dev1', layer: layers.dev1, name: '택지지구' },
-                { id: 'toggle-dev2', layer: layers.dev2, name: '지구단위계획' },
-                { id: 'toggle-dev3', layer: layers.dev3, name: '재개발/재건축' },
-                { id: 'toggle-zoning', layer: layers.zoning, name: '용도지역' },
-                { id: 'toggle-planning-road', layer: layers.planningRoad, name: '도시계획도로' },
-                { id: 'toggle-old-buildings', layer: layers.oldBuildings, name: '노후지' }
+                { id: 'toggle-subways', layer: layers.subway, name: '지하철역', isLine: false },
+                { id: 'toggle-bus', layer: layers.bus, name: '버스정류장', isLine: false },
+                { id: 'toggle-univs', layer: layers.univ, name: '대학교', isLine: false },
+                { id: 'toggle-inds', layer: layers.ind, name: '산업단지', isLine: false },
+                { id: 'toggle-middles', layer: layers.middle, name: '중학교', isLine: false },
+                { id: 'toggle-commercial', layer: layers.commercial, name: '상권', isLine: false },
+                { id: 'toggle-hagwons', layer: layers.hagwon, name: '학원가', isLine: false },
+                { id: 'toggle-dev1', layer: layers.dev1, name: '택지지구', isLine: false },
+                { id: 'toggle-dev2', layer: layers.dev2, name: '지구단위계획', isLine: false },
+                { id: 'toggle-dev3', layer: layers.dev3, name: '재개발/재건축', isLine: false },
+                { id: 'toggle-zoning', layer: layers.zoning, name: '용도지역', isLine: false },
+                { id: 'toggle-planning-road', layer: layers.planningRoad, name: '도시계획도로', isLine: true },
+                { id: 'toggle-road-flows', layer: layers.roadFlows, name: '유동동선', isLine: true },
+                { id: 'toggle-old-buildings', layer: layers.oldBuildings, name: '노후지', isLine: false }
             ];
 
             const activeLayers = [];
+            const activeNonLineLayers = [];
             activeFilterIds.forEach(f => {
                 const el = document.getElementById(f.id);
                 if (el && el.checked) {
-                    activeLayers.push({ layer: f.layer, name: f.name });
+                    activeLayers.push({ layer: f.layer, name: f.name, isLine: f.isLine });
+                    if (!f.isLine) {
+                        activeNonLineLayers.push({ layer: f.layer, name: f.name });
+                    }
                 }
             });
 
-            if (activeLayers.length < 3) {
-                alert('필터를 3개 이상 선택해 주세요 (현재 선택: ' + activeLayers.length + '개).');
+            if (activeLayers.length === 0) {
+                alert('필터를 선택해주세요.');
                 return;
             }
 
             const matchedAuctions = [];
+            const mode = window.highlighterMode || 'AND';
+
             layers.auction.eachLayer(marker => {
                 const latlng = marker.getLatLng();
                 const pt = window.turf ? turf.point([latlng.lng, latlng.lat]) : null;
+                
                 const matchedLayersList = [];
+                const matchedNonLineLayersList = [];
 
                 activeLayers.forEach(l => {
                     if (checkPointInLayerGroup(pt, l.layer, latlng)) {
                         matchedLayersList.push(l.name);
+                        if (!l.isLine) {
+                            matchedNonLineLayersList.push(l.name);
+                        }
                     }
                 });
 
-                if (matchedLayersList.length > 0) {
+                let isInside = false;
+                if (mode === 'AND') {
+                    // AND는 유동동선 등 라인을 빼고 레이어목록의 조건을 모두 충족할 때
+                    isInside = (activeNonLineLayers.length > 0 && matchedNonLineLayersList.length === activeNonLineLayers.length);
+                } else {
+                    // OR은 하나라도 중첩되는 경우
+                    isInside = (matchedLayersList.length >= 1);
+                }
+
+                if (isInside && matchedLayersList.length > 0) {
                     matchedAuctions.push({
                         case_no: marker.auctionData.case_no,
                         property_type: marker.auctionData.property_type || '주택',
@@ -1655,156 +1907,186 @@
             });
 
             if (matchedAuctions.length === 0) {
-                alert('필터 조건에 부합하여 중첩된 물건이 없습니다.');
+                alert('필터 조건에 부합하는 중첩된 물건이 없습니다.');
                 return;
             }
 
+            console.log("Saving highlighted auctions count:", matchedAuctions.length);
+            console.log("Saving highlighted auctions data:", matchedAuctions);
             // Save to local storage
             localStorage.setItem('highlighted_auctions', JSON.stringify(matchedAuctions));
+            console.log("Saved to localStorage: highlighted_auctions");
             
             // Open in a new tab/window
             window.open('analysis.html', '_blank');
         };
 
-        // 4. Data Loading Logic
         async function fetchInfraData() {
             if (map.getZoom() < minZoomRequired) return;
             const bounds = map.getBounds();
             const checkedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => cb.value);
-            let url = `/api/map/pois?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}`;
-            if (checkedRegions.length > 0) url += `&regions=${checkedRegions.join(',')}`;
-            
+            const regionsStr = checkedRegions.join(',');
+
+            const isCached = cachedPoisZoom === map.getZoom() && 
+                             cachedPoisBounds && 
+                             cachedPoisBounds.contains(bounds) && 
+                             cachedPoisRegions === regionsStr &&
+                             cachedPoisData;
+
+            let data;
+            if (isCached) {
+                console.log("POIs loaded from cache (within bounds).");
+                data = cachedPoisData;
+            } else {
+                const southWest = bounds.getSouthWest();
+                const northEast = bounds.getNorthEast();
+                const latDiff = northEast.lat - southWest.lat;
+                const lngDiff = northEast.lng - southWest.lng;
+                
+                const padLat = latDiff * 0.25;
+                const padLng = lngDiff * 0.25;
+                
+                const paddedBounds = L.latLngBounds(
+                    L.latLng(southWest.lat - padLat, southWest.lng - padLng),
+                    L.latLng(northEast.lat + padLat, northEast.lng + padLng)
+                );
+
+                let url = `/api/map/pois?min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}`;
+                if (checkedRegions.length > 0) url += `&regions=${checkedRegions.join(',')}`;
+
+                try {
+                    const res = await fetch(url);
+                    const json = await res.json();
+                    if (json.status === 'success') {
+                        cachedPoisData = json.data;
+                        cachedPoisBounds = paddedBounds;
+                        cachedPoisZoom = map.getZoom();
+                        cachedPoisRegions = regionsStr;
+                        data = cachedPoisData;
+                    } else {
+                        return;
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch POIs:", err);
+                    return;
+                }
+            }
+
             try {
-                const res = await fetch(url);
-                const json = await res.json();
+                // Populate Subway markers
+                layers.subway.clearLayers();
+                if (data.subways) {
+                    data.subways.forEach(s => {
+                        let radius = parseInt(document.getElementById('buffer-subways').value) || 500;
+                        let color = getGlobalLineColor(s.line);
+                        L.circle([s.lat, s.lng], { color: color, fillColor: color, fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.subway);
+                        createDotMarker(s.lat, s.lng, color, `<b>${s.name}</b><br>${s.line}`).addTo(layers.subway);
+                    });
+                }
 
-                if (json.status === 'success') {
-                    const data = json.data;
+                // Populate Universities markers
+                layers.univ.clearLayers();
+                if (data.universities) {
+                    data.universities.forEach(u => {
+                        let radius = parseInt(document.getElementById('buffer-univs').value) || 500;
+                        L.circle([u.lat, u.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.univ);
+                        createDotMarker(u.lat, u.lng, '#3b82f6', `<b>${u.name}</b><br>대학교`).addTo(layers.univ);
+                    });
+                }
 
-                    if (data.subways && document.getElementById('toggle-subways').checked) {
-                        layers.subway.clearLayers();
-                        data.subways.forEach(s => {
-                            let radius = parseInt(document.getElementById('buffer-subways').value) || 500;
-                            let color = getGlobalLineColor(s.line);
-                            L.circle([s.lat, s.lng], { color: color, fillColor: color, fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.subway);
-                            createDotMarker(s.lat, s.lng, color, `<b>${s.name}</b><br>${s.line}`)
-                                .addTo(layers.subway);
-                        });
-                    }
+                // Populate Industrial Complexes markers
+                layers.ind.clearLayers();
+                if (data.industrial_complexes) {
+                    data.industrial_complexes.forEach(i => {
+                        let radius = parseInt(document.getElementById('buffer-inds').value) || 500;
+                        L.circle([i.lat, i.lng], { color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.ind);
+                        createDotMarker(i.lat, i.lng, '#f59e0b', `<b>${i.name}</b><br>산업단지`).addTo(layers.ind);
+                    });
+                }
 
-                    if (data.universities && document.getElementById('toggle-univs').checked) {
-                        layers.univ.clearLayers();
-                        data.universities.forEach(u => {
-                            let radius = parseInt(document.getElementById('buffer-univs').value) || 500;
-                            L.circle([u.lat, u.lng], { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.univ);
-                            createDotMarker(u.lat, u.lng, '#3b82f6', `<b>${u.name}</b><br>대학교`).addTo(layers.univ);
-                        });
-                    }
-
-                    if (data.industrial_complexes && document.getElementById('toggle-inds').checked) {
-                        layers.ind.clearLayers();
-                        data.industrial_complexes.forEach(i => {
-                            let radius = parseInt(document.getElementById('buffer-inds').value) || 500;
-                            L.circle([i.lat, i.lng], { color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.ind);
-                            createDotMarker(i.lat, i.lng, '#f59e0b', `<b>${i.name}</b><br>산업단지`).addTo(layers.ind);
-                        });
-                    }
-
-                    if (data.middle_schools && document.getElementById('toggle-middles') && document.getElementById('toggle-middles').checked) {
-                        layers.middle.clearLayers();
-                        data.middle_schools.forEach(m => {
-                            let color = '#94a3b8';
-                            let label = `특목고 진학률 ${parseFloat(m.special_hs_rate).toFixed(1)}%`;
-                            let markerRadius = 4;
-                            if (m.special_hs_rate >= 10) {
-                                color = '#f43f5e';
-                                markerRadius = 6;
-                                let radius = parseInt(document.getElementById('buffer-middles').value) || 500;
-                                L.circle([m.lat, m.lng], { color: '#f43f5e', fillColor: '#f43f5e', fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.middle);
-                            }
-                            createDotMarker(m.lat, m.lng, color, `<b>${m.name}</b><br>${label}`, markerRadius).addTo(layers.middle);
-                        });
-                    }
-                    
-                    if (document.getElementById('toggle-bus').checked && map.getZoom() >= minZoomRequired && data.bus_stops) {
-                        layers.bus.clearLayers();
-                        let radius = parseInt(document.getElementById('buffer-bus').value) || 20;
-                        data.bus_stops.forEach(b => {
-                            L.circle([b.lat, b.lng], { color: '#0ea5e9', fillColor: '#0ea5e9', fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.bus);
-                            createDotMarker(b.lat, b.lng, '#0ea5e9', `<b>${b.name}</b><br>버스 (${b.city})`, 3).addTo(layers.bus);
-                        });
-                    }
-                    if (document.getElementById('toggle-commercial').checked && data.commercial_areas) {
-                        
-                        // 인구수 배열 생성 및 정렬 (백분위 계산용)
-                        const pops = data.commercial_areas.map(c => c.population || 0).sort((a, b) => a - b);
-                        
-                        // ?곴텒 ?대쫫(name)蹂??멸뎄??留ㅽ븨
-                        const popData = {};
-                        data.commercial_areas.forEach(c => {
-                            popData[c.name] = c.population || 0;
-                        });
-
-                        const getTierStyle = (pop) => {
-                            if (pop === 0 || pops.length === 0) return null;
-                            
-                            // ?댁쭊 ?먯깋 ???媛꾨떒???꾩튂 李얘린 (?곗씠?곌? 留롮? ?딆쑝誘濡?
-                            const idx = pops.findIndex(p => p >= pop);
-                            const percentile = (idx + 1) / pops.length;
-                            const tier = Math.ceil(percentile * 10) || 1; // 1 ~ 10 단계
-                            
-                            if (tier <= 6) return null;
-                            
-                            const colors = {
-                                10: '#08306b', 9: '#08519c', 8: '#2171b5', 7: '#4292c6'
-                            };
-                            
-                            return {
-                                color: colors[tier] || '#ffffff',
-                                fillColor: colors[tier] || '#ffffff',
-                                fillOpacity: 0.5,
-                                weight: 0
-                            };
-                        };
-
-                        if (!window.commercialGeoJsonData) {
-                            try {
-                                const res = await fetch('/data/seoul_commercial.geojson');
-                                window.commercialGeoJsonData = await res.json();
-                            } catch (err) {
-                                console.error('Failed to load commercial geojson:', err);
-                            }
+                // Populate Middle Schools markers
+                layers.middle.clearLayers();
+                if (data.middle_schools) {
+                    data.middle_schools.forEach(m => {
+                        let color = '#94a3b8';
+                        let label = `특목고 진학률 ${parseFloat(m.special_hs_rate).toFixed(1)}%`;
+                        let markerRadius = 4;
+                        if (m.special_hs_rate >= 10) {
+                            color = '#f43f5e';
+                            markerRadius = 6;
+                            let radius = parseInt(document.getElementById('buffer-middles').value) || 500;
+                            L.circle([m.lat, m.lng], { color: '#f43f5e', fillColor: '#f43f5e', fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.middle);
                         }
+                        createDotMarker(m.lat, m.lng, color, `<b>${m.name}</b><br>${label}`, markerRadius).addTo(layers.middle);
+                    });
+                }
 
-                        if (window.commercialGeoJsonData) {
-                            layers.commercial.clearLayers();
-                            const geoJsonLayer = L.geoJSON(window.commercialGeoJsonData, {
-                                filter: function(feature) {
-                                    const name = feature.properties.TRDAR_CD_N;
-                                    const pop = popData[name] || 0;
-                                    const style = getTierStyle(pop);
-                                    return style !== null;
-                                },
-                                style: function(feature) {
-                                    const name = feature.properties.TRDAR_CD_N;
-                                    const pop = popData[name] || 0;
-                                    return getTierStyle(pop);
-                                },
-                                onEachFeature: function(feature, layer) {
-                                    const name = feature.properties.TRDAR_CD_N;
-                                    const pop = popData[name] || 0;
-                                    let popStr = pop > 0 ? (pop / 10000).toFixed(0) + '만 명' : '데이터 없음';
-                                    layer.bindTooltip(`<b>${name}</b><br>상권<br>유동인구: ${popStr}`, {
-                                        sticky: true,
-                                        className: 'custom-tooltip'
-                                    });
-                                }
-                            });
-                            geoJsonLayer.addTo(layers.commercial);
+                // Populate Bus Stops markers
+                layers.bus.clearLayers();
+                if (data.bus_stops) {
+                    let radius = parseInt(document.getElementById('buffer-bus').value) || 20;
+                    data.bus_stops.forEach(b => {
+                        L.circle([b.lat, b.lng], { color: '#0ea5e9', fillColor: '#0ea5e9', fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.bus);
+                        createDotMarker(b.lat, b.lng, '#0ea5e9', `<b>${b.name}</b><br>버스 (${b.city})`, 3).addTo(layers.bus);
+                    });
+                }
+
+                // Populate Commercial Areas
+                layers.commercial.clearLayers();
+                if (data.commercial_areas) {
+                    const pops = data.commercial_areas.map(c => c.population || 0).sort((a, b) => a - b);
+                    const popData = {};
+                    data.commercial_areas.forEach(c => {
+                        popData[c.name] = c.population || 0;
+                    });
+
+                    const getTierStyle = (pop) => {
+                        if (pop === 0 || pops.length === 0) return null;
+                        const idx = pops.findIndex(p => p >= pop);
+                        const percentile = (idx + 1) / pops.length;
+                        const tier = Math.ceil(percentile * 10) || 1;
+                        if (tier <= 6) return null;
+                        const colors = { 10: '#08306b', 9: '#08519c', 8: '#2171b5', 7: '#4292c6' };
+                        return { color: colors[tier] || '#ffffff', fillColor: colors[tier] || '#ffffff', fillOpacity: 0.5, weight: 0 };
+                    };
+
+                    if (!window.commercialGeoJsonData) {
+                        try {
+                            const res = await fetch('/data/seoul_commercial.geojson');
+                            window.commercialGeoJsonData = await res.json();
+                        } catch (err) {
+                            console.error('Failed to load commercial geojson:', err);
                         }
+                    }
+
+                    if (window.commercialGeoJsonData) {
+                        const geoJsonLayer = L.geoJSON(window.commercialGeoJsonData, {
+                            filter: function(feature) {
+                                const name = feature.properties.TRDAR_CD_N;
+                                const pop = popData[name] || 0;
+                                const style = getTierStyle(pop);
+                                return style !== null;
+                            },
+                            style: function(feature) {
+                                const name = feature.properties.TRDAR_CD_N;
+                                const pop = popData[name] || 0;
+                                return getTierStyle(pop);
+                            },
+                            onEachFeature: function(feature, layer) {
+                                const name = feature.properties.TRDAR_CD_N;
+                                const pop = popData[name] || 0;
+                                let popStr = pop > 0 ? (pop / 10000).toFixed(0) + '만 명' : '데이터 없음';
+                                layer.bindTooltip(`<b>${name}</b><br>상권<br>유동인구: ${popStr}`, { sticky: true, className: 'custom-tooltip' });
+                            }
+                        });
+                        geoJsonLayer.addTo(layers.commercial);
                     }
                 }
-            } catch (err) { console.error(err); } finally { triggerHighlighter(); }
+            } catch (err) {
+                console.error(err);
+            } finally {
+                triggerHighlighter();
+            }
         }
 
         async function fetchSubwayLines() {
@@ -1896,26 +2178,62 @@
                 async function fetchDistrictUnits() {
             if (map.getZoom() < minZoomRequired) return;
             if (!document.getElementById('toggle-dev2').checked) return;
+            
             const bounds = map.getBounds();
-            try {
-                const res = await fetch(`/api/map/district_units?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}`);
-                const json = await res.json();
-                if (json.status === 'success') {
-                    layers.dev2.clearLayers();
-                    json.data.forEach(item => {
-                        let geojson = JSON.parse(item.geojson);
-                        L.geoJSON(geojson, {
-                            style: {
-                                color: '#4ade80', // 연한 초록색
-                                fillColor: '#4ade80',
-                                fillOpacity: 0.15,
-                                weight: 2,
-                                dashArray: '5, 5'
-                            }
-                        }).bindPopup(`<b>지구단위계획구역</b><br>${item.name}`).addTo(layers.dev2);
-                    });
+            const isCached = cachedDistrictUnitsZoom === map.getZoom() && 
+                             cachedDistrictUnitsBounds && 
+                             cachedDistrictUnitsBounds.contains(bounds) && 
+                             cachedDistrictUnitsData;
+
+            let data;
+            if (isCached) {
+                console.log("District units loaded from cache (within bounds).");
+                data = cachedDistrictUnitsData;
+            } else {
+                const southWest = bounds.getSouthWest();
+                const northEast = bounds.getNorthEast();
+                const latDiff = northEast.lat - southWest.lat;
+                const lngDiff = northEast.lng - southWest.lng;
+                
+                const padLat = latDiff * 0.25;
+                const padLng = lngDiff * 0.25;
+                
+                const paddedBounds = L.latLngBounds(
+                    L.latLng(southWest.lat - padLat, southWest.lng - padLng),
+                    L.latLng(northEast.lat + padLat, northEast.lng + padLng)
+                );
+
+                try {
+                    const res = await fetch(`/api/map/district_units?min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}`);
+                    const json = await res.json();
+                    if (json.status === 'success') {
+                        cachedDistrictUnitsData = json.data;
+                        cachedDistrictUnitsBounds = paddedBounds;
+                        cachedDistrictUnitsZoom = map.getZoom();
+                        data = cachedDistrictUnitsData;
+                    } else {
+                        return;
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch district units:", err);
+                    return;
                 }
-            } catch (err) { console.error(err); } finally { triggerHighlighter(); }
+            }
+
+            layers.dev2.clearLayers();
+            data.forEach(item => {
+                let geojson = JSON.parse(item.geojson);
+                L.geoJSON(geojson, {
+                    style: {
+                        color: '#4ade80', // 연한 초록색
+                        fillColor: '#4ade80',
+                        fillOpacity: 0.15,
+                        weight: 2,
+                        dashArray: '5, 5'
+                    }
+                }).bindPopup(`<b>지구단위계획구역</b><br>${item.name}`).addTo(layers.dev2);
+            });
+            triggerHighlighter();
         }
 
         // --- 개발구역 및 도시계획 레이어 추가 함수 시작 ---
@@ -1964,9 +2282,9 @@
             function getTaekjiStage(stepCode) {
                 if (!stepCode) return '초기';
                 const code = stepCode.toUpperCase();
-                if (['PP2001', 'PP2002', 'PP2003', 'PP2004'].includes(code)) return '초기';
-                if (['PP2005'].includes(code)) return '중기';
-                if (['PP2006', 'PP2007'].includes(code)) return '후기';
+                if (['SA'].includes(code)) return '초기';
+                if (['DA', 'RA', 'PC'].includes(code)) return '중기';
+                if (['CP'].includes(code)) return '후기';
                 return '초기';
             }
             
@@ -1992,11 +2310,11 @@
                 },
                 onEachFeature: function (feature, layer) {
                     const props = feature.properties;
-                    const stepCode = props.stepCode || props.zoneCode || props.zone_cd || '';
-                    let stageName = '초기 단계';
-                    if (['PP2001', 'PP2002', 'PP2003', 'PP2004'].includes(stepCode)) stageName = '초기 단계 (지구지정 등)';
-                    else if (stepCode === 'PP2005') stageName = '중기 단계 (지구계획승인 등)';
-                    else if (['PP2006', 'PP2007'].includes(stepCode)) stageName = '후기 단계 (착공/분양 등)';
+                    const stepCode = (props.stepCode || props.zoneCode || props.zone_cd || '').toUpperCase();
+                    let stageName = '초기 단계 (지구지정 등)';
+                    if (['SA'].includes(stepCode)) stageName = '초기 단계 (지구지정 등)';
+                    else if (['DA', 'RA', 'PC'].includes(stepCode)) stageName = '중기 단계 (지구계획승인 등)';
+                    else if (['CP'].includes(stepCode)) stageName = '후기 단계 (착공/분양/완료 등)';
                     
                     layer.bindTooltip(`<b>택지지구 (${stageName})</b><br>${props.zoneName || '이름 없음'}`, {
                         sticky: true,
@@ -2050,32 +2368,67 @@
             }
             
             const bounds = map.getBounds();
-            try {
-                const res = await fetch(`/api/map/redevelopment_zones?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}`);
-                const json = await res.json();
-                if (json.status === 'success') {
-                    layers.dev3.clearLayers();
-                    json.data.forEach(item => {
-                        const stage = getRedevelopmentStage(item.propel_cd);
-                        if (!checkedStages.includes(stage)) return;
-                        
-                        let geojson = JSON.parse(item.geojson);
-                        let stageLabel = '초기 단계 (조합설립 등)';
-                        if (stage === '중기') stageLabel = '중기 단계 (사업시행 등)';
-                        else if (stage === '후기') stageLabel = '후기 단계 (관리처분 등)';
-                        
-                        L.geoJSON(geojson, {
-                            style: {
-                                color: '#f97316',
-                                fillColor: '#f97316',
-                                fillOpacity: 0.15,
-                                weight: 2,
-                                dashArray: '5, 5'
-                            }
-                        }).bindPopup(`<b>재개발/재건축구역 (${stageLabel})</b><br>${item.name}`).addTo(layers.dev3);
-                    });
+            const isCached = cachedRedevelopmentZonesZoom === map.getZoom() && 
+                             cachedRedevelopmentZonesBounds && 
+                             cachedRedevelopmentZonesBounds.contains(bounds) && 
+                             cachedRedevelopmentZonesData;
+
+            let data;
+            if (isCached) {
+                console.log("Redevelopment zones loaded from cache (within bounds).");
+                data = cachedRedevelopmentZonesData;
+            } else {
+                const southWest = bounds.getSouthWest();
+                const northEast = bounds.getNorthEast();
+                const latDiff = northEast.lat - southWest.lat;
+                const lngDiff = northEast.lng - southWest.lng;
+                
+                const padLat = latDiff * 0.25;
+                const padLng = lngDiff * 0.25;
+                
+                const paddedBounds = L.latLngBounds(
+                    L.latLng(southWest.lat - padLat, southWest.lng - padLng),
+                    L.latLng(northEast.lat + padLat, northEast.lng + padLng)
+                );
+
+                try {
+                    const res = await fetch(`/api/map/redevelopment_zones?min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}`);
+                    const json = await res.json();
+                    if (json.status === 'success') {
+                        cachedRedevelopmentZonesData = json.data;
+                        cachedRedevelopmentZonesBounds = paddedBounds;
+                        cachedRedevelopmentZonesZoom = map.getZoom();
+                        data = cachedRedevelopmentZonesData;
+                    } else {
+                        return;
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch redevelopment zones:", err);
+                    return;
                 }
-            } catch (err) { console.error(err); } finally { triggerHighlighter(); }
+            }
+
+            layers.dev3.clearLayers();
+            data.forEach(item => {
+                const stage = getRedevelopmentStage(item.propel_cd);
+                if (!checkedStages.includes(stage)) return;
+                
+                let geojson = JSON.parse(item.geojson);
+                let stageLabel = '초기 단계 (조합설립 등)';
+                if (stage === '중기') stageLabel = '중기 단계 (사업시행 등)';
+                else if (stage === '후기') stageLabel = '후기 단계 (관리처분 등)';
+                
+                L.geoJSON(geojson, {
+                    style: {
+                        color: '#f97316',
+                        fillColor: '#f97316',
+                        fillOpacity: 0.15,
+                        weight: 2,
+                        dashArray: '5, 5'
+                    }
+                }).bindPopup(`<b>재개발/재건축구역 (${stageLabel})</b><br>${item.name}`).addTo(layers.dev3);
+            });
+            triggerHighlighter();
         }
 
         async function fetchZoningPolygons() {
@@ -2090,64 +2443,99 @@
             }
             
             const bounds = map.getBounds();
-            try {
-                const res = await fetch(`/api/map/zoning?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}`);
-                const json = await res.json();
-                if (json.status === 'success') {
-                    layers.zoning.clearLayers();
-                    json.data.forEach(item => {
-                        let geojson = JSON.parse(item.geojson);
-                        
-                        let color = '#6366f1';
-                        let zoningType = '기타';
-                        let name = item.name;
+            const isCached = cachedZoningPolygonsZoom === map.getZoom() && 
+                             cachedZoningPolygonsBounds && 
+                             cachedZoningPolygonsBounds.contains(bounds) && 
+                             cachedZoningPolygonsData;
 
-                        if (name.includes('전용주거')) {
-                            color = '#fef08a';
-                            zoningType = '전용주거지역';
-                        } else if (name.includes('1종일반주거') || name.includes('제1종일반주거')) {
-                            color = '#fef9c3';
-                            zoningType = '1종일반주거지역';
-                        } else if (name.includes('2종일반주거') || name.includes('제2종일반주거')) {
-                            color = '#fde047';
-                            zoningType = '2종일반주거지역';
-                        } else if (name.includes('3종일반주거') || name.includes('제3종일반주거')) {
-                            color = '#ca8a04';
-                            zoningType = '3종일반주거지역';
-                        } else if (name.includes('준주거')) {
-                            color = '#f97316';
-                            zoningType = '준주거지역';
-                        } else if (name.includes('상업')) {
-                            color = '#ef4444';
-                            zoningType = '상업지역';
-                        } else if (name.includes('준공업')) {
-                            color = '#94a3b8';
-                            zoningType = '준공업지역';
-                        } else if (name.includes('일반공업')) {
-                            color = '#64748b';
-                            zoningType = '일반공업지역';
-                        } else if (name.includes('전용공업')) {
-                            color = '#334155';
-                            zoningType = '전용공업지역';
-                        } else if (name.includes('녹지') || name.includes('개발제한구역')) {
-                            color = '#22c55e';
-                            zoningType = '녹지지역';
-                        }
+            let data;
+            if (isCached) {
+                console.log("Zoning polygons loaded from cache (within bounds).");
+                data = cachedZoningPolygonsData;
+            } else {
+                const southWest = bounds.getSouthWest();
+                const northEast = bounds.getNorthEast();
+                const latDiff = northEast.lat - southWest.lat;
+                const lngDiff = northEast.lng - southWest.lng;
+                
+                const padLat = latDiff * 0.25;
+                const padLng = lngDiff * 0.25;
+                
+                const paddedBounds = L.latLngBounds(
+                    L.latLng(southWest.lat - padLat, southWest.lng - padLng),
+                    L.latLng(northEast.lat + padLat, northEast.lng + padLng)
+                );
 
-                        if (!checkedZonings.includes(zoningType)) return;
-
-                        L.geoJSON(geojson, {
-                            style: {
-                                color: color,
-                                fillColor: color,
-                                fillOpacity: 0.12,
-                                weight: 1.5,
-                                opacity: 0.6
-                            }
-                        }).bindPopup(`<b>용도지역 (${zoningType})</b><br>${item.name}`).addTo(layers.zoning);
-                    });
+                try {
+                    const res = await fetch(`/api/map/zoning?min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}`);
+                    const json = await res.json();
+                    if (json.status === 'success') {
+                        cachedZoningPolygonsData = json.data;
+                        cachedZoningPolygonsBounds = paddedBounds;
+                        cachedZoningPolygonsZoom = map.getZoom();
+                        data = cachedZoningPolygonsData;
+                    } else {
+                        return;
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch zoning polygons:", err);
+                    return;
                 }
-            } catch (err) { console.error(err); } finally { triggerHighlighter(); }
+            }
+
+            layers.zoning.clearLayers();
+            data.forEach(item => {
+                let geojson = JSON.parse(item.geojson);
+                
+                let color = '#6366f1';
+                let zoningType = '기타';
+                let name = item.name;
+
+                if (name.includes('전용주거')) {
+                    color = '#fef08a';
+                    zoningType = '전용주거지역';
+                } else if (name.includes('1종일반주거') || name.includes('제1종일반주거')) {
+                    color = '#fef9c3';
+                    zoningType = '1종일반주거지역';
+                } else if (name.includes('2종일반주거') || name.includes('제2종일반주거')) {
+                    color = '#fde047';
+                    zoningType = '2종일반주거지역';
+                } else if (name.includes('3종일반주거') || name.includes('제3종일반주거')) {
+                    color = '#ca8a04';
+                    zoningType = '3종일반주거지역';
+                } else if (name.includes('준주거')) {
+                    color = '#f97316';
+                    zoningType = '준주거지역';
+                } else if (name.includes('상업')) {
+                    color = '#ef4444';
+                    zoningType = '상업지역';
+                } else if (name.includes('준공업')) {
+                    color = '#94a3b8';
+                    zoningType = '준공업지역';
+                } else if (name.includes('일반공업')) {
+                    color = '#64748b';
+                    zoningType = '일반공업지역';
+                } else if (name.includes('전용공업')) {
+                    color = '#334155';
+                    zoningType = '전용공업지역';
+                } else if (name.includes('녹지') || name.includes('개발제한구역')) {
+                    color = '#22c55e';
+                    zoningType = '녹지지역';
+                }
+
+                if (!checkedZonings.includes(zoningType)) return;
+
+                L.geoJSON(geojson, {
+                    style: {
+                        color: color,
+                        fillColor: color,
+                        fillOpacity: 0.12,
+                        weight: 1.5,
+                        opacity: 0.6
+                    }
+                }).bindPopup(`<b>용도지역 (${zoningType})</b><br>${item.name}`).addTo(layers.zoning);
+            });
+            triggerHighlighter();
         }
 
         async function fetchPlanningRoads() {
@@ -2164,79 +2552,114 @@
             }
             
             const bounds = map.getBounds();
-            try {
-                const res = await fetch(`/api/map/planning_roads?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}`);
-                const json = await res.json();
-                if (json.status === 'success') {
-                    layers.planningRoad.clearLayers();
-                    json.data.forEach(item => {
-                        let geojson = JSON.parse(item.geojson);
-                        const roadClass = item.road_class || '';
-                        
-                        let roadType = '기타';
-                        let color = '#94a3b8';
-                        let weight = 1.5;
-                        let dashArray = '3, 3';
-                        
-                        if (roadClass.includes('대로')) {
-                            roadType = '대로';
-                            color = '#ef4444';
-                            weight = 3;
-                            dashArray = null;
-                        } else if (roadClass.includes('중로')) {
-                            roadType = '중로';
-                            color = '#f59e0b';
-                            weight = 2.5;
-                            dashArray = null;
-                        } else if (roadClass.includes('소로1')) {
-                            roadType = '소로1류';
-                            color = '#10b981';
-                            weight = 2;
-                            dashArray = null;
-                        } else if (roadClass.includes('소로2')) {
-                        roadType = '소로2류';
-                            color = '#3b82f6';
-                            weight = 2;
-                            dashArray = null;
-                        } else if (roadClass.includes('소로3')) {
-                            roadType = '소로3류';
-                            color = '#10b981';
-                            weight = 2;
-                            dashArray = '2, 3'; // 촘촘한 녹색 점선/파선
-                        }
-                        
-                        if (!checkedRoads.includes(roadType)) return;
-                        
-                        // 1. 도로 선 렌더링
-                        L.geoJSON(geojson, {
-                            style: {
-                                color: color,
-                                weight: weight,
-                                opacity: 0.85,
-                                dashArray: dashArray
-                            }
-                        }).bindPopup(`<b>도시계획도로 (${roadClass})</b><br>${item.name || '이름 없음'}`).addTo(layers.planningRoad);
-                        
-                        // 2. 10m 버퍼 렌더링 (Turf.js 사용)
-                        if (isBufferEnabled) {
-                            try {
-                                const buffered = turf.buffer(geojson, 0.01, {units: 'kilometers'});
-                                L.geoJSON(buffered, {
-                                    style: {
-                                        color: '#ec4899',
-                                        fillColor: '#ec4899',
-                                        fillOpacity: 0.15,
-                                        weight: 1.5,
-                                        dashArray: '3, 3'
-                                    }
-                                }).bindPopup(`<b>도시계획도로 10m 완충구역</b><br>${item.name || '이름 없음'}`).addTo(layers.planningRoad);
-                            } catch (bufferErr) {
-                                console.error('Turf buffer error:', bufferErr);
-                            }
-                        }
-                    });
+            const isCached = cachedPlanningRoadsZoom === map.getZoom() && 
+                             cachedPlanningRoadsBounds && 
+                             cachedPlanningRoadsBounds.contains(bounds) && 
+                             cachedPlanningRoadsData;
+
+            let data;
+            if (isCached) {
+                console.log("Planning roads loaded from cache (within bounds).");
+                data = cachedPlanningRoadsData;
+            } else {
+                const southWest = bounds.getSouthWest();
+                const northEast = bounds.getNorthEast();
+                const latDiff = northEast.lat - southWest.lat;
+                const lngDiff = northEast.lng - southWest.lng;
+                
+                const padLat = latDiff * 0.25;
+                const padLng = lngDiff * 0.25;
+                
+                const paddedBounds = L.latLngBounds(
+                    L.latLng(southWest.lat - padLat, southWest.lng - padLng),
+                    L.latLng(northEast.lat + padLat, northEast.lng + padLng)
+                );
+
+                try {
+                    const res = await fetch(`/api/map/planning_roads?min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}`);
+                    const json = await res.json();
+                    if (json.status === 'success') {
+                        cachedPlanningRoadsData = json.data;
+                        cachedPlanningRoadsBounds = paddedBounds;
+                        cachedPlanningRoadsZoom = map.getZoom();
+                        data = cachedPlanningRoadsData;
+                    } else {
+                        return;
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch planning roads:", err);
+                    return;
                 }
-            } catch (err) { console.error(err); } finally { triggerHighlighter(); }
+            }
+
+            layers.planningRoad.clearLayers();
+            data.forEach(item => {
+                let geojson = JSON.parse(item.geojson);
+                const roadClass = item.road_class || '';
+                
+                let roadType = '기타';
+                let color = '#94a3b8';
+                let weight = 1.5;
+                let dashArray = '3, 3';
+                
+                if (roadClass.includes('대로')) {
+                    roadType = '대로';
+                    color = '#ef4444';
+                    weight = 3;
+                    dashArray = null;
+                } else if (roadClass.includes('중로')) {
+                    roadType = '중로';
+                    color = '#f59e0b';
+                    weight = 2.5;
+                    dashArray = null;
+                } else if (roadClass.includes('소로1')) {
+                    roadType = '소로1류';
+                    color = '#10b981';
+                    weight = 2;
+                    dashArray = null;
+                } else if (roadClass.includes('소로2')) {
+                    roadType = '소로2류';
+                    color = '#3b82f6';
+                    weight = 2;
+                    dashArray = null;
+                } else if (roadClass.includes('소로3')) {
+                    roadType = '소로3류';
+                    color = '#10b981';
+                    weight = 2;
+                    dashArray = '2, 3'; // 촘촘한 녹색 점선/파선
+                }
+                
+                if (!checkedRoads.includes(roadType)) return;
+                
+                // 1. 도로 선 렌더링
+                L.geoJSON(geojson, {
+                    style: {
+                        color: color,
+                        weight: weight,
+                        opacity: 0.85,
+                        dashArray: dashArray
+                    }
+                }).bindPopup(`<b>도시계획도로 (${roadClass})</b><br>${item.name || '이름 없음'}`).addTo(layers.planningRoad);
+                
+                // 2. 10m 버퍼 렌더링 (Turf.js 사용)
+                if (isBufferEnabled) {
+                    try {
+                        const buffered = turf.buffer(geojson, 0.01, {units: 'kilometers'});
+                        L.geoJSON(buffered, {
+                            style: {
+                                color: '#ec4899',
+                                fillColor: '#ec4899',
+                                fillOpacity: 0.15,
+                                weight: 1.5,
+                                dashArray: '3, 3'
+                            }
+                        }).bindPopup(`<b>도시계획도로 10m 완충구역</b><br>${item.name || '이름 없음'}`).addTo(layers.planningRoad);
+                    } catch (bufferErr) {
+                        console.error('Turf buffer error:', bufferErr);
+                    }
+                }
+            });
+            triggerHighlighter();
         }
 
         window.toggleAllCheckboxes = function(className, checked) {
@@ -2277,7 +2700,7 @@
         let cachedRoadFlowZoom = null;
 
         async function fetchRoadFlows() {
-            const roadFlowMinZoom = 14;
+            const roadFlowMinZoom = 16;
             const currentZoom = map.getZoom();
             if (currentZoom < roadFlowMinZoom) {
                 layers.roadFlows.clearLayers();
@@ -2309,8 +2732,12 @@
                 L.latLng(northEast.lat + padLat, northEast.lng + padLng)
             );
             
+            // Read active day/time filters
+            const dayVal = document.querySelector('input[name="road-flow-day"]:checked')?.value || 'weekday';
+            const timeVal = document.querySelector('input[name="road-flow-time"]:checked')?.value || 'day';
+            
             try {
-                const res = await fetch(`/api/map/road_flows?min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}`);
+                const res = await fetch(`/api/map/road_flows?min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}&day=${dayVal}&time_of_day=${timeVal}`);
                 const json = await res.json();
                 if (json.status === 'success') {
                     layers.roadFlows.clearLayers();
@@ -2318,21 +2745,21 @@
                     // 획기적인 메모리 절감: SVGRenderer 강제를 해제하여 DOM 엘리먼트 부담 없이 글로벌 Canvas에 직접 렌더링
                     L.geoJSON(json.data, {
                         style: function (feature) {
-                            const intensity = feature.properties.flow_intensity || 0.5;
-                            let color = '#a3e635'; // 매우 낮음: 연두색
+                            const flow = feature.properties.avg_hourly_flow || 0;
+                            let color = '#a3e635'; // 1,000명 미만: 연두색
                             let strokeWidth = 1.1;
 
-                            if (intensity >= 0.8) {
-                                color = '#7f1d1d'; // 매우 높음: 진한 자주/붉은색
+                            if (flow >= 4000) {
+                                color = '#7f1d1d'; // 4,000명 이상: 진한 자주/붉은색
                                 strokeWidth = 4.5;
-                            } else if (intensity >= 0.6) {
-                                color = '#ef4444'; // 높음: 붉은색
+                            } else if (flow >= 3000) {
+                                color = '#ef4444'; // 3,000명 이상: 붉은색
                                 strokeWidth = 3.2;
-                            } else if (intensity >= 0.4) {
-                                color = '#f97316'; // 중간: 주황색
+                            } else if (flow >= 2000) {
+                                color = '#f97316'; // 2,000명 이상: 주황색
                                 strokeWidth = 2.2;
-                            } else if (intensity >= 0.2) {
-                                color = '#22c55e'; // 낮음: 초록색
+                            } else if (flow >= 1000) {
+                                color = '#22c55e'; // 1,000명 이상: 초록색
                                 strokeWidth = 1.6;
                             }
 
@@ -2374,6 +2801,7 @@
                             layer.bindPopup(popupContent);
 
                             layer.on('mouseover', function (e) {
+                                if (e.target.options.opacity === 0) return;
                                 e.target.setStyle({
                                     weight: e.target.options.weight + 1.5,
                                     opacity: 1.0
@@ -2381,12 +2809,13 @@
                             });
 
                             layer.on('mouseout', function (e) {
-                                const intensity = feature.properties.flow_intensity || 0.5;
+                                if (e.target.options.opacity === 0) return;
+                                const flow = feature.properties.avg_hourly_flow || 0;
                                 let originalWeight = 1.1;
-                                if (intensity >= 0.8) originalWeight = 4.5;
-                                else if (intensity >= 0.6) originalWeight = 3.2;
-                                else if (intensity >= 0.4) originalWeight = 2.2;
-                                else if (intensity >= 0.2) originalWeight = 1.6;
+                                if (flow >= 4000) originalWeight = 4.5;
+                                else if (flow >= 3000) originalWeight = 3.2;
+                                else if (flow >= 2000) originalWeight = 2.2;
+                                else if (flow >= 1000) originalWeight = 1.6;
                                 
                                 e.target.setStyle({
                                     weight: originalWeight,
@@ -2399,6 +2828,10 @@
                     // 캐싱 바운드 및 줌 레벨 업데이트
                     cachedRoadFlowBounds = paddedBounds;
                     cachedRoadFlowZoom = currentZoom;
+
+                    // Apply current legend filter
+                    const currentFilterVal = document.getElementById('legend-flow-filter').value;
+                    filterRoadFlowsByLegend(currentFilterVal);
                 }
             } catch (err) {
                 console.error("Failed to fetch road flows:", err);
@@ -2406,6 +2839,128 @@
                 triggerHighlighter();
             }
         }
+
+        window.updateRoadFlowFilters = function() {
+            cachedRoadFlowBounds = null;
+            cachedRoadFlowZoom = null;
+            fetchRoadFlows();
+        };
+
+        window.filterRoadFlowsByLegend = function(val) {
+            const minFlowMap = {
+                1: 0,
+                2: 1000,
+                3: 2000,
+                4: 3000,
+                5: 4000
+            };
+            const minFlow = minFlowMap[val] || 0;
+            
+            // Update UI value label
+            const labelMap = {
+                1: "전체",
+                2: "1000명 이상",
+                3: "2000명 이상",
+                4: "3000명 이상",
+                5: "4000명 이상"
+            };
+            const filterValLabel = document.getElementById('legend-filter-val');
+            if (filterValLabel) {
+                filterValLabel.textContent = labelMap[val];
+            }
+            
+            // Update legend items visual styling (dim filtered out levels)
+            for (let i = 1; i <= 5; i++) {
+                const item = document.getElementById(`legend-item-${i}`);
+                if (item) {
+                    if (i < val) {
+                        item.style.opacity = '0.25';
+                        item.style.textDecoration = 'line-through';
+                    } else {
+                        item.style.opacity = '1';
+                        item.style.textDecoration = 'none';
+                    }
+                }
+            }
+            
+            // Filter map layers
+            if (layers.roadFlows) {
+                layers.roadFlows.eachLayer(function(geoJsonLayer) {
+                    if (typeof geoJsonLayer.eachLayer === 'function') {
+                        geoJsonLayer.eachLayer(function(layer) {
+                            const flow = layer.feature.properties.avg_hourly_flow || 0;
+                            if (flow < minFlow) {
+                                layer.setStyle({ opacity: 0 });
+                                layer.options.interactive = false;
+                            } else {
+                                layer.setStyle({ opacity: 0.85 });
+                                layer.options.interactive = true;
+                            }
+                        });
+                    }
+                });
+            }
+        };
+
+        window.makeElementDraggable = function(el) {
+            if (!el) return;
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            const header = document.getElementById(el.id + '-header') || el;
+            
+            header.addEventListener('mousedown', dragStart);
+            header.addEventListener('touchstart', dragStart, { passive: false });
+
+            function dragStart(e) {
+                if (e.target.tagName === 'INPUT' || e.target.closest('input')) {
+                    return;
+                }
+                const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+                
+                pos3 = clientX;
+                pos4 = clientY;
+                
+                if (e.type === 'mousedown') {
+                    e.preventDefault();
+                    document.addEventListener('mouseup', dragEnd);
+                    document.addEventListener('mousemove', dragMove);
+                } else {
+                    document.addEventListener('touchend', dragEnd);
+                    document.addEventListener('touchmove', dragMove, { passive: false });
+                }
+            }
+
+            function dragMove(e) {
+                const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+                
+                pos1 = pos3 - clientX;
+                pos2 = pos4 - clientY;
+                pos3 = clientX;
+                pos4 = clientY;
+                
+                let newTop = el.offsetTop - pos2;
+                let newLeft = el.offsetLeft - pos1;
+                
+                const maxLeft = window.innerWidth - el.offsetWidth;
+                const maxTop = window.innerHeight - el.offsetHeight;
+                if (newLeft < 0) newLeft = 0;
+                if (newTop < 0) newTop = 0;
+                if (newLeft > maxLeft) newLeft = maxLeft;
+                if (newTop > maxTop) newTop = maxTop;
+                
+                el.style.top = newTop + "px";
+                el.style.left = newLeft + "px";
+                el.style.right = "auto";
+            }
+
+            function dragEnd(e) {
+                document.removeEventListener('mouseup', dragEnd);
+                document.removeEventListener('mousemove', dragMove);
+                document.removeEventListener('touchend', dragEnd);
+                document.removeEventListener('touchmove', dragMove);
+            }
+        };
 
         async function fetchPopulationHeatmap() {
             // No-op function (deleted population heatmap layer)
@@ -2417,71 +2972,127 @@
             if (!document.getElementById('toggle-residential-heatmap').checked) return;
             const bounds = map.getBounds();
             const checkedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => cb.value);
+            const regionsStr = checkedRegions.join(',');
             const regionsParam = checkedRegions.length > 0 ? `&regions=${checkedRegions.join(',')}` : '&regions=서울';
             
-            try {
-                const res = await fetch(`/api/map/grid_demographics?type=residential&min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}${regionsParam}`);
-                const json = await res.json();
-                if (json.status === 'success') {
-                    layers.resHeatmap.clearLayers();
-                    
-                    const data = json.data;
-                    if (data && data.length > 0) {
-                        // region별 그룹화
-                        const groups = {};
-                        data.forEach(item => {
-                            const r = item.region || 'seoul';
-                            if (!groups[r]) groups[r] = [];
-                            groups[r].push(item);
-                        });
+            const isCached = cachedResHeatmapZoom === map.getZoom() && 
+                             cachedResHeatmapBounds && 
+                             cachedResHeatmapBounds.contains(bounds) && 
+                             cachedResHeatmapRegions === regionsStr &&
+                             cachedResHeatmapData;
 
-                        // Modern 5-color palette for Residential (Yellow to Orange)
-                        const colors = ['#fef08a', '#fde047', '#facc15', '#ea580c', '#c2410c'];
+            let data;
+            let lat_step = 0.00225;
+            let lng_step = 0.0028;
 
-                        // 각 그룹별 독립 로컬 10단계 분위수 정규화
-                        Object.keys(groups).forEach(rName => {
-                            const groupData = groups[rName];
-                            
-                            // 분위수 기준 10단계 부여를 위해 오름차순 정렬
-                            const sortedGroupData = [...groupData].sort((a, b) => a.avg_population - b.avg_population);
-                            const N = sortedGroupData.length;
+            if (isCached) {
+                console.log("Residential Heatmap loaded from cache.");
+                data = cachedResHeatmapData.data;
+                lat_step = cachedResHeatmapData.lat_step;
+                lng_step = cachedResHeatmapData.lng_step;
+            } else {
+                const southWest = bounds.getSouthWest();
+                const northEast = bounds.getNorthEast();
+                const latDiff = northEast.lat - southWest.lat;
+                const lngDiff = northEast.lng - southWest.lng;
+                
+                const padLat = latDiff * 0.25;
+                const padLng = lngDiff * 0.25;
+                
+                const paddedBounds = L.latLngBounds(
+                    L.latLng(southWest.lat - padLat, southWest.lng - padLng),
+                    L.latLng(northEast.lat + padLat, northEast.lng + padLng)
+                );
 
-                            sortedGroupData.forEach((item, index) => {
-                                let step = Math.floor((index / N) * 10) + 1;
-                                step = Math.min(step, 10);
-                                
-                                // 하위 5단계 삭제
-                                if (step <= 5) return;
-
-                                const colorIdx = step - 6;
-                                const color = colors[colorIdx] || colors[colors.length - 1];
-                                
-                                const lat = item.lat;
-                                const lng = item.lng;
-                                
-                                // 250m x 250m grid rectangle centered around lat/lng
-                                const halfLat = (json.lat_step || 0.00225) / 2;
-                                const halfLng = (json.lng_step || 0.0028) / 2;
-                                const rectBounds = [
-                                    [lat - halfLat, lng - halfLng],
-                                    [lat + halfLat, lng + halfLng]
-                                ];
-
-                                const regionLabel = rName === 'seoul' ? '서울' : (rName === 'gyeonggi' ? '경기' : '인천');
-
-                                L.rectangle(rectBounds, {
-                                    color: color,
-                                    weight: 0.5,
-                                    opacity: 0.3,
-                                    fillColor: color,
-                                    fillOpacity: 0.3
-                                }).bindPopup(`<b>거주인구 격자 (${regionLabel})</b><br>밀집도: ${step}단계 (상위 ${11 - step}0%)<br>인구수: ${Math.round(item.avg_population).toLocaleString()}명`)
-                                  .addTo(layers.resHeatmap);
-                            });
-                        });
+                try {
+                    const res = await fetch(`/api/map/grid_demographics?type=residential&min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}${regionsParam}`);
+                    const json = await res.json();
+                    if (json.status === 'success') {
+                        cachedResHeatmapData = {
+                            data: json.data,
+                            lat_step: json.lat_step || 0.00225,
+                            lng_step: json.lng_step || 0.0028
+                        };
+                        cachedResHeatmapBounds = paddedBounds;
+                        cachedResHeatmapZoom = map.getZoom();
+                        cachedResHeatmapRegions = regionsStr;
+                        
+                        data = cachedResHeatmapData.data;
+                        lat_step = cachedResHeatmapData.lat_step;
+                        lng_step = cachedResHeatmapData.lng_step;
+                    } else {
+                        return;
                     }
+                } catch (err) {
+                    console.error("Residential Heatmap fetch error:", err);
+                    return;
                 }
-            } catch (err) { console.error("Residential Heatmap fetch error:", err); }
+            }
+
+            layers.resHeatmap.clearLayers();
+            
+            if (data && data.length > 0) {
+                // region별 그룹화
+                const groups = {};
+                data.forEach(item => {
+                    const r = item.region || 'seoul';
+                    if (!groups[r]) groups[r] = [];
+                    groups[r].push(item);
+                });
+
+                // Modern 5-color palette for Residential (Yellow to Orange)
+                const colors = ['#fef08a', '#fde047', '#facc15', '#ea580c', '#c2410c'];
+
+                // 각 그룹별 독립 로컬 10단계 분위수 정규화
+                Object.keys(groups).forEach(rName => {
+                    const groupData = groups[rName];
+                    
+                    // 분위수 기준 10단계 부여를 위해 오름차순 정렬
+                    const sortedGroupData = [...groupData].sort((a, b) => a.avg_population - b.avg_population);
+                    const N = sortedGroupData.length;
+
+                    sortedGroupData.forEach((item, index) => {
+                        let step = Math.floor((index / N) * 10) + 1;
+                        step = Math.min(step, 10);
+                        
+                        // 하위 7단계 삭제 (상위 30%만 표시)
+                        if (step <= 7) return;
+
+                        let color;
+                        let classification;
+                        if (step === 10) {
+                            color = '#ea580c'; // 상위 10% (진한 오렌지)
+                            classification = "상위 10% 이내";
+                        } else {
+                            color = '#facc15'; // 상위 30% (노란색)
+                            classification = "상위 30% 이내";
+                        }
+                        
+                        const lat = item.lat;
+                        const lng = item.lng;
+                        
+                        // 250m x 250m grid rectangle centered around lat/lng
+                        const halfLat = lat_step / 2;
+                        const halfLng = lng_step / 2;
+                        const rectBounds = [
+                            [lat - halfLat, lng - halfLng],
+                            [lat + halfLat, lng + halfLng]
+                        ];
+
+                        const regionLabel = rName === 'seoul' ? '서울' : (rName === 'gyeonggi' ? '경기' : '인천');
+
+                        L.rectangle(rectBounds, {
+                            color: color,
+                            weight: 0.5,
+                            opacity: 0.3,
+                            fillColor: color,
+                            fillOpacity: 0.3
+                        }).bindPopup(`<b>거주인구 격자 (${regionLabel})</b><br>구분: ${classification}<br>밀집도: ${step}단계<br>인구수: ${Math.round(item.avg_population).toLocaleString()}명`)
+                          .addTo(layers.resHeatmap);
+                    });
+
+                });
+            }
         }
 
         async function fetchWorkplaceHeatmap() {
@@ -2489,75 +3100,153 @@
             if (!document.getElementById('toggle-workplace-heatmap').checked) return;
             const bounds = map.getBounds();
             const checkedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => cb.value);
+            const regionsStr = checkedRegions.join(',');
             const regionsParam = checkedRegions.length > 0 ? `&regions=${checkedRegions.join(',')}` : '&regions=서울';
             
-            try {
-                const res = await fetch(`/api/map/grid_demographics?type=workplace&min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}${regionsParam}`);
-                const json = await res.json();
-                if (json.status === 'success') {
-                    layers.workHeatmap.clearLayers();
-                    
-                    const data = json.data;
-                    if (data && data.length > 0) {
-                        // region별 그룹화
-                        const groups = {};
-                        data.forEach(item => {
-                            const r = item.region || 'seoul';
-                            if (!groups[r]) groups[r] = [];
-                            groups[r].push(item);
-                        });
+            const isCached = cachedWorkHeatmapZoom === map.getZoom() && 
+                             cachedWorkHeatmapBounds && 
+                             cachedWorkHeatmapBounds.contains(bounds) && 
+                             cachedWorkHeatmapRegions === regionsStr &&
+                             cachedWorkHeatmapData;
 
-                        // Modern 5-color palette for Workplace (Purple to Indigo)
-                        const colors = ['#e9d5ff', '#d8b4fe', '#c084fc', '#8b5cf6', '#6366f1'];
+            let data;
+            let lat_step = 0.00225;
+            let lng_step = 0.0028;
 
-                        // 각 그룹별 독립 로컬 10단계 분위수 정규화
-                        Object.keys(groups).forEach(rName => {
-                            const groupData = groups[rName];
-                            
-                            // 분위수 기준 10단계 부여를 위해 오름차순 정렬
-                            const sortedGroupData = [...groupData].sort((a, b) => a.avg_population - b.avg_population);
-                            const N = sortedGroupData.length;
+            if (isCached) {
+                console.log("Workplace Heatmap loaded from cache.");
+                data = cachedWorkHeatmapData.data;
+                lat_step = cachedWorkHeatmapData.lat_step;
+                lng_step = cachedWorkHeatmapData.lng_step;
+            } else {
+                const southWest = bounds.getSouthWest();
+                const northEast = bounds.getNorthEast();
+                const latDiff = northEast.lat - southWest.lat;
+                const lngDiff = northEast.lng - southWest.lng;
+                
+                const padLat = latDiff * 0.25;
+                const padLng = lngDiff * 0.25;
+                
+                const paddedBounds = L.latLngBounds(
+                    L.latLng(southWest.lat - padLat, southWest.lng - padLng),
+                    L.latLng(northEast.lat + padLat, northEast.lng + padLng)
+                );
 
-                            sortedGroupData.forEach((item, index) => {
-                                let step = Math.floor((index / N) * 10) + 1;
-                                step = Math.min(step, 10);
-                                
-                                // 하위 5단계 삭제
-                                if (step <= 5) return;
-
-                                const colorIdx = step - 6;
-                                const color = colors[colorIdx] || colors[colors.length - 1];
-                                
-                                const lat = item.lat;
-                                const lng = item.lng;
-                                
-                                // 250m x 250m grid rectangle centered around lat/lng
-                                const halfLat = (json.lat_step || 0.00225) / 2;
-                                const halfLng = (json.lng_step || 0.0028) / 2;
-                                const rectBounds = [
-                                    [lat - halfLat, lng - halfLng],
-                                    [lat + halfLat, lng + halfLng]
-                                ];
-
-                                const regionLabel = rName === 'seoul' ? '서울' : (rName === 'gyeonggi' ? '경기' : '인천');
-
-                                L.rectangle(rectBounds, {
-                                    color: color,
-                                    weight: 0.5,
-                                    opacity: 0.3,
-                                    fillColor: color,
-                                    fillOpacity: 0.3
-                                }).bindPopup(`<b>직장인구 격자 (${regionLabel})</b><br>밀집도: ${step}단계 (상위 ${11 - step}0%)<br>종사자수: ${Math.round(item.avg_population).toLocaleString()}명`)
-                                  .addTo(layers.workHeatmap);
-                            });
-                        });
+                try {
+                    const res = await fetch(`/api/map/grid_demographics?type=workplace&min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}${regionsParam}`);
+                    const json = await res.json();
+                    if (json.status === 'success') {
+                        cachedWorkHeatmapData = {
+                            data: json.data,
+                            lat_step: json.lat_step || 0.00225,
+                            lng_step: json.lng_step || 0.0028
+                        };
+                        cachedWorkHeatmapBounds = paddedBounds;
+                        cachedWorkHeatmapZoom = map.getZoom();
+                        cachedWorkHeatmapRegions = regionsStr;
+                        
+                        data = cachedWorkHeatmapData.data;
+                        lat_step = cachedWorkHeatmapData.lat_step;
+                        lng_step = cachedWorkHeatmapData.lng_step;
+                    } else {
+                        return;
                     }
+                } catch (err) {
+                    console.error("Workplace Heatmap fetch error:", err);
+                    return;
                 }
-            } catch (err) { console.error("Workplace Heatmap fetch error:", err); }
+            }
+
+            layers.workHeatmap.clearLayers();
+            
+            if (data && data.length > 0) {
+                // region별 그룹화
+                const groups = {};
+                data.forEach(item => {
+                    const r = item.region || 'seoul';
+                    if (!groups[r]) groups[r] = [];
+                    groups[r].push(item);
+                });
+
+                // Modern 5-color palette for Workplace (Purple to Indigo)
+                const colors = ['#e9d5ff', '#d8b4fe', '#c084fc', '#8b5cf6', '#6366f1'];
+
+                // 각 그룹별 독립 로컬 10단계 분위수 정규화
+                Object.keys(groups).forEach(rName => {
+                    const groupData = groups[rName];
+                    
+                    // 분위수 기준 10단계 부여를 위해 오름차순 정렬
+                    const sortedGroupData = [...groupData].sort((a, b) => a.avg_population - b.avg_population);
+                    const N = sortedGroupData.length;
+
+                    sortedGroupData.forEach((item, index) => {
+                        let step = Math.floor((index / N) * 10) + 1;
+                        step = Math.min(step, 10);
+                        
+                        // 하위 7단계 삭제 (상위 30%만 표시)
+                        if (step <= 7) return;
+
+                        let color;
+                        let classification;
+                        if (step === 10) {
+                            color = '#6366f1'; // 상위 10% (진한 보라)
+                            classification = "상위 10% 이내";
+                        } else {
+                            color = '#c084fc'; // 상위 30% (연한 보라)
+                            classification = "상위 30% 이내";
+                        }
+                        
+                        const lat = item.lat;
+                        const lng = item.lng;
+                        
+                        // 250m x 250m grid rectangle centered around lat/lng
+                        const halfLat = lat_step / 2;
+                        const halfLng = lng_step / 2;
+                        const rectBounds = [
+                            [lat - halfLat, lng - halfLng],
+                            [lat + halfLat, lng + halfLng]
+                        ];
+
+                        const regionLabel = rName === 'seoul' ? '서울' : (rName === 'gyeonggi' ? '경기' : '인천');
+
+                        L.rectangle(rectBounds, {
+                            color: color,
+                            weight: 0.5,
+                            opacity: 0.3,
+                            fillColor: color,
+                            fillOpacity: 0.3
+                        }).bindPopup(`<b>직장인구 격자 (${regionLabel})</b><br>구분: ${classification}<br>밀집도: ${step}단계<br>종사자수: ${Math.round(item.avg_population).toLocaleString()}명`)
+                          .addTo(layers.workHeatmap);
+                    });
+
+                });
+            }
         }
 
-        function buildAuctionUrl(basePath) {
-            const bounds = map.getBounds();
+        function getAuctionFilterState() {
+            const isAuctionActive = document.getElementById('btn-auction').classList.contains('active');
+            const isPublicActive = document.getElementById('btn-public').classList.contains('active');
+            const checkedTypes = Array.from(document.querySelectorAll('#property-type-grid input:checked')).map(cb => cb.value).join(',');
+            const checkedSpecialRights = Array.from(document.querySelectorAll('#special-rights-grid input:checked')).map(cb => cb.value).join(',');
+            const checkedLandPrices = Array.from(document.querySelectorAll('#land-price-grid input:checked')).map(cb => cb.value).join(',');
+            const rateLimit = document.getElementById('rate-slider').value;
+            const minArea = document.getElementById('min-area').value;
+            const maxArea = document.getElementById('max-area').value;
+            const useSubwayDist = document.getElementById('toggle-subways').checked;
+            const useUnivDist = document.getElementById('toggle-univs').checked;
+            const useIndDist = document.getElementById('toggle-inds').checked;
+            const subwayDist = document.getElementById('buffer-subways').value;
+            const univDist = document.getElementById('buffer-univs').value;
+            const indDist = document.getElementById('buffer-inds').value;
+            const reqElite = document.getElementById('toggle-middles') ? document.getElementById('toggle-middles').checked : false;
+            const minHouseholds = document.getElementById('min-households') ? document.getElementById('min-households').value : '';
+            const checkedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => cb.value).join(',');
+
+            return `${isAuctionActive}_${isPublicActive}_${checkedTypes}_${checkedSpecialRights}_${checkedLandPrices}_${rateLimit}_${minArea}_${maxArea}_${useSubwayDist}_${useUnivDist}_${useIndDist}_${subwayDist}_${univDist}_${indDist}_${reqElite}_${minHouseholds}_${checkedRegions}`;
+        }
+
+        function buildAuctionUrl(basePath, customBounds) {
+            const bounds = customBounds || map.getBounds();
             const isAuctionActive = document.getElementById('btn-auction').classList.contains('active');
             const isPublicActive = document.getElementById('btn-public').classList.contains('active');
 
@@ -2617,6 +3306,10 @@
                     zoomWarning.style.display = 'block';
                     setTimeout(() => { zoomWarning.style.opacity = '1'; }, 10);
                 }
+                cachedAuctionsData = null;
+                cachedAuctionsBounds = null;
+                cachedAuctionsZoom = null;
+                cachedAuctionsFilterState = '';
                 return;
             } else {
                 if (zoomWarning) {
@@ -2625,92 +3318,132 @@
                 }
             }
 
+            const bounds = map.getBounds();
+            const currentFilterState = getAuctionFilterState();
+
+            const isCached = cachedAuctionsZoom === map.getZoom() && 
+                             cachedAuctionsBounds && 
+                             cachedAuctionsBounds.contains(bounds) && 
+                             cachedAuctionsFilterState === currentFilterState &&
+                             cachedAuctionsData;
+
+            let data;
+            if (isCached) {
+                console.log("Auctions loaded from cache.");
+                data = cachedAuctionsData;
+            } else {
+                const southWest = bounds.getSouthWest();
+                const northEast = bounds.getNorthEast();
+                const latDiff = northEast.lat - southWest.lat;
+                const lngDiff = northEast.lng - southWest.lng;
+                
+                const padLat = latDiff * 0.25;
+                const padLng = lngDiff * 0.25;
+                
+                const paddedBounds = L.latLngBounds(
+                    L.latLng(southWest.lat - padLat, southWest.lng - padLng),
+                    L.latLng(northEast.lat + padLat, northEast.lng + padLng)
+                );
+
+                const url = buildAuctionUrl('/api/map/auctions', paddedBounds);
+                if (!url) {
+                    layers.auction.clearLayers();
+                    return;
+                }
+
+                try {
+                    const res = await fetch(url);
+                    const json = await res.json();
+
+                    if (json.status === 'success') {
+                        cachedAuctionsData = json.data;
+                        cachedAuctionsBounds = paddedBounds;
+                        cachedAuctionsZoom = map.getZoom();
+                        cachedAuctionsFilterState = currentFilterState;
+                        data = cachedAuctionsData;
+                    } else {
+                        return;
+                    }
+                } catch (err) {
+                    console.error("Auction load error:", err);
+                    return;
+                }
+            }
+
             layers.auction.clearLayers();
 
-            const url = buildAuctionUrl('/api/map/auctions');
-            if (!url) return;
+            data.forEach(item => {
+                let isPublic = item.sale_type.includes('공매');
+                let typeColor = isPublic ? '#3b82f6' : '#ef4444';
+                
+                let marker = L.circleMarker([item.lat, item.lng], {
+                    radius: 6, fillColor: typeColor, color: '#fff', weight: 2, opacity: 1, fillOpacity: 1,
+                    pane: 'auctionPane'
+                });
+                marker.auctionData = item;
+                marker.isPublic = isPublic;
+                marker.typeColor = typeColor;
 
-            try {
-                const res = await fetch(url);
-                const json = await res.json();
+                marker.on('click', function(e) {
+                    openDemandPanel(item.lat, item.lng, item.case_no, item.address, item.property_type);
+                });
 
-                if (json.status === 'success') {
-                    json.data.forEach(item => {
-                        let isPublic = item.sale_type.includes('공매');
-                        let typeColor = isPublic ? '#3b82f6' : '#ef4444';
-                        
-                        let marker = L.circleMarker([item.lat, item.lng], {
-                            radius: 6, fillColor: typeColor, color: '#fff', weight: 2, opacity: 1, fillOpacity: 1,
-                            pane: 'auctionPane'
-                        });
-                        marker.auctionData = item;
-                        marker.isPublic = isPublic;
-                        marker.typeColor = typeColor;
+                marker.bindPopup(function(layer) {
+                    let d = layer.auctionData;
+                    let isPub = layer.isPublic;
+                    let tColor = layer.typeColor;
+                    let typeLabelStr = isPub ? '공매' : '경매';
+                    let typeLabel = `<span style="color:${tColor};font-weight:bold;">[${typeLabelStr}]</span>`;
+                    
+                    let cleanNotes = d.special_notes ? d.special_notes.replace(/0|#|A|미해당/gi, '').replace(/,/g, ' ').replace(/\s+/g, ' ').trim() : '';
 
-                        marker.on('click', function(e) {
-                            openDemandPanel(item.lat, item.lng, item.case_no, item.address, item.property_type);
-                        });
-
-                        marker.bindPopup(function(layer) {
-                            let d = layer.auctionData;
-                            let isPub = layer.isPublic;
-                            let tColor = layer.typeColor;
-                            let typeLabelStr = isPub ? '공매' : '경매';
-                            let typeLabel = `<span style="color:${tColor};font-weight:bold;">[${typeLabelStr}]</span>`;
-                            
-                            let cleanNotes = d.special_notes ? d.special_notes.replace(/0|#|A|미해당/gi, '').replace(/,/g, ' ').replace(/\s+/g, ' ').trim() : '';
-
-                            return `
-                                <div style="font-family:'Noto Sans KR'; min-width: 220px; padding-bottom: 5px;">
-                                    <div style="font-size:1.1rem;">${typeLabel} <b>${d.case_no}</b></div>
-                                    <div style="color:gray; font-size:0.85rem; margin-bottom:8px;">${d.property_type} | ${d.address}</div>
-                                    <table style="width:100%; font-size:0.9rem; border-collapse: collapse; margin-bottom: 10px;">
-                                        <tr><td style="color:gray; padding:3px 0;">감정가</td><td style="text-align:right; font-weight:bold;">${(d.appraisal_price / 100000000).toFixed(1)}억</td></tr>
-                                        <tr><td style="color:gray; padding:3px 0;">최저가</td><td style="text-align:right; font-weight:bold; color:${tColor};">${d.min_bid_rate}% (${(d.min_price / 100000000).toFixed(1)}억)</td></tr>
-                                        <tr><td style="color:gray; padding:3px 0;">매각기일</td><td style="text-align:right; font-weight:bold;">${d.sale_date ? d.sale_date : '정보없음'}</td></tr>
-                                        <tr><td style="color:gray; padding:3px 0;">건물/대지</td><td style="text-align:right;">${d.area_size ? d.area_size.toFixed(1) : 0}평 / ${d.land_size ? d.land_size.toFixed(1) : 0}평</td></tr>
-                                        <tr><td style="color:gray; padding:3px 0;">최저가 평당가</td><td style="text-align:right;">${d.min_price_per_pyeong ? (d.min_price_per_pyeong).toFixed(0) + '만원' : '-'}</td></tr>
-                                        <tr><td style="color:gray; padding:3px 0;">공시지가</td><td style="text-align:right;">${d.official_land_price && d.official_land_price > 0 ? (d.official_land_price / 100000000).toFixed(2) + '억' : '정보없음'}</td></tr>
-                                        ${cleanNotes ? `<tr><td style="color:#ef4444; padding:3px 0; font-weight:bold;">특수권리</td><td style="text-align:right; font-size:0.8rem; color:#ef4444; word-break:keep-all;">${cleanNotes}</td></tr>` : ''}
-                                    </table>
-                                    <button onclick="window.innerWidth <= 768 ? window.location.href='/?case=${d.case_no}' : (window.opener ? (window.opener.location.href='/?case=${d.case_no}', window.opener.focus()) : window.open('/?case=${d.case_no}', '_blank'))" style="width:100%; background:var(--primary-blue); color:white; border:none; padding:12px 10px; border-radius:6px; cursor:pointer; font-size:1rem; font-weight:bold; touch-action:manipulation;">권리분석 리포트 보기</button>
-                                </div>
-                            `;
-                        });
-                        
-                        if (!L.Browser.mobile && window.innerWidth > 768) {
-                            marker.bindTooltip(function(layer) {
-                                let d = layer.auctionData;
-                                return `
-                                    <div style="font-family:'Noto Sans KR'; font-size:0.85rem; padding: 5px; line-height: 1.4;">
-                                        <b>사건번호:</b> ${d.case_no}<br>
-                                        <b>종류:</b> ${d.property_type}<br>
-                                        <b>감정가:</b> ${(d.appraisal_price / 100000000).toFixed(1)}억<br>
-                                        <b>최저가:</b> ${(d.min_price / 100000000).toFixed(1)}억<br>
-                                        <b>최저가율:</b> ${d.min_bid_rate}%<br>
-                                        <b>매각기일:</b> ${d.sale_date ? d.sale_date : '정보없음'}<br>
-                                        <b>건물평수:</b> ${d.area_size ? d.area_size.toFixed(1) : 0}평<br>
-                                        <b>대지평수:</b> ${d.land_size ? d.land_size.toFixed(1) : 0}평<br>
-                                        <b>최저가 기준 평당가:</b> ${d.min_price_per_pyeong ? (d.min_price_per_pyeong).toFixed(0) + '만원' : '-'}<br>
-                                        <b>공시지가:</b> ${d.official_land_price && d.official_land_price > 0 ? (d.official_land_price / 100000000).toFixed(2) + '억' : '정보없음'}
-                                    </div>
-                                `;
-                            }, { direction: 'top', className: 'custom-tooltip' });
-                        }
-                        
-                        // 오른쪽 클릭 시 고정 팝업 열기
-                        marker.on('contextmenu', function(e) {
-                            marker.openPopup();
-                        });
-                        
-                        marker.addTo(layers.auction);
-                    });
+                    return `
+                        <div style="font-family:'Noto Sans KR'; min-width: 220px; padding-bottom: 5px;">
+                            <div style="font-size:1.1rem;">${typeLabel} <b>${d.case_no}</b></div>
+                            <div style="color:gray; font-size:0.85rem; margin-bottom:8px;">${d.property_type} | ${d.address}</div>
+                            <table style="width:100%; font-size:0.9rem; border-collapse: collapse; margin-bottom: 10px;">
+                                <tr><td style="color:gray; padding:3px 0;">감정가</td><td style="text-align:right; font-weight:bold;">${(d.appraisal_price / 100000000).toFixed(1)}억</td></tr>
+                                <tr><td style="color:gray; padding:3px 0;">최저가</td><td style="text-align:right; font-weight:bold; color:${tColor};">${d.min_bid_rate}% (${(d.min_price / 100000000).toFixed(1)}억)</td></tr>
+                                <tr><td style="color:gray; padding:3px 0;">매각기일</td><td style="text-align:right; font-weight:bold;">${d.sale_date ? d.sale_date : '정보없음'}</td></tr>
+                                <tr><td style="color:gray; padding:3px 0;">건물/대지</td><td style="text-align:right;">${d.area_size ? d.area_size.toFixed(1) : 0}평 / ${d.land_size ? d.land_size.toFixed(1) : 0}평</td></tr>
+                                <tr><td style="color:gray; padding:3px 0;">최저가 평당가</td><td style="text-align:right;">${d.min_price_per_pyeong ? (d.min_price_per_pyeong).toFixed(0) + '만원' : '-'}</td></tr>
+                                <tr><td style="color:gray; padding:3px 0;">공시지가</td><td style="text-align:right;">${d.official_land_price && d.official_land_price > 0 ? (d.official_land_price / 100000000).toFixed(2) + '억' : '정보없음'}</td></tr>
+                                ${cleanNotes ? `<tr><td style="color:#ef4444; padding:3px 0; font-weight:bold;">특수권리</td><td style="text-align:right; font-size:0.8rem; color:#ef4444; word-break:keep-all;">${cleanNotes}</td></tr>` : ''}
+                            </table>
+                            <button onclick="window.innerWidth <= 768 ? window.location.href='/?case=${d.case_no}' : (window.opener ? (window.opener.location.href='/?case=${d.case_no}', window.opener.focus()) : window.open('/?case=${d.case_no}', '_blank'))" style="width:100%; background:var(--primary-blue); color:white; border:none; padding:12px 10px; border-radius:6px; cursor:pointer; font-size:1rem; font-weight:bold; touch-action:manipulation;">권리분석 리포트 보기</button>
+                        </div>
+                    `;
+                });
+                
+                if (!L.Browser.mobile && window.innerWidth > 768) {
+                    marker.bindTooltip(function(layer) {
+                        let d = layer.auctionData;
+                        return `
+                            <div style="font-family:'Noto Sans KR'; font-size:0.85rem; padding: 5px; line-height: 1.4;">
+                                <b>사건번호:</b> ${d.case_no}<br>
+                                <b>종류:</b> ${d.property_type}<br>
+                                <b>감정가:</b> ${(d.appraisal_price / 100000000).toFixed(1)}억<br>
+                                <b>최저가:</b> ${(d.min_price / 100000000).toFixed(1)}억<br>
+                                <b>최저가율:</b> ${d.min_bid_rate}%<br>
+                                <b>매각기일:</b> ${d.sale_date ? d.sale_date : '정보없음'}<br>
+                                <b>건물평수:</b> ${d.area_size ? d.area_size.toFixed(1) : 0}평<br>
+                                <b>대지평수:</b> ${d.land_size ? d.land_size.toFixed(1) : 0}평<br>
+                                <b>최저가 기준 평당가:</b> ${d.min_price_per_pyeong ? (d.min_price_per_pyeong).toFixed(0) + '만원' : '-'}<br>
+                                <b>공시지가:</b> ${d.official_land_price && d.official_land_price > 0 ? (d.official_land_price / 100000000).toFixed(2) + '억' : '정보없음'}
+                            </div>
+                        `;
+                    }, { direction: 'top', className: 'custom-tooltip' });
                 }
-            } catch (e) {
-                console.error("Auction load error:", e);
-            } finally {
-                triggerHighlighter();
-            }
+                
+                // 오른쪽 클릭 시 고정 팝업 열기
+                marker.on('contextmenu', function(e) {
+                    marker.openPopup();
+                });
+                
+                marker.addTo(layers.auction);
+            });
+
+            triggerHighlighter();
         } // End of loadAuctions
 
         // Toggles mapping
@@ -2934,32 +3667,65 @@
 
 
             document.getElementById('toggle-residential-heatmap').addEventListener('change', (e) => {
+                const legend = document.getElementById('residential-legend');
+                if (legend) legend.style.display = e.target.checked ? 'block' : 'none';
                 if (e.target.checked) {
                     fetchResidentialHeatmap();
                 }
             });
 
             document.getElementById('toggle-workplace-heatmap').addEventListener('change', (e) => {
+                const legend = document.getElementById('workplace-legend');
+                if (legend) legend.style.display = e.target.checked ? 'block' : 'none';
                 if (e.target.checked) {
                     fetchWorkplaceHeatmap();
                 }
             });
 
             document.getElementById('toggle-road-flows').addEventListener('change', (e) => {
+                const subContainer = document.getElementById('road-flows-sub-container');
+                const legend = document.getElementById('road-flow-legend');
+                const slider = document.getElementById('legend-flow-filter');
+                
                 if (e.target.checked) {
+                    if (slider) slider.value = 1;
                     fetchRoadFlows();
-                    document.getElementById('road-flow-legend').style.display = 'block';
+                    if (legend) legend.style.display = 'block';
+                    if (subContainer) subContainer.style.display = 'block';
                 } else {
                     layers.roadFlows.clearLayers();
                     cachedRoadFlowBounds = null;
                     cachedRoadFlowZoom = null;
-                    document.getElementById('road-flow-legend').style.display = 'none';
+                    if (legend) legend.style.display = 'none';
+                    if (subContainer) subContainer.style.display = 'none';
                 }
             });
 
             document.getElementById('toggle-old-buildings').addEventListener('change', async (e) => {
                 if (e.target.checked) {
                     map.addLayer(layers.oldBuildings);
+                    
+                    const updateUIFromResolution = () => {
+                        let resVal = '1km';
+                        layers.oldBuildings.eachLayer(l => {
+                            // Leaflet L.geoJson stores feature inside each layer or in a sub-group
+                            const layersList = typeof l.getLayers === 'function' ? l.getLayers() : [l];
+                            layersList.forEach(singleL => {
+                                if (singleL.feature && singleL.feature.properties && singleL.feature.properties.resolution) {
+                                    resVal = singleL.feature.properties.resolution;
+                                }
+                            });
+                        });
+                        const descSpan = document.querySelector('#toggle-old-buildings').closest('.toggle-row').querySelector('.toggle-desc');
+                        if (descSpan) {
+                            if (resVal === '250m') {
+                                descSpan.textContent = '250m 격자 (250가구 이상, 노후도 60%~100% 밀집)';
+                            } else {
+                                descSpan.textContent = '1km 격자 (500가구 60% 이상 또는 1000가구 이상 밀집)';
+                            }
+                        }
+                    };
+
                     if (layers.oldBuildings.getLayers().length === 0) {
                         const loadingOverlay = document.getElementById('loading');
                         if (loadingOverlay) loadingOverlay.style.display = 'flex';
@@ -2981,18 +3747,24 @@
                                 },
                                 onEachFeature: function (feature, layer) {
                                     const props = feature.properties;
-                                    layer.bindTooltip(`<b>노후화 집중 구역</b><br>건축물: ${props.val} / ${props.total_val}개<br>노후화 비율: ${props.ratio_pct}%`, {
+                                    const resVal = props.resolution || '1km';
+                                    const gridLabel = resVal === '250m' ? '250m 격자' : '1km 격자';
+                                    layer.bindTooltip(`<b>노후화 집중 구역 (${gridLabel})</b><br>건축물: ${props.val} / ${props.total_val}개<br>노후화 비율: ${props.ratio_pct}%`, {
                                         sticky: true,
                                         className: 'custom-tooltip'
                                     });
                                 }
                             }).addTo(layers.oldBuildings);
+                            
+                            updateUIFromResolution();
                         } catch (error) {
                             console.error('Error loading old buildings:', error);
                             alert('노후 건축물 데이터를 불러오는 데 실패했습니다.');
                         } finally {
                             if (loadingOverlay) loadingOverlay.style.display = 'none';
                         }
+                    } else {
+                        updateUIFromResolution();
                     }
                 } else {
                     map.removeLayer(layers.oldBuildings);
@@ -3085,6 +3857,30 @@
                     triggerHighlighter();
                 }
             });
+
+            // Initialize road flow legend dragging
+            makeElementDraggable(document.getElementById('road-flow-legend'));
+
+            // Check initial state of toggle-road-flows
+            const initialRoadFlowsToggle = document.getElementById('toggle-road-flows');
+            if (initialRoadFlowsToggle && initialRoadFlowsToggle.checked) {
+                const subContainer = document.getElementById('road-flows-sub-container');
+                if (subContainer) subContainer.style.display = 'block';
+                const legend = document.getElementById('road-flow-legend');
+                if (legend) legend.style.display = 'block';
+            }
+
+            // Check initial state of population heatmap toggles
+            const resToggle = document.getElementById('toggle-residential-heatmap');
+            if (resToggle && resToggle.checked) {
+                const resLegend = document.getElementById('residential-legend');
+                if (resLegend) resLegend.style.display = 'block';
+            }
+            const workToggle = document.getElementById('toggle-workplace-heatmap');
+            if (workToggle && workToggle.checked) {
+                const workLegend = document.getElementById('workplace-legend');
+                if (workLegend) workLegend.style.display = 'block';
+            }
 
             // Load main auction data first to show results quickly
             loadAuctions().finally(() => {
