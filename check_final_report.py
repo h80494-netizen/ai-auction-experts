@@ -11,14 +11,20 @@ async def main():
     page.on('console', lambda msg: errors.append(f'CONSOLE: {msg.text}') if msg.type == 'error' else None)
     
     await page.goto('http://localhost:8000/')
+    
+    # Login through the overlay
+    await page.fill('#passwordInput', '1234')
+    await page.click('#loginBtn')
+    await page.wait_for_selector('#loginOverlay.hidden')
+    
     await page.fill('#caseNumberInput', '2024타경62469')
     await page.click('#searchCaseBtn')
     
     # Wait for search to complete (address list appears)
-    await page.wait_for_selector('.address-item', timeout=60000)
+    await page.wait_for_selector('.address-btn', timeout=60000)
     
     # Click the first address to select it
-    await page.click('.address-item')
+    await page.click('.address-btn')
     
     # Click start button
     await page.click('#startBtn')

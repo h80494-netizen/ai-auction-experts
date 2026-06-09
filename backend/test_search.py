@@ -27,7 +27,7 @@ async def test():
         print('Filling frm_top2...', flush=True)
         try:
             await page.select_option("form[name='frm_top2'] select[name='sno']", "2024")
-            await page.fill("form[name='frm_top2'] input[name='tno']", "5020")
+            await page.fill("form[name='frm_top2'] input[name='tno']", "62469")
             print('Clicking search...', flush=True)
             await page.click("#tk_btn a")
             await page.wait_for_timeout(2000)
