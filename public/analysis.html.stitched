@@ -1,0 +1,873 @@
+ Created At: 2026-06-06T00:16:34Z
+ Completed At: 2026-06-06T00:16:34Z
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              background: radial-gradient(circle at 50% 0%, #17153b 0%, var(--bg-dark) 80%);
+              color: var(--text-main);
+     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+     <!-- FontAwesome Icons -->
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+     <!-- Markdown Parser (Marked.js) -->
+     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+         :root {
+             --bg-dark: #07090f;
+             --bg-card: rgba(18, 24, 40, 0.75);
+             --bg-card-hover: rgba(25, 34, 56, 0.9);
+             --border-color: rgba(99, 102, 241, 0.15);
+             --border-hover: rgba(168, 85, 247, 0.35);
+             --border-color: rgba(99, 102, 241, 0.15);
+             --border-hover: rgba(168, 85, 247, 0.35);
+             --primary-indigo: #6366f1;
+             --primary-purple: #a855f7;
+             --primary-indigo: #6366f1;
+             --primary-pink: #ec4899;
+             --text-muted: #94a3b8;
+             --text-highlight: #c084fc;
+             --text-muted: #94a3b8;
+              font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+             --neon-shadow-strong: 0 0 25px rgba(168, 85, 247, 0.35);
+             --neon-shadow: 0 0 15px rgba(168, 85, 247, 0.15);
+              background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #ec4899 100%);
+              -webkit-background-clip: text;
+              -webkit-text-fill-color: transparent;
+              margin-bottom: 2px;
+              letter-spacing: -0.5px;
+          }
+
+          header p {
+              color: var(--text-muted);
+              font-size: 0.8rem;
+             font-family: 'Outfit', 'Inter', 'Noto Sans KR', sans-serif;
+             background: radial-gradient(circle at 50% 0%, #17153b 0%, var(--bg-dark) 80%);
+             color: var(--text-main);
+             min-height: 100vh;
+             padding: 15px;
+             line-height: 1.5;
+             font-size: 0.85rem;
+             overflow-x: hidden;
+         }
+
+         .container {
+             max-width: 1200px;
+             margin: 0 auto;
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ case_nos: caseNos })
+         header {
+          .then(res => res.json())
+             margin-bottom: 15px;
+              const reportContentEl = document.getElementById('ai-report-content');
+              if (data.status === 'success') {
+                  if (window.marked && typeof window.marked.parse === 'function') {
+                      reportContentEl.innerHTML = window.marked.parse(data.report);
+             font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+                      reportContentEl.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; color: var(--text-main); font-size: 0.85rem;">${data.report}</pre>`;
+             font-weight: 800;
+             background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #ec4899 100%);
+                  reportContentEl.innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 호출 실패: ${data.message}</div>`;
+             -webkit-text-fill-color: transparent;
+             margin-bottom: 2px;
+             letter-spacing: -0.5px;
+              console.error(err);
+              document.getElementById('ai-report-content').innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 요청 중 오류가 발생했습니다.</div>`;
+         header p {
+             color: var(--text-muted);
+             font-size: 0.8rem;
+             font-weight: 400;
+          document.getElementById('auctions-table').style.display = 'none';
+          document.getElementById('no-data-msg').style.display = 'block';
+          document.getElementById('ai-report-content').innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">중첩 분석 데이터가 존재하지 않습니다.</div>`;
+         .stats-grid {
+             display: grid;
+             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  </html>
+
+ The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+<!-- MISSING LINE 87 -->
+<!-- MISSING LINE 88 -->
+<!-- MISSING LINE 89 -->
+<!-- MISSING LINE 90 -->
+<!-- MISSING LINE 91 -->
+<!-- MISSING LINE 92 -->
+<!-- MISSING LINE 93 -->
+<!-- MISSING LINE 94 -->
+<!-- MISSING LINE 95 -->
+<!-- MISSING LINE 96 -->
+<!-- MISSING LINE 97 -->
+<!-- MISSING LINE 98 -->
+<!-- MISSING LINE 99 -->
+<!-- MISSING LINE 100 -->
+<!-- MISSING LINE 101 -->
+<!-- MISSING LINE 102 -->
+<!-- MISSING LINE 103 -->
+<!-- MISSING LINE 104 -->
+<!-- MISSING LINE 105 -->
+<!-- MISSING LINE 106 -->
+<!-- MISSING LINE 107 -->
+<!-- MISSING LINE 108 -->
+<!-- MISSING LINE 109 -->
+<!-- MISSING LINE 110 -->
+<!-- MISSING LINE 111 -->
+<!-- MISSING LINE 112 -->
+<!-- MISSING LINE 113 -->
+<!-- MISSING LINE 114 -->
+<!-- MISSING LINE 115 -->
+<!-- MISSING LINE 116 -->
+<!-- MISSING LINE 117 -->
+<!-- MISSING LINE 118 -->
+<!-- MISSING LINE 119 -->
+<!-- MISSING LINE 120 -->
+<!-- MISSING LINE 121 -->
+<!-- MISSING LINE 122 -->
+<!-- MISSING LINE 123 -->
+<!-- MISSING LINE 124 -->
+<!-- MISSING LINE 125 -->
+<!-- MISSING LINE 126 -->
+<!-- MISSING LINE 127 -->
+<!-- MISSING LINE 128 -->
+<!-- MISSING LINE 129 -->
+<!-- MISSING LINE 130 -->
+<!-- MISSING LINE 131 -->
+<!-- MISSING LINE 132 -->
+<!-- MISSING LINE 133 -->
+<!-- MISSING LINE 134 -->
+<!-- MISSING LINE 135 -->
+<!-- MISSING LINE 136 -->
+<!-- MISSING LINE 137 -->
+<!-- MISSING LINE 138 -->
+<!-- MISSING LINE 139 -->
+<!-- MISSING LINE 140 -->
+<!-- MISSING LINE 141 -->
+<!-- MISSING LINE 142 -->
+<!-- MISSING LINE 143 -->
+<!-- MISSING LINE 144 -->
+<!-- MISSING LINE 145 -->
+<!-- MISSING LINE 146 -->
+<!-- MISSING LINE 147 -->
+<!-- MISSING LINE 148 -->
+<!-- MISSING LINE 149 -->
+<!-- MISSING LINE 150 -->
+<!-- MISSING LINE 151 -->
+<!-- MISSING LINE 152 -->
+<!-- MISSING LINE 153 -->
+<!-- MISSING LINE 154 -->
+<!-- MISSING LINE 155 -->
+<!-- MISSING LINE 156 -->
+<!-- MISSING LINE 157 -->
+<!-- MISSING LINE 158 -->
+<!-- MISSING LINE 159 -->
+<!-- MISSING LINE 160 -->
+<!-- MISSING LINE 161 -->
+<!-- MISSING LINE 162 -->
+<!-- MISSING LINE 163 -->
+<!-- MISSING LINE 164 -->
+<!-- MISSING LINE 165 -->
+<!-- MISSING LINE 166 -->
+<!-- MISSING LINE 167 -->
+<!-- MISSING LINE 168 -->
+<!-- MISSING LINE 169 -->
+<!-- MISSING LINE 170 -->
+<!-- MISSING LINE 171 -->
+<!-- MISSING LINE 172 -->
+<!-- MISSING LINE 173 -->
+<!-- MISSING LINE 174 -->
+<!-- MISSING LINE 175 -->
+<!-- MISSING LINE 176 -->
+<!-- MISSING LINE 177 -->
+<!-- MISSING LINE 178 -->
+<!-- MISSING LINE 179 -->
+<!-- MISSING LINE 180 -->
+<!-- MISSING LINE 181 -->
+<!-- MISSING LINE 182 -->
+<!-- MISSING LINE 183 -->
+<!-- MISSING LINE 184 -->
+<!-- MISSING LINE 185 -->
+<!-- MISSING LINE 186 -->
+<!-- MISSING LINE 187 -->
+<!-- MISSING LINE 188 -->
+<!-- MISSING LINE 189 -->
+<!-- MISSING LINE 190 -->
+<!-- MISSING LINE 191 -->
+<!-- MISSING LINE 192 -->
+<!-- MISSING LINE 193 -->
+<!-- MISSING LINE 194 -->
+<!-- MISSING LINE 195 -->
+<!-- MISSING LINE 196 -->
+<!-- MISSING LINE 197 -->
+<!-- MISSING LINE 198 -->
+             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+             -webkit-mask-composite: xor;
+             mask-composite: exclude;
+             opacity: 0.2;
+             transition: opacity 0.3s;
+             pointer-events: none;
+         }
+
+         .best-card:hover {
+             transform: translateY(-4px);
+             border-color: transparent;
+             box-shadow: var(--neon-shadow-strong);
+         }
+
+         .best-card:hover::after {
+             opacity: 0.8;
+         }
+
+         /* Badge for ranks */
+         .rank-badge {
+             position: absolute;
+             top: -10px;
+             left: 20px;
+             padding: 4px 12px;
+             border-radius: 12px;
+             font-size: 0.72rem;
+             font-weight: 800;
+             letter-spacing: 0.5px;
+             text-transform: uppercase;
+             box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+             display: flex;
+             align-items: center;
+             gap: 4px;
+         }
+
+         .rank-1 {
+             background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+             color: #78350f;
+         }
+         .rank-2 {
+             background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+             color: #1e293b;
+         }
+         .rank-3 {
+             background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
+             color: #7c2d12;
+         }
+
+         /* Card Header */
+         .card-header {
+             margin-top: 5px;
+             margin-bottom: 12px;
+         }
+
+         .case-number {
+             font-family: 'Outfit', sans-serif;
+             font-size: 1.0rem;
+             font-weight: 700;
+             color: var(--text-highlight);
+             margin-bottom: 3px;
+         }
+
+         .property-type-badge {
+             background: rgba(99, 102, 241, 0.12);
+             border: 1px solid rgba(99, 102, 241, 0.4);
+             color: #a5b4fc;
+             padding: 1px 6px;
+             border-radius: 4px;
+             font-size: 0.68rem;
+             font-weight: 700;
+             display: inline-block;
+             margin-bottom: 6px;
+         }
+
+         .address {
+             font-size: 0.82rem;
+             font-weight: 500;
+             color: var(--text-main);
+             margin-bottom: 8px;
+             display: -webkit-box;
+             -webkit-line-clamp: 2;
+             -webkit-box-orient: vertical;
+             overflow: hidden;
+             height: 36px;
+             line-height: 1.3;
+         }
+
+         /* Prices */
+         .price-section {
+             background: rgba(0, 0, 0, 0.25);
+             padding: 8px 12px;
+             border-radius: 10px;
+             margin-bottom: 12px;
+             border: 1px solid rgba(255,255,255,0.03);
+         }
+
+         .price-r
+<!-- MISSING LINE 296 -->
+<!-- MISSING LINE 297 -->
+<!-- MISSING LINE 298 -->
+<!-- MISSING LINE 299 -->
+<!-- MISSING LINE 300 -->
+<!-- MISSING LINE 301 -->
+<!-- MISSING LINE 302 -->
+<!-- MISSING LINE 303 -->
+<!-- MISSING LINE 304 -->
+<!-- MISSING LINE 305 -->
+<!-- MISSING LINE 306 -->
+<!-- MISSING LINE 307 -->
+<!-- MISSING LINE 308 -->
+<!-- MISSING LINE 309 -->
+<!-- MISSING LINE 310 -->
+<!-- MISSING LINE 311 -->
+<!-- MISSING LINE 312 -->
+<!-- MISSING LINE 313 -->
+<!-- MISSING LINE 314 -->
+<!-- MISSING LINE 315 -->
+<!-- MISSING LINE 316 -->
+<!-- MISSING LINE 317 -->
+<!-- MISSING LINE 318 -->
+<!-- MISSING LINE 319 -->
+<!-- MISSING LINE 320 -->
+<!-- MISSING LINE 321 -->
+<!-- MISSING LINE 322 -->
+<!-- MISSING LINE 323 -->
+<!-- MISSING LINE 324 -->
+<!-- MISSING LINE 325 -->
+<!-- MISSING LINE 326 -->
+<!-- MISSING LINE 327 -->
+<!-- MISSING LINE 328 -->
+<!-- MISSING LINE 329 -->
+<!-- MISSING LINE 330 -->
+<!-- MISSING LINE 331 -->
+<!-- MISSING LINE 332 -->
+<!-- MISSING LINE 333 -->
+<!-- MISSING LINE 334 -->
+<!-- MISSING LINE 335 -->
+<!-- MISSING LINE 336 -->
+<!-- MISSING LINE 337 -->
+<!-- MISSING LINE 338 -->
+<!-- MISSING LINE 339 -->
+<!-- MISSING LINE 340 -->
+<!-- MISSING LINE 341 -->
+<!-- MISSING LINE 342 -->
+<!-- MISSING LINE 343 -->
+<!-- MISSING LINE 344 -->
+<!-- MISSING LINE 345 -->
+<!-- MISSING LINE 346 -->
+<!-- MISSING LINE 347 -->
+<!-- MISSING LINE 348 -->
+<!-- MISSING LINE 349 -->
+<!-- MISSING LINE 350 -->
+<!-- MISSING LINE 351 -->
+<!-- MISSING LINE 352 -->
+<!-- MISSING LINE 353 -->
+<!-- MISSING LINE 354 -->
+<!-- MISSING LINE 355 -->
+<!-- MISSING LINE 356 -->
+<!-- MISSING LINE 357 -->
+<!-- MISSING LINE 358 -->
+<!-- MISSING LINE 359 -->
+<!-- MISSING LINE 360 -->
+<!-- MISSING LINE 361 -->
+<!-- MISSING LINE 362 -->
+<!-- MISSING LINE 363 -->
+<!-- MISSING LINE 364 -->
+<!-- MISSING LINE 365 -->
+<!-- MISSING LINE 366 -->
+<!-- MISSING LINE 367 -->
+<!-- MISSING LINE 368 -->
+<!-- MISSING LINE 369 -->
+<!-- MISSING LINE 370 -->
+<!-- MISSING LINE 371 -->
+<!-- MISSING LINE 372 -->
+<!-- MISSING LINE 373 -->
+<!-- MISSING LINE 374 -->
+<!-- MISSING LINE 375 -->
+<!-- MISSING LINE 376 -->
+<!-- MISSING LINE 377 -->
+<!-- MISSING LINE 378 -->
+<!-- MISSING LINE 379 -->
+<!-- MISSING LINE 380 -->
+<!-- MISSING LINE 381 -->
+<!-- MISSING LINE 382 -->
+<!-- MISSING LINE 383 -->
+<!-- MISSING LINE 384 -->
+<!-- MISSING LINE 385 -->
+<!-- MISSING LINE 386 -->
+<!-- MISSING LINE 387 -->
+<!-- MISSING LINE 388 -->
+<!-- MISSING LINE 389 -->
+<!-- MISSING LINE 390 -->
+<!-- MISSING LINE 391 -->
+<!-- MISSING LINE 392 -->
+<!-- MISSING LINE 393 -->
+<!-- MISSING LINE 394 -->
+<!-- MISSING LINE 395 -->
+<!-- MISSING LINE 396 -->
+             color: var(--text-muted);
+             line-height: 1.35;
+             text-align: justify;
+             display: -webkit-box;
+             -webkit-line-clamp: 2;
+             -webkit-box-orient: vertical;
+             overflow: hidden;
+             text-overflow: ellipsis;
+             height: 2.7em; /* precisely 2 lines */
+         }
+
+         /* List Table View */
+         .list-section {
+             background: var(--bg-card);
+             border: 1px solid var(--border-color);
+             border-radius: 16px;
+             padding: 15px;
+             backdrop-filter: blur(12px);
+             margin-top: 25px;
+             overflow-x: auto;
+         }
+
+         .analysis-table {
+             width: 100%;
+             border-collapse: collapse;
+             text-align: left;
+             font-size: 0.78rem;
+         }
+
+         .analysis-table th {
+             color: var(--text-muted);
+             font-weight: 600;
+             padding: 10px;
+             border-bottom: 1px solid rgba(255,255,255,0.06);
+             font-size: 0.75rem;
+             text-transform: uppercase;
+             letter-spacing: 0.5px;
+         }
+
+         .analysis-table td {
+             padding: 10px;
+             border-bottom: 1px solid rgba(255,255,255,0.04);
+             color: var(--text-main);
+             vertical-align: middle;
+         }
+
+         .analysis-table tr:last-child td {
+             border-bottom: none;
+         }
+
+         .analysis-table tr {
+             transition: background-color 0.15s;
+         }
+
+         .analysis-table tr:hover td {
+             background-color: rgba(255,255,255,0.015);
+             color: #fff;
+         }
+
+         .analysis-table .case-cell {
+             font-weight: 700;
+             color: var(--text-highlight);
+             font-family: 'Outfit', sans-serif;
+         }
+
+         .analysis-table .badges-cell {
+             max-width: 250px;
+         }
+
+         .analysis-table .price-cell {
+             font-family: 'Outfit', sans-serif;
+             font-weight: 600;
+             text-align: right;
+         }
+
+         .analysis-table .price-cell.min {
+             color: var(--pri        .no-data {
+             text-align: center;
+             padding: 30px 0;
+             color: var(--text-muted);
+             font-size: 0.95rem;
+             padding: 30px 0;
+             color: var(--text-muted);
+             font-size: 0.95rem;
+         .markdown-body {
+             color: var(--text-main);
+             line-height: 1.6;
+         }
+         .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+             color: var(--text-highlight);
+             margin-top: 18px;
+         <h1>PREMIUM HIGHLIGHTER REPORT</h1>
+         <p>필터 중첩 분석 기반 추천 경매 분석 및 가치 평가 결과</p>
+             font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+             border-bottom: 1px solid rgba(255,255,255,0.05);
+             padding-bottom: 4px;
+     <div class="stats-grid">
+         <div class="stat-card">
+             <i class="fa-solid fa-list-check"></i>
+             color: var(--primary-purple);
+                 <h3>분석 대상 물건</h3>
+         .markdown-body p {
+             margin-bottom: 12px;
+             font-size: 0.85rem;
+             color: var(--primary-purple);
+             <i class="fa-solid fa-layer-group"></i>
+         .markdown-body ul, .markdown-bod
+                 <h3>최대 중첩 수</h3>
+                 <div class="value" id="stat-max-overlap">0</div>
+             text-align: justify;
+         </div>
+         .markdown-body ul, .markdown-body ol {
+             <i class="fa-solid fa-award"></i>
+             <div class="stat-content">
+                 <h3>추천 BEST 물건</h3>
+                 <div class="value" id="stat-best">3</div>
+             margin-bottom: 4px;
+             font-size: 0.82rem;
+             color: var(--text-main);
+         }
+         .markdown-body li strong {
+     <h2 class="section-title"><i class="fa-solid fa-ranking-star"></i> AI 선정 입지 및 권리분석 <span>BEST 3</span></h2>
+     <div class="best-grid" id="best-cards-container">
+         <!-- Rendered dynamically -->
+             color: #fff;
+             font-weight: 700;
+     <!-- Complete list of matched auctions -->
+     <h2 class="section-title" style="margin-top: 25px;"><i class="fa-solid fa-table-list"></i> 전체 중첩 물건 리스트</h2>
+     <div class="list-section">
+         <table class="analysis-table" id="auctions-table">
+             <thead>
+ <div class="container">
+                     <th style="width: 120px;">사건번호</th>
+                     <th style="width: 70px;">구분</th>
+         <p>필터 중첩 분석 기반 추천 경매 분석 및 가치 평가 결과</p>
+                     <th style="width: 220px;">매칭된 필터</th>
+                     <th style="width: 80px; text-align: center;">중첩 수</th>
+                     <th style="text-align: right; width: 120px;">감정평가액</th>
+                     <th style="text-align: right; width: 120px;">최저입찰가</th>
+         <div class="stat-card">
+             <i class="fa-solid fa-list-check"></i>
+             <div class="stat-content">
+                 <!-- Rendered dynamically -->
+                 <div class="value" id="stat-total">0</div>
+             </div>
+         <div class="no-data" id="no-data-msg" style="display: none;">
+             중첩 분석 데이터가 존재하지 않습니다.
+             <i class="fa-sol
+     </div>
+ </div>
+
+ <script>
+<!-- MISSING LINE 549 -->
+<!-- MISSING LINE 550 -->
+<!-- MISSING LINE 551 -->
+<!-- MISSING LINE 552 -->
+<!-- MISSING LINE 553 -->
+<!-- MISSING LINE 554 -->
+<!-- MISSING LINE 555 -->
+<!-- MISSING LINE 556 -->
+<!-- MISSING LINE 557 -->
+<!-- MISSING LINE 558 -->
+<!-- MISSING LINE 559 -->
+<!-- MISSING LINE 560 -->
+<!-- MISSING LINE 561 -->
+<!-- MISSING LINE 562 -->
+<!-- MISSING LINE 563 -->
+<!-- MISSING LINE 564 -->
+<!-- MISSING LINE 565 -->
+<!-- MISSING LINE 566 -->
+<!-- MISSING LINE 567 -->
+<!-- MISSING LINE 568 -->
+             <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+                 <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; margin-bottom: 10px; color: var(--primary-purple);"></i>
+                 <p>Gemini 2.5 Flash가 실시간으로 개발계획, 인수금액, 수익률을 분석 중입니다...</p>
+             </div>
+         </div>
+     </div>
+
+     <!-- Complete list of matched auctions -->
+     <h2 class="section-title" style="margin-top: 25px;"><i class="fa-solid fa-table-list"></i> 전체 중첩 물건 리스트</h2>
+     <div class="list-section">
+         <table class="analysis-table" id="auctions-table">
+             <thead>
+                 <tr>
+                     <th style="width: 120px;">사건번호</th>
+                     <th style="width: 70px;">구분</th>
+                     <th>소재지</th>
+                     <th style="width: 200px;">매칭된 필터</th>
+                     <th style="width: 70px; text-align: center;">중첩 수</th>
+                     <th style="width: 100px; text-align: center;">추천 등급</th>
+                     <th style="text-align: right; width: 120px;">감정평가액</th>
+                     <th style="text-align: right; width: 120px;">최저입찰가</th>
+                 </tr>
+             </thead>
+             <tbody id="table-body">
+                 <!-- Rendered dynamically -->
+             </tbody>
+         </table>
+         <div class="no-data" id="no-data-msg" style="display: none;">
+             중첩 분석 데이터가 존재하지 않습니다.
+         </div>
+     </div>
+ </div>
+
+ <script>
+     // Comprehensive AI Recommendation Score helper
+     function calculateRecommendationScore(item) {
+         // 1. Yield Score (max 50 points)
+         const appraisal = parseFloat(item.appraisal_price || 0);
+             num = parseInt(num.replace(/[^0-9]/g, ''), 10);
+         let discountRate = 0.0;
+         if (isNaN(num)) return '-';
+             discountRate = Math.max(0.0, (appraisal - minPrice) / appraisal);
+         }
+         const yieldScore = discountRate * 50.0;
+     // Comprehensive AI Recommendation Score helper
+     function calculateRecommendationScore(item) {
+         const overlapCount = parseInt(item.overlap_count || 0, 10);
+         const appraisal = parseFloat(item.appraisal_price || 0);
+         const minPrice = parseFloat(item.min_price || 0);
+         else if (overlapCount === 4) rating = 4;
+             if (['개발', '택지', '계획', '도로', '구역', '지하철', '역세권'].some(k => l.includes(k))) {
+             discountRate = Math.max(0.0, (appraisal - minPrice) / appraisal);
+         else rating = 1;
+         const yieldScore = discountRate * 50.0;
+         const valueUpScore = Math.min(30.0, (overlapCount * 3.0) + (devLayerCount * 5.0));
+         for (let i = 1; i <= maxStars; i++) {
+         const overlapCount = parseInt(item.overlap_count || 0, 10);
+                 html += '<i class="fa-solid fa-star" style="color: #fbbf24; margin-right: 2px;"></i>';
+         const specialNotes = String(item.special_notes || "").toLowerCase();
+                 html += '<i class="fa-regular fa-star" style="color: rgba(255,255,255,0.2); margin-right: 2px;"></i>';
+             if (['개발', '택지', '계획', '도로', '구역', '지하철', '역세권'].some(k => l.includes(k))) {
+                 devLayerCount++;
+         if (['유치권', '지상권'].some(k => specialNotes.i
+         fetch('/api/map/overlap_analyze', {
+         const valueUpScore = Math.min(30.0, (overlapCount * 3.0) + (devLayerCount * 5.0));
+     // Click navigation helper
+                 'Content-Type': 'application/json'
+         const targetUrl = `/?case=${encodeURIComponent(caseNo)}`;
+         const specialNotes = String(item.special_notes || "").toLowerCase();
+         if (['선순위', '대항력', '임차'].some(k => specialNotes.includes(k))) {
+         if (['공장', '창고', '상가', '오피스', '근린'].some(k => propType.includes(k))) {
+                 window.opener.focus();
+             const reportContentEl = document.getElementById('ai-report-content');
+             if (data.status === 'success') {
+                 if (window.marked && typeof window.marked.parse === 'function') {
+                     reportContentEl.innerHTML = window.marked.parse(data.report);
+         return Math.round((yieldScore + valueUpScore + safetyScore) * 100) / 100;
+                     reportContentEl.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; color: var(--text-main); font-size: 0.85rem;">${data.report}</pre>`;
+                 }
+         const propType = String(item.property_type || "");
+                 reportContentEl.innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 호출 실패: ${data.message}</div>`;
+     const rawData = localStorage.getItem('highlighted_auctions');
+         let rating = 1;
+         if (score >= 80) rating = 5;
+         safetyScore = Math.max(0.0, safetyScore);
+                 valueAnalysis = `해당 물건은 ${matchedLayersStr} 내/인근에 위치하여 도시개발 계획에 직접적인 수혜를 받습니다. 향후 주거 및 상업 인프라 확충과 도로망 신설 등 개발 호재 실현에 따라 가시적인 지가 상승 및 큰 폭의 부동산 자산 가치 상승이 확실시되는 핵심 유망 물건입니다.`;
+         return Math.round((yieldScore + valueUpScore + safetyScore) * 100) / 100;
+                 valueAnalysis = `교통망(${item.matched_layers.includes('지하철역') ? '지하철 인접' : '이면도로 발달'}) 및 풍부한 인프라(${item.matched_layers.includes('상권') ? '상권 인접' : ''}) 조건이 우수합니다. 생활 밀착형 배후 수요가 탄탄해 불황기에도 하방 경직성이 강하며 인프라 개선에 따른 가치 보전 및 향후 시세 상승 여력이 매우 높습니다.`;
+         console.error("Failed to parse localStorage data:", e);
+     // Star rendering helper based on Score
+         document.getElementById('auctions-table').style.display = 'none';
+         document.getElementById('no-data-msg').style.display = 'block';
+         document.getElementById('ai-report-content').innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">중첩 분석 데이터가 존재하지 않습니다.</div>`;
+         // Sort auctions: 1) Overlap count DESC, 2) Appraisal price DESC
+                 html += '<i class="fa-regular fa-star" style="color: rgba(255,255,255,0.2); margin-right: 2px;"></i>';
+             if (b.overlap_count !== a.overlap_count) {
+                 return b.overlap_count - a.overlap_count;
+         best3.forEach((item, index) => {
+             const aPrice = typeof a.appraisal_price === 'number' ? a.appraisal_price : parseInt(String(a.appraisal_price).replace(/[^0-9]/g, ''), 10) || 0;
+             const bPrice = typeof b.appraisal_price === 'number' ? b.appraisal_price : parseInt(String(b.appraisal_price).replace(/[^0-9]/g, ''), 10) || 0;
+             // Dynamic value appreciation analysis
+     function openCaseInDashboard(caseNo) {
+             const hasDev = item.matched_layers.some(l => l.includes('개발') || l.includes('택지') || l.includes('계획') || l.includes('도로'));
+         if (window.opener && !window.opener.closed) {
+                 valueAnalysis = `해당 물건은 ${matchedLayersStr} 내/인근에 위치하여 도시개발 계획에 직접적인 수혜를 받습니다. 향후 주거 및 상업 인프라 확충과 도로망 신설 등 개발 호재 실현에 따라 가시적인 지가 상승 및 큰 폭의 부동산 자
+         const maxOverlap = Math.max(...auctions.map(a => a.overlap_count));
+                         <div class="analysis-desc">${uncertaintyAnalysis}</div>
+         document.getElementById('stat-best').innerText = Math.min(auctions.length, 3);
+             card.className = 'best-card';
+                 console.warn("Cross-origin opener or other error:", e);
+             card.onclick = () => openCaseInDashboard(item.case_no);
+         const bestContainer = document.getElementById('best-cards-container');
+         const targetUrl = `/?case=${encodeURIComponent(caseNo)}`;
+                     <span class="rank-badge rank-${index + 1}">
+                         <i class="fa-solid fa-crown"></i> BEST ${index + 1}
+             const matchedLayersStr = item.matched_layers.join(', ');
+         document.getElementById('stat-total').innerText = auctions.length;
+         const maxOverlap = Math.max(...auctions.map(a => a.overlap_count));
+                         <span class="property-type-badge">${item.property_type}</span>
+             const hasDev = item.matched_layers.some(l => l.includes('개발') || l.includes('택지') || l.includes('계획') || l.includes('도로'));
+             if (notes.includes('유치권') || notes.includes('위반')) {
+                 valueAnalysis = `해당 물건은 ${matchedLayersStr} 내/인근에 위치하여 도시개발 계획에 직접적인 수혜를 받습니다. 향후 주거 및 상업 인프라 확충과 도로망 신설 등 개발 호재 실현에 따라 가시적인 지가 상승 및 큰 폭의 부동산 자산 가치 상승이 확실시되는 핵심 유망 물건입니다.`;
+                 <td style="font-size: 0.78rem; font-weight: 500;">${item.address}</td>
+                 uncertaintyAnalysis = `등기부본상 말소기준등기보다 선순위인 가처분, 가등기 등이 존재하지 않으며 낙찰 후 모든 근저당권 및 압류 효력이 깨끗하게 소멸(소멸주의)됩니다. 인도명령 대상 권리자만 존재하여 통상적인 대화 협상이나 신속한 인도명령 강제집행 절차를 통해 최단 기간 내 점유 이전이 가능하므로 권리상 불확실성이 극히 낮습니다.`;
+                     <div style="display:flex; flex-wrap:wrap; gap:3px;">
+                         ${item.matched_layers.map(layer => `<span class="matched-badge" style="font-size:0.65rem; padding: 1px 4px; border-radius:4px;">${layer}</span>`).join('')}
+     const rawData = localStorage.getItem('highlighted_auctions');
+             const matchedLayersStr = item.matched_layers.join(', ');
+                 <td style="text-align: center; font-weight: 800; font-family:'Outfit',sans-serif; color:var(--text-highlight); font-size: 0.95rem;">${item.overlap_count}</td>
+                             <span class="price-val min-price">${formatPrice(item.min_price)}</span>
+                 <td class="price-cell min">${formatPrice(item.min_price)}</td>
+             const hasDev = item.matched_layers.some(l => l.includes('개발') || l.includes('택지') || l.includes('계획') || l.includes('도로'));
+                     <span class="rank-badge rank-${index + 1}">
+                 valueAnalysis = `해당 물건은 ${matchedLayersStr} 내/인근에 위치하여 도시개발 계획에 직접적인 수혜를 받습니다. 향후 주거 및 상업 인프라 확충과 도로망 신설 등 개발 호재 실현에 따라 가시적인 지가 상승 및 큰 폭의 부동산 자산 가치 상승이 확실시되는 핵심 유망 물건입니다.`;
+                         <div class="overlap-count-circle">${item.overlap_count}</div>
+                 valueAnalysis = `교통망(${item.matched_layers.includes('지하철역') ? '지하철 인접' : '이면도로 발달'}) 및 풍부한 인프라(${item.matched_layers.includes('상권') ? '상권 인접' : ''}) 조건이 우수합니다. 생활 밀착형 배후 수요가 탄탄해 불황기에도 하방 경직성이 강하며 인프라 개선에 따른 가치 보전 및 향후 시세 상승 여력이 매우 높습니다.`;
+                             <div>핵심 입지/개발 <strong>${item.overlap_count}개</strong> 중첩</div>
+         document.getElementById('no-data-msg').style.display = 'block';
+         // Sort auctions: 1) Overlap count DESC, 2) Appraisal price DESC
+             card.className = 'best-card';
+             if (b.overlap_count !== a.overlap_count) {
+             card.onclick = () => openCaseInDashboard(item.case_no);
+             card.innerHTML = `
+             const aPrice = typeof a.appraisal_price === 'number' ? a.appraisal_price : parseInt(String(a.appraisal_price).replace(/[^0-9]/g, ''), 10) || 0;
+             const bPrice = typeof b.appraisal_price === 'number' ? b.appraisal_price : parseInt(String(b.appraisal_price).replace(/[^0-9]/g, ''), 10) || 0;
+                         <i class="fa-solid fa-crown"></i> BEST ${index + 1}
+             card.onclick = () => openCaseInDashboard(item.case_no);
+                     <div class="card-header" style="margin-top: 10px;">
+                         <div class="case-number">${item.case_no}</div>
+                         <span class="property-type-badge">${item.property_type}</span>
+                         <div class="address" title="${item.address}">${item.address}</div>
+         document.getElementById('stat-max-overlap').innerText = maxOverlap;
+         document.getElementById('stat-best').innerText = Math.min(auctions.length, 3);
+                         <div class="case-number">${item.case_no}</div>
+                         <span class="property-type-badge">${item.property_type}</span>
+                         <div class="address" title="${item.address}">${item.address}</div>
+         const bestContainer = document.getElementById('best-cards-container');
+         bestContainer.innerHTML = '';
+                     <div class="price-section">
+                         <div class="price-row">
+             const matchedLayersStr = item.matched_layers.join(', ');
+                             <span class="price-val">${formatPrice(item.appraisal_price)}</span>
+             // Dynamic value appreciation analysis
+                         <div class="price-row">
+             const hasDev = item.matched_layers.some(l => l.includes('개발') || l.includes('택지') || l.includes('계획') || l.includes('도로'));
+                             <span class="price-val min-price">${formatPrice(item.min_price)}</span>
+                 valueAnalysis = `해당 물건은 ${matchedLayersStr} 내/인근에 위치하여 도시개발 계획에 직접적인 수혜를 받습니다. 향후 주거 및 상업 인프라 확충과 도로망 신설 등 개발 호재 실현에 따라 가시적인 지가 상승 및 큰 폭의 부동산 자산 가치 상승이 확실시되는 핵심 유망 물건입니다.`;
+                     </div>
+                 valueAnalysis = `교통망(${item.matched_layers.includes('지하철역') ? '지하철 인접' : '이면도로 발달'}) 및 풍부한 인프라(${item.matched_layers.includes('상권') ? '상권 인접' : ''}) 조건이 우수합니다. 생활 밀착형 배후 수요가 탄탄해 불황기에도 하방 경직성이 강하며 인프라 개선에 따른 가치 보전 및 향후 시세 상승 여력이 매우 높습니다.`;
+                     <div class="overlap-indicator">
+                         <div class="overlap-count-circle">${item.overlap_count}</div>
+                         <div class="overlap-text">
+                             <div>핵심 입지/개발 <strong>${item.overlap_count}개</strong> 중첩</div>
+                             <div style="font-size: 0.68rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+                                 등급: ${renderStars(item.overlap_count)}
+                             </div>
+                         </div>
+                     </div>
+
+                     <div class="matched-badges">
+                         ${item.matched_layers.map(layer => `<span class="matched-badge">${layer}</span>`).join('')}
+                     </div>
+                 </div>
+
+                 <div class="analysis-section">
+                     <div class="analysis-item">
+                         <div class="analysis-title">
+                             <i class="fa-solid fa-arrow-up-right-dots"></i> 개발 가치 및 상승 잠재력
+                         </div>
+                         <div class="analysis-desc">${valueAnalysis}</div>
+                     </div>
+                     <div class="analysis-item">
+                         <div class="analysis-title">
+                             <i class="fa-solid fa-shield-halved"></i> 인수액 리스크 (선순위 분석)
+                         </div>
+                         <div class="analysis-desc">${claimsAnalysis}</div>
+                     </div>
+                     <div class="analysis-item">
+                         <div class="analysis-title">
+                             <i class="fa-solid fa-circle-check"></i> 권리 투명성 및 불확실성
+                         </div>
+                         <div class="analysis-desc">${uncertaintyAnalysis}</div>
+                 'Content-Type': 'application/json'
+                 </div>
+             body: JSON.stringify({ case_nos: caseNos })
+             bestContainer.appendChild(card);
+         .then(res => res.json())
+         .then(data => {
+             const reportContentEl = document.getElementById('ai-report-content');
+         const tableBody = document.getElementById('table-body');
+                 if (window.marked && typeof window.marked.parse === 'function') {
+                     reportContentEl.innerHTML = window.marked.parse(data.report);
+         auctions.forEach(item => {
+                     reportContentEl.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; color: var(--text-main); font-size: 0.85rem;">${data.report}</pre>`;
+             tr.style.cursor = 'pointer';
+             tr.onclick = () => openCaseInDashboard(item.case_no);
+                 reportContentEl.innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 호출 실패: ${data.message}</div>`;
+                 <td class="case-cell">${item.case_no}</td>
+                 <td><span class="property-type-badge" style="margin-bottom:0;">${item.property_type}</span></td>
+                 <td style="font-size: 0.78rem; font-weight: 500;">${item.address}</td>
+                 <td class="badges-cell">
+             document.getElementById('ai-report-content').innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 요청 중 오류가 발생했습니다.</div>`;
+                         ${item.matched_layers.map(layer => `<span class="matched-badge" style="font-size:0.65rem; padding: 1px 4px; border-radius:4px;">${layer}</span>`).join('')}
+                     </div>
+                 </td>
+                 <td style="text-align: center; font-weight: 800; font-family:'Outfit',sans-serif; color:var(--text-highlight); font-size: 0.95rem;">${item.overlap_count}</td>
+                 <td style="text-align: center;">${renderStars(item.overlap_count)}</td>
+                 <td class="price-cell">${formatPrice(item.appraisal_price)}</td>
+         document.getElementById('ai-report-content').innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">중첩 분석 데이터가 존재하지 않습니다.</div>`;
+             `;
+             tableBody.appendChild(tr);
+         });
+ </html>
+         // Fetch AI Overlap Report
+         const caseNos = auctions.map(a => a.case_no);
+         fetch('/api/map/overlap_analyze', {
+             method: 'POST',
+             headers: {
+                 'Content-Type': 'application/json'
+             },
+             body: JSON.stringify({ case_nos: caseNos })
+         })
+         .then(res => res.json())
+         .then(data => {
+             const reportContentEl = document.getElementById('ai-report-content');
+             if (data.status === 'success') {
+                 if (window.marked && typeof window.marked.parse === 'function') {
+                     reportContentEl.innerHTML = window.marked.parse(data.report);
+                 } else {
+                     reportContentEl.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; color: var(--text-main); font-size: 0.85rem;">${data.report}</pre>`;
+                 }
+             } else {
+                 reportContentEl.innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 호출 실패: ${data.message}</div>`;
+             }
+         })
+         .catch(err => {
+             console.error(err);
+             document.getElementById('ai-report-content').innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 요청 중 오류가 발생했습니다.</div>`;
+         });
+
+     } else {
+         // No data
+         document.getElementById('auctions-table').style.display = 'none';
+         document.getElementById('no-data-msg').style.display = 'block';
+         document.getElementById('ai-report-content').innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">중첩 분석 데이터가 존재하지 않습니다.</div>`;
+     }
+ </script>
+ </body>
+ </html>-desc">${uncertaintyAnalysis}</div>
+                     </div>
+                 </div>
+             `;
+             bestContainer.appendChild(card);
+         });
+
+         // Render entire table
+         const tableBody = document.getElementById('table-body');
+         tableBody.innerHTML = '';
+
+         auctions.forEach(item => {
+             const tr = document.createElement('tr');
+             tr.innerHTML = `
+                 <td class="case-cell">${item.case_no}</td>
+                 <td><span class="property-type-badge" style="margin-bottom:0;">${item.property_type}</span></td>
+                 <td style="font-size: 0.78rem; font-weight: 500;">${item.address}</td>
+                 <td class="badges-cell">
+                     <div style="display:flex; flex-wrap:wrap; gap:3px;">
+                         ${item.matched_layers.map(layer => `<span class="matched-badge" style="font-size:0.65rem; padding: 1px 4px; border-radius:4px;">${layer}</span>`).join('')}
+                     </div>
+                 </td>
+                 <td style="text-align: center; font-weight: 800; font-family:'Outfit',sans-serif; color:var(--text-highlight); font-size: 0.95rem;">${item.overlap_count}</td>
+                 <td class="price-cell">${formatPrice(item.appraisal_price)}</td>
+                 <td class="price-cell min">${formatPrice(item.min_price)}</td>
+             `;
+             tableBody.appendChild(tr);
+         });
+     } else {
+         // No data
+         document.getElementById('auctions-table').style.display = 'none';
+         document.getElementById('no-data-msg').style.display = 'block';
+     }
+ </script>
+
+ </body>
+ </html>

@@ -39,6 +39,17 @@ def generate_deep_research(data: dict) -> str:
         risks = ', '.join(data.get('risks', [])) if data.get('risks') else '특이사항 없음'
         precautions = data.get('precautions', '없음')
         
+        status = data.get('status', '진행중')
+        is_ended = data.get('is_ended', False)
+        final_date = data.get('final_date', '')
+        final_result = data.get('final_result', '')
+        
+        history_str = ""
+        if data.get("history"):
+            history_str = "\n".join([f"- {h.get('date')}: 최저입찰가 {h.get('price')} ({h.get('status')})" for h in data.get("history")])
+        else:
+            history_str = "없음"
+            
         property_type = data.get('property_type', '주택')
         house_count = data.get('house_count', '1주택')
         investor_type = data.get('investor_type', '개인')
@@ -48,6 +59,10 @@ def generate_deep_research(data: dict) -> str:
         has_tenant = data.get('has_tenant', True)
         
         regulated_str = "조정대상지역" if str(is_regulated).lower() == 'true' else "비조정대상지역"
+        
+        ended_warning = ""
+        if is_ended:
+            ended_warning = f"\n\n**[중요: 과거/종결된 사건]**\n본 사건은 최종 날짜 {final_date}에 '{final_result}' 상태로 종결된 과거 사건입니다. 따라서 보고서 분석 및 추천입찰가 역산 시 이미 종결된 물건임을 감안하여 보고서를 서술해 주십시오.\n"
 
         tenant_warning = ""
         if not has_tenant:
@@ -145,9 +160,12 @@ def generate_deep_research(data: dict) -> str:
 - 전용면적(건물면적): {building_area}
 - 식별된 리스크(키워드): {risks}
 - 매각물건명세서(공매재산명세서) 주의사항/특수권리 원문:
-{precautions}{tenant_warning}{suspended_warning}
+{precautions}{tenant_warning}{suspended_warning}{ended_warning}
 - 규제지역 여부: {regulated_str}
 - 투자자 조건: {house_count}, {investor_type}, {investment_duration} 매도 전략, 목표수익률 연 {target_return}%
+- 사건 진행 상태: {status} (종결 여부: {is_ended}, 최종 날짜: {final_date}, 최종 결과: {final_result})
+- 진행 이력 (기일내역):
+{history_str}
 
 ### [정밀 수집된 임차인 및 점유 현황]
 {tenants_str}
@@ -160,7 +178,7 @@ def generate_deep_research(data: dict) -> str:
 
 # 1. 요약
 - 핵심 리스크와 투자 매력도를 5줄 이내로 간결하게 브리핑.
-- 마지막 줄에 투자 여부를 [Go] 또는 [Stop] 으로 명확히 기재할 것.
+- 마지막 줄에 투자 여부를 [Go] 또는 [Stop] 으로 명확히 기재할 것. (만약 이미 과거/종결된 사건이라면, 투자 여부 기재 대신 '본 사건은 [최종날짜]에 [최종결과]로 종결된 과거 사건입니다.' 형식으로 요약에 한 줄 명시할 것.)
 
 # 2. 기본정보
 - 사건번호, 주소지, 대지평수, 건물평수, 감정가, 최저가, 매각기일, 사용승인일자 기재. (입력된 사용승인일자가 '알 수 없음'인 경우, 반드시 첨부된 PDF 데이터를 읽고 연/월을 추정하여 기재할 것)
@@ -239,8 +257,8 @@ def generate_deep_research(data: dict) -> str:
   * 금액별 대출 한도 (15억 이하 최대 6억, 15~25억 4억, 25억 이상 2억)를 반영하여 실제 대출 한도 금액 제시.
 
 # 10. 최종 결론
-- 본 경매 물건에 대한 종합적인 투자 판단을 반드시 [투자 판정: GO], [투자 판정: Neutral], [투자 판정: Danger] 중 하나로 선택하여 이 섹션의 가장 첫 줄에 명시할 것.
-- 투자를 진행하거나 보류/포기해야 하는 **핵심 사유 3가지**를 구체적이고 논리적으로 서술.
+- 본 경매 물건에 대한 종합적인 투자 판단을 반드시 [투자 판정: GO], [투자 판정: Neutral], [투자 판정: Danger] 중 하나로 선택하여 이 섹션의 가장 첫 줄에 명시할 것. (단, 본 사건이 과거/종결된 사건일 경우에는 [투자 판정: 종결 (유찰)], [투자 판정: 종결 (낙찰)], [투자 판정: 종결 (변경)], [투자 판정: 종결 (취소/취하)] 등으로 표기하여 이미 종결된 과거 사건임을 명확히 드러낼 것.)
+- 투자를 진행하거나 보류/포기해야 하는 **핵심 사유 3가지**를 구체적이고 논리적으로 서술. (과거/종결 사건인 경우 해당 결과를 맞이한 원인 분석을 포함하여 서술할 것.)
 - 예상되는 가장 큰 리스크와 그에 대한 대비책을 종합적으로 요약.
 
 ---
@@ -304,7 +322,9 @@ def generate_deep_research(data: dict) -> str:
         except Exception as e:
             err_msg = str(e)
             if "429" in err_msg:
-                raise Exception("구글 Gemini API 무료 할당량(요청 수 제한)을 초과했습니다. 잠시 후 [분석 시작] 버튼을 다시 눌러주세요. 계속 발생 시 Google AI Studio에서 카드 등록이 필요합니다.")
+                raise Exception("구글 Gemini API 무료 할당량(요청 수 제한)을 초과했습니다. 잠시 후 다시 시도해주세요.")
+            elif "403" in err_msg and "denied access" in err_msg.lower():
+                raise Exception("Google Gemini API 키가 차단되었거나 권한이 거부되었습니다 (403 Forbidden). Google AI Studio에 로그인하여 계정 상태를 확인하고 새로운 API 키를 발급받아 .env 파일에 업데이트해 주세요.")
             raise Exception(f"API 호출 오류: {err_msg}")
                     
     except Exception as e:
@@ -326,12 +346,40 @@ def analyze_overlap_cases(items: list) -> str:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-2.5-flash')
         
+        import sys
+        import os
+        # Ensure crawler module is accessible
+        crawler_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'crawler'))
+        if crawler_path not in sys.path:
+            sys.path.append(crawler_path)
+            
+        from crawler.onbid_scraper import scrape_onbid_case
+        from crawler.search_scraper import search_expert_opinions
+        from crawler.myauction_scraper import scrape_myauction_case
+
         # Format the items as text context
         items_context = ""
         for idx, item in enumerate(items):
+            case_no = item.get('case_no', '')
             # Determine source
-            is_gongmae = "-" in str(item.get('case_no', '')) and "타경" not in str(item.get('case_no', ''))
+            is_gongmae = "-" in str(case_no) and "타경" not in str(case_no)
             source = "온비드 (공매)" if is_gongmae else "마이옥션 (경매)"
+            
+            expert_opinions = ""
+            external_data_str = ""
+            if case_no and case_no != '알 수 없음':
+                # 1. Fetch from web search
+                expert_opinions = search_expert_opinions(case_no)
+                
+                # 2. Fetch from auction/public sale scraper
+                if is_gongmae:
+                    onbid_data = scrape_onbid_case(case_no)
+                    external_data_str = f"  * 조세채권 등: {onbid_data.get('tax_claims', '')}\n  * 당해세: {onbid_data.get('priority_tax', '')}\n  * 비고: {onbid_data.get('special_notes', '')}"
+                else:
+                    # 마이옥션 데이터 스크래핑 시도 (약식)
+                    myauc_data = scrape_myauction_case(case_no)
+                    if myauc_data and "error" not in myauc_data:
+                        external_data_str = f"  * 임차인 여부: {'있음' if myauc_data.get('has_tenant') else '없음'}\n  * 법원 특이사항: {myauc_data.get('precautions', '없음')}"
             
             # Format rates and prices cleanly
             min_bid_rate = item.get('min_bid_rate', 100)
@@ -358,7 +406,7 @@ def analyze_overlap_cases(items: list) -> str:
             min_price_per_pyeong = item.get('min_price_per_pyeong', 0)
             
             items_context += f"""
-### 물건 {idx+1}. {item.get('case_no', '알 수 없음')} ({source})
+### 물건 {idx+1}. {case_no} ({source})
 - 소재지: {item.get('address', '알 수 없음')}
 - 부동산 종류: {item.get('property_type', '알 수 없음')}
 - 감정가: {item.get('appraised_value', 0):,} 원
@@ -368,32 +416,36 @@ def analyze_overlap_cases(items: list) -> str:
 - 인근 지하철역 거리: {subway_dist_str}
 - 공시지가: {official_land_price:,} 원/㎡
 - 평당 최저가: {min_price_per_pyeong:,} 원/평
+- 스크래핑된 공매/경매 상세 특이사항: 
+{external_data_str}
+- [RAG 웹 검색 참조] 인터넷(블로그 등) 전문가 의견 요약:
+{expert_opinions}
 """
 
         prompt = f"""
 당신은 20년 경력의 실전 경매 및 공매 전문 투자자입니다.
 지도의 특정 구역에서 여러 개발 계획 레이어(택지지구, 재개발구역, 용도지역, 도시계획도로 등)가 중첩되는 '골든 존(Golden Zone)' 내의 중첩 물건 분석을 요청받았습니다.
-제공된 중첩 물건 정보(최대 3개)를 바탕으로, 각 물건의 리스크와 사업성/수익률을 약식 분석하고 전체 리스트에 대한 최종 추천 별점 평점을 매기는 리포트를 마크다운 형식으로 작성하십시오.
+제공된 중첩 물건 정보(최대 3개)를 바탕으로, 각 물건의 리스크와 사업성/수익률을 정밀 분석하고 전체 리스트에 대한 최종 추천 별점 평점을 매기는 리포트를 마크다운 형식으로 작성하십시오.
 
 ### [중첩 분석 대상 물건 정보]
 {items_context}
 
-### [리포트 작성 가이드라인 - 각 물건별 차별화 및 선순위 정밀 분석]
+### [리포트 작성 가이드라인 - 각 물건별 정밀 분석 필수 항목]
 1. **서론**: 분석 대상 지역의 개발 호재(중첩된 개발 정보들)의 시너지 효과를 2-3줄로 요약하십시오.
 2. **개별 물건 분석 (Best 3)**:
-   - 각 물건별로 동일한 문구 템플릿 사용을 절대 금하고, 물건 고유의 소재지, 면적, 지하철역 거리, 공시지가, 특별권리사항 데이터를 사용하여 **개별적이고 차별화된 입지/개발 가치 분석**을 제공하십시오.
-   - 각 물건별로 다음 세 가지 항목을 상세히 분석하여 구체적으로 작성하십시오:
-     * **개발 가치 및 구체적 개발계획 수혜**: ('중첩된 개발계획/입지 레이어'와 '인근 지하철역 거리'를 참고하여, 특정 지구 개발이나 정비구역 입지가 가져올 구체적인 지가 상승률, 인프라 개발 영향 및 차별화된 수혜 강도를 서술하십시오.)
-     * **선순위 키워드 분석 및 권리 리스크 (인수금액 정밀 진단)**:
-       - **인수금액이 진짜 없는가?** '특별권리분석 특이사항 (DB)'에 기재된 키워드(예: '선순위임차인', '대항력', '유치권', '법정지상권', '위반건축물' 등)를 세심히 파악하여 분석하십시오.
-       - '선순위임차인'이나 '대항력' 등 인수 가능한 선순위 권리가 명시되어 있다면, 감정가 및 최저가 수준을 고려하여 예상 선순위 인수 보증금액 또는 부담하게 될 리스크 크기(인수 예상 금액)를 정밀 분석하여 적으십시오.
-       - 인수할 선순위 권리가 전혀 없다면, 말소기준권리를 근거로 낙찰 후 소멸되는 깨끗한 권리임을 명시하고 왜 인수금액이 0원(없음)인지를 논리적으로 서술하십시오.
-     * **감정가, 최저가, 예상 시세 및 수익률**:
-       - 각 물건의 감정가, 최저가 정보를 바탕으로 **예상 시세**를 추정하여 기재하십시오. (개발 호재가 있는 곳은 시세가 감정가 내외이거나 그 이상일 가능성이 큼)
-       - 최저가가 감정가/시세 대비 얼마나 매력적인 할인율(최저가율)인지 기재하고, 단기 매도 또는 임대 세팅 시 목표 ROI 및 사업 타당성을 구체적 수치와 함께 서술하십시오.
-   - 경매 물건은 **마이옥션**, 공매 물건은 **온비드** 데이터를 참조하여 분석했다는 점을 명시하십시오.
+   - 각 물건별로 동일한 문구 템플릿 복붙을 절대 금하며, 데이터와 지식을 바탕으로 아래 **9가지 필수 항목**을 마크다운 리스트 형태로 빠짐없이 작성하십시오:
+     * **1. 매각기일 및 주소**: 
+     * **2. 감정평가현황 (최저가율)**: 감정가, 최저가, 감정가 대비 최저가율
+     * **3. 건축년도, 평수, 층수, 지목**: 전용면적 및 대지면적(토지면적) 포함 (주어진 면적 데이터를 평수로 환산하여 기재)
+     * **4. 권리분석 (선순위 인수금액 유무)**: 대항력 있는 선순위 임차인이나 유치권 등 인수해야 할 선순위 금액 유무 (없다면 '인수금액 없음' 명시)
+     * **5. 조세채권 및 당해세 유무**: 공매/경매 특성상 조세채권(당해세) 배분 리스크 서술
+     * **6. 반경 5km 내 개발계획 명칭**: 중첩된 레이어 데이터를 바탕으로 구체적인 개발계획 수혜 서술
+     * **7. 아파트 세대수 및 역세권 유무**: 인근 지하철역 거리 기반 역세권 여부 및 아파트의 경우 예상 세대수 규모 (아파트가 아니면 해당 용도 기재)
+     * **8. 출구 전략 (단기매도 vs 임대전략)**: 둘 중 대상 물건에 더 유리한 전략 선택 및 구체적 이유 (수익률 시뮬레이션 포함)
+     * **9. 위험요소 (리스크)**: 투자를 저해할 수 있는 치명적 단점이나 리스크 1~2개
+   - 경매 물건은 **마이옥션**, 공매 물건은 **온비드** 데이터를 기초로 분석했다는 점을 명시하십시오.
 3. **종합 추천 평점 (별 5개 평점 부여)**:
-   - 전체 리스트에 대해 최종 투자 매력도를 평가하여 5성급 평점(예: ⭐⭐⭐⭐⭐)을 부여하고, 그 사유를 명시하십시오. (중첩 개수가 많은 만큼 무조건 높은 평점인 별 5개 만점을 기준으로 추천하고 논리를 서술하십시오.)
+   - 베스트 3 물건 전체에 대한 최종 투자 매력도를 종합 평가하여 5성급 평점(예: ⭐⭐⭐⭐⭐)을 부여하고, 그 사유를 명시하십시오.
 4. **연동 안내**:
    - "상세 권리분석을 원하시면 물건 번호 또는 사건번호를 클릭하여 정밀 권리분석 보고서를 로드하십시오." 라는 안내 문구를 하단에 포함시키십시오.
 

@@ -7,7 +7,7 @@ def main():
     try:
         print("Reading shapefile from zip...")
         # geopandas can read shapefiles directly from a zip
-        gdf = gpd.read_file('zip://data/지구단위계획구역.zip')
+        gdf = gpd.read_file('zip://data/개발행위허가제한지역.zip')
         
         print(f"Original CRS: {gdf.crs}")
         if gdf.crs is None:
@@ -56,7 +56,7 @@ def main():
             min_lng, min_lat, max_lng, max_lat = bounds
             
             geojson_str = json.dumps(geom.__geo_interface__)
-            name = str(row[name_col]) if name_col else f"지구단위계획구역 {idx}"
+            name = str(row[name_col]) if name_col else f"개발행위허가제한지역 {idx}"
             
             cursor.execute('''
                 INSERT INTO district_units (name, min_lat, max_lat, min_lng, max_lng, geojson)

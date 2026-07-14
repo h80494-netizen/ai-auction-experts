@@ -1,0 +1,638 @@
+- generic [active] [ref=e1]:
+  - generic:
+    - heading "정비사업 정보몽땅 스킵네비게이션" [level=1] [ref=e2]
+    - list:
+      - listitem:
+        - link "본문바로가기" [ref=e3] [cursor=pointer]:
+          - /url: "#main-contants"
+      - listitem:
+        - link "주메뉴바로가기" [ref=e4] [cursor=pointer]:
+          - /url: "#gnb"
+  - generic [ref=e5]:
+    - banner [ref=e6]:
+      - generic [ref=e8]:
+        - heading "서울특별시 정비사업 정보몽땅 로고 블랙" [level=1] [ref=e9]:
+          - link "서울특별시 정비사업 정보몽땅 로고 블랙" [ref=e10] [cursor=pointer]:
+            - /url: javascript:goCleanup();
+            - img "서울특별시 정비사업 정보몽땅 로고 블랙" [ref=e11]
+        - link "전체메뉴" [ref=e14] [cursor=pointer]:
+          - /url: "#n"
+          - generic [ref=e15]: 전체메뉴
+    - generic [ref=e19]:
+      - generic [ref=e21]:
+        - generic [ref=e23]: 정보공개현황
+        - link "사업장검색" [ref=e25] [cursor=pointer]:
+          - /url: "#n"
+      - generic [ref=e28]:
+        - heading "사업장검색" [level=3] [ref=e29]
+        - link "서울특별시" [ref=e31] [cursor=pointer]:
+          - /url: "#na"
+        - generic [ref=e32]:
+          - generic [ref=e35]:
+            - img "서울시정비사업e-종합관리시스템" [ref=e38]
+            - generic:
+              - link "도봉구":
+                - /url: "#n"
+              - link "강북구":
+                - /url: "#n"
+              - link "노원구":
+                - /url: "#n"
+              - link "은평구":
+                - /url: "#n"
+              - link "종로구":
+                - /url: "#n"
+              - link "성북구":
+                - /url: "#n"
+              - link "동대문구":
+                - /url: "#n"
+              - link "중랑구":
+                - /url: "#n"
+              - link "서대문구":
+                - /url: "#n"
+              - link "마포구":
+                - /url: "#n"
+              - link "중구":
+                - /url: "#n"
+              - link "용산구":
+                - /url: "#n"
+              - link "성동구":
+                - /url: "#n"
+              - link "광진구":
+                - /url: "#n"
+              - link "강서구":
+                - /url: "#n"
+              - link "양천구":
+                - /url: "#n"
+              - link "구로구":
+                - /url: "#n"
+              - link "영등포구":
+                - /url: "#n"
+              - link "금천구":
+                - /url: "#n"
+              - link "동작구":
+                - /url: "#n"
+              - link "관악구":
+                - /url: "#n"
+              - link "서초구":
+                - /url: "#n"
+              - link "강남구":
+                - /url: "#n"
+              - link "송파구":
+                - /url: "#n"
+              - link "강동구":
+                - /url: "#n"
+            - link [ref=e39] [cursor=pointer]:
+              - /url: "#n"
+              - text: 도봉구
+            - link [ref=e40] [cursor=pointer]:
+              - /url: "#n"
+              - text: 강북구
+            - link [ref=e41] [cursor=pointer]:
+              - /url: "#n"
+              - text: 노원구
+            - link [ref=e42] [cursor=pointer]:
+              - /url: "#n"
+              - text: 은평구
+            - link [ref=e43] [cursor=pointer]:
+              - /url: "#n"
+              - text: 종로구
+            - link [ref=e44] [cursor=pointer]:
+              - /url: "#n"
+              - text: 성북구
+            - link [ref=e45] [cursor=pointer]:
+              - /url: "#n"
+              - text: 동대문구
+            - link [ref=e46] [cursor=pointer]:
+              - /url: "#n"
+              - text: 중랑구
+            - link [ref=e47] [cursor=pointer]:
+              - /url: "#n"
+              - text: 서대문구
+            - link [ref=e48] [cursor=pointer]:
+              - /url: "#n"
+              - text: 마포구
+            - link [ref=e49] [cursor=pointer]:
+              - /url: "#n"
+              - text: 중구
+            - link [ref=e50] [cursor=pointer]:
+              - /url: "#n"
+              - text: 용산구
+            - link [ref=e51] [cursor=pointer]:
+              - /url: "#n"
+              - text: 성동구
+            - link [ref=e52] [cursor=pointer]:
+              - /url: "#n"
+              - text: 광진구
+            - link [ref=e53] [cursor=pointer]:
+              - /url: "#n"
+              - text: 강서구
+            - link [ref=e54] [cursor=pointer]:
+              - /url: "#n"
+              - text: 양천구
+            - link [ref=e55] [cursor=pointer]:
+              - /url: "#n"
+              - text: 구로구
+            - link [ref=e56] [cursor=pointer]:
+              - /url: "#n"
+              - text: 영등포구
+            - link [ref=e57] [cursor=pointer]:
+              - /url: "#n"
+              - text: 금천구
+            - link [ref=e58] [cursor=pointer]:
+              - /url: "#n"
+              - text: 동작구
+            - link [ref=e59] [cursor=pointer]:
+              - /url: "#n"
+              - text: 관악구
+            - link [ref=e60] [cursor=pointer]:
+              - /url: "#n"
+              - text: 서초구
+            - link [ref=e61] [cursor=pointer]:
+              - /url: "#n"
+              - text: 강남구
+            - link [ref=e62] [cursor=pointer]:
+              - /url: "#n"
+              - text: 송파구
+            - link [ref=e63] [cursor=pointer]:
+              - /url: "#n"
+              - text: 강동구
+          - generic [ref=e64]:
+            - paragraph
+            - paragraph [ref=e69]: 자치구를 선택하세요
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - generic [ref=e73]: 사업구분
+            - generic [ref=e74]:
+              - paragraph [ref=e75]:
+                - checkbox "재건축" [checked] [ref=e76]
+                - generic [ref=e77]: 재건축
+              - paragraph [ref=e78]:
+                - checkbox "재개발(주택정비형)" [checked] [ref=e79]
+                - generic [ref=e80]: 재개발(주택정비형)
+              - paragraph [ref=e81]:
+                - checkbox "재개발(도시정비형)" [checked] [ref=e82]
+                - generic [ref=e83]: 재개발(도시정비형)
+              - paragraph [ref=e84]:
+                - checkbox "가로주택정비" [checked] [ref=e85]
+                - generic [ref=e86]: 가로주택정비
+              - paragraph [ref=e87]:
+                - checkbox "소규모재건축" [checked] [ref=e88]
+                - generic [ref=e89]: 소규모재건축
+              - paragraph [ref=e90]:
+                - checkbox "지역주택" [checked] [ref=e91]
+                - generic [ref=e92]: 지역주택
+              - paragraph [ref=e93]:
+                - checkbox "리모델링" [checked] [ref=e94]
+                - generic [ref=e95]: 리모델링
+              - paragraph [ref=e96]:
+                - checkbox "소규모재개발" [checked] [ref=e97]
+                - generic [ref=e98]: 소규모재개발
+          - generic [ref=e99]:
+            - generic [ref=e100]: 시행방식
+            - generic [ref=e101]:
+              - paragraph [ref=e102]:
+                - checkbox "조합방식" [checked] [ref=e103]
+                - generic [ref=e104]: 조합방식
+              - paragraph [ref=e105]:
+                - checkbox "신탁시행자방식" [checked] [ref=e106]
+                - generic [ref=e107]: 신탁시행자방식
+              - paragraph [ref=e108]:
+                - checkbox "신탁대행자방식" [checked] [ref=e109]
+                - generic [ref=e110]: 신탁대행자방식
+              - paragraph [ref=e111]:
+                - checkbox "공공" [checked] [ref=e112]
+                - generic [ref=e113]: 공공
+          - generic [ref=e114]:
+            - generic [ref=e115]: 운영단계
+            - generic [ref=e116]:
+              - paragraph [ref=e117]:
+                - checkbox "추진주체구성전" [checked] [ref=e118]
+                - generic [ref=e119]: 추진주체구성전
+              - paragraph [ref=e120]:
+                - checkbox "추진위원회" [checked] [ref=e121]
+                - generic [ref=e122]: 추진위원회
+              - paragraph [ref=e123]:
+                - checkbox "조합" [checked] [ref=e124]
+                - generic [ref=e125]: 조합
+              - paragraph [ref=e126]:
+                - checkbox "조합청산" [checked] [ref=e127]
+                - generic [ref=e128]: 조합청산
+          - generic [ref=e129]:
+            - generic [ref=e130]: 운영구분
+            - generic [ref=e131]:
+              - paragraph [ref=e132]:
+                - checkbox "운영" [checked] [ref=e133]
+                - generic [ref=e134]: 운영
+              - paragraph [ref=e135]:
+                - checkbox "일시중단" [checked] [ref=e136]
+                - generic [ref=e137]: 일시중단
+          - generic [ref=e138]:
+            - generic [ref=e139]: 사업진행단계
+            - generic [ref=e140]:
+              - combobox "사업진행단계" [ref=e141]:
+                - option "====== 전체 ======" [selected]
+                - option "정비계획 수립"
+                - option "안전진단"
+                - option "정비구역지정"
+                - option "추진위원회승인"
+                - option "조합설립인가"
+                - option "사업시행인가"
+                - option "관리처분인가"
+                - option "철거"
+                - option "착공"
+                - option "분양"
+                - option "준공인가"
+                - option "이전고시"
+                - option "조합해산"
+                - option "조합청산"
+              - generic [ref=e142]:
+                - textbox "사업명을 입력해주세요." [ref=e143]
+                - link "검색" [ref=e144] [cursor=pointer]:
+                  - /url: "#a"
+        - generic [ref=e146]:
+          - generic [ref=e147]:
+            - paragraph [ref=e148]: "추진주체구성전 : 130 / 추진위원회 : 205 / 조합 : 739 / 조합청산 : 54"
+            - generic [ref=e149]:
+              - combobox "정렬기준 선택" [ref=e150]:
+                - option "--선택--" [selected]
+                - option "사업구분 오름차순"
+                - option "사업구분 내림차순"
+                - option "사업장명 오름차순"
+                - option "사업장명 내림차순"
+                - option "진행단계 오름차순"
+                - option "진행단계 내림차순"
+                - option "정보공개건수 오름차순"
+                - option "정보공개건수 내림차순"
+                - option "공개적시성 오름차순"
+                - option "공개적시성 내림차순"
+                - option "자료충실도 오름차순"
+                - option "자료충실도 내림차순"
+              - link "정렬" [ref=e151] [cursor=pointer]:
+                - /url: "#n"
+                - generic [ref=e152]: 정렬
+              - link "엑셀다운로드" [ref=e153] [cursor=pointer]:
+                - /url: "#a"
+          - generic [ref=e154]:
+            - table "사업장 목록 게시판" [ref=e157]:
+              - caption [ref=e158]: 사업장 목록 게시판
+              - rowgroup [ref=e170]:
+                - row "번호 자치구 사업구분 사업장명 대표지번 진행단계 공개자료수 (최근자료) 공개적시성 (전체자료) 자료충실도 이동" [ref=e171]:
+                  - columnheader "번호" [ref=e172]
+                  - columnheader "자치구" [ref=e173]
+                  - columnheader "사업구분" [ref=e174]
+                  - columnheader "사업장명" [ref=e175]
+                  - columnheader "대표지번" [ref=e176]
+                  - columnheader "진행단계" [ref=e177]
+                  - columnheader "공개자료수 (최근자료)" [ref=e178]:
+                    - text: 공개자료수
+                    - text: (최근자료)
+                  - columnheader "공개적시성 (전체자료)" [ref=e179]:
+                    - text: 공개적시성
+                    - text: (전체자료)
+                  - columnheader "자료충실도" [ref=e180]
+                  - columnheader "이동" [ref=e181]
+              - rowgroup [ref=e182]:
+                - row "1128 강남구 재건축 개포주공3단지아파트 재건축정비사업 조합 개포동 138 조합해산 1877건 100.0% 100.0% 사업장 지도" [ref=e183]:
+                  - cell "1128" [ref=e184]
+                  - cell "강남구" [ref=e185]
+                  - cell "재건축" [ref=e186]
+                  - cell "개포주공3단지아파트 재건축정비사업 조합" [ref=e187]
+                  - cell "개포동 138" [ref=e188]
+                  - cell "조합해산" [ref=e189]
+                  - cell "1877건" [ref=e190]
+                  - cell "100.0%" [ref=e191]
+                  - cell "100.0%" [ref=e192]
+                  - cell "사업장 지도" [ref=e193]:
+                    - link "사업장" [ref=e194] [cursor=pointer]:
+                      - /url: javascript:cafeOpenPopup('gaepo3');
+                    - link "지도" [ref=e195] [cursor=pointer]:
+                      - /url: javascript:mapOpenPopup('11000AGZ201211160062');
+                - row "1127 강남구 재건축 개포주공2단지 주택재건축정비사업조합 개포동 140 조합해산 150건 1.52% 68.57% 사업장" [ref=e196]:
+                  - cell "1127" [ref=e197]
+                  - cell "강남구" [ref=e198]
+                  - cell "재건축" [ref=e199]
+                  - cell "개포주공2단지 주택재건축정비사업조합" [ref=e200]
+                  - cell "개포동 140" [ref=e201]
+                  - cell "조합해산" [ref=e202]
+                  - cell "150건" [ref=e203]
+                  - cell "1.52%" [ref=e204]
+                  - cell "68.57%" [ref=e205]
+                  - cell "사업장" [ref=e206]:
+                    - link "사업장" [ref=e207] [cursor=pointer]:
+                      - /url: javascript:cafeOpenPopup('gaepo22');
+                - row "1126 강남구 재건축 개포주공6,7단지아파트 재건축정비사업조합 개포동 185 사업시행인가 4032건 100.0% 100.0% 사업장 지도" [ref=e208]:
+                  - cell "1126" [ref=e209]
+                  - cell "강남구" [ref=e210]
+                  - cell "재건축" [ref=e211]
+                  - cell "개포주공6,7단지아파트 재건축정비사업조합" [ref=e212]
+                  - cell "개포동 185" [ref=e213]
+                  - cell "사업시행인가" [ref=e214]
+                  - cell "4032건" [ref=e215]
+                  - cell "100.0%" [ref=e216]
+                  - cell "100.0%" [ref=e217]
+                  - cell "사업장 지도" [ref=e218]:
+                    - link "사업장" [ref=e219] [cursor=pointer]:
+                      - /url: javascript:cafeOpenPopup('gaepo6_7');
+                    - link "지도" [ref=e220] [cursor=pointer]:
+                      - /url: javascript:mapOpenPopup('11000AGZ201810110042');
+                - row "1125 강남구 재건축 개포주공5단지아파트 재건축정비사업 조합 개포동 187 관리처분인가 1797건 100.0% 100.0% 사업장 지도" [ref=e221]:
+                  - cell "1125" [ref=e222]
+                  - cell "강남구" [ref=e223]
+                  - cell "재건축" [ref=e224]
+                  - cell "개포주공5단지아파트 재건축정비사업 조합" [ref=e225]
+                  - cell "개포동 187" [ref=e226]
+                  - cell "관리처분인가" [ref=e227]
+                  - cell "1797건" [ref=e228]
+                  - cell "100.0%" [ref=e229]
+                  - cell "100.0%" [ref=e230]
+                  - cell "사업장 지도" [ref=e231]:
+                    - link "사업장" [ref=e232] [cursor=pointer]:
+                      - /url: javascript:cafeOpenPopup('gaepo5');
+                    - link "지도" [ref=e233] [cursor=pointer]:
+                      - /url: javascript:mapOpenPopup('11000AGZ201710270374');
+                - row "1124 강남구 재건축 개포주공4단지아파트 재건축정비사업 조합 개포동 189 준공인가 2029건 100.0% 100.0% 사업장 지도" [ref=e234]:
+                  - cell "1124" [ref=e235]
+                  - cell "강남구" [ref=e236]
+                  - cell "재건축" [ref=e237]
+                  - cell "개포주공4단지아파트 재건축정비사업 조합" [ref=e238]
+                  - cell "개포동 189" [ref=e239]
+                  - cell "준공인가" [ref=e240]
+                  - cell "2029건" [ref=e241]
+                  - cell "100.0%" [ref=e242]
+                  - cell "100.0%" [ref=e243]
+                  - cell "사업장 지도" [ref=e244]:
+                    - link "사업장" [ref=e245] [cursor=pointer]:
+                      - /url: javascript:cafeOpenPopup('gaepofour');
+                    - link "지도" [ref=e246] [cursor=pointer]:
+                      - /url: javascript:mapOpenPopup('11000AGZ201301240072');
+                - row "1123 강남구 재건축 개포 경남·우성3차·현대1차 통합 재건축정비사업 개포동 649 추진위원회승인 43건 50.0% 100.0% 사업장" [ref=e247]:
+                  - cell "1123" [ref=e248]
+                  - cell "강남구" [ref=e249]
+                  - cell "재건축" [ref=e250]
+                  - cell "개포 경남·우성3차·현대1차 통합 재건축정비사업" [ref=e251]
+                  - cell "개포동 649" [ref=e252]
+                  - cell "추진위원회승인" [ref=e253]
+                  - cell "43건" [ref=e254]
+                  - cell "50.0%" [ref=e255]
+                  - cell "100.0%" [ref=e256]
+                  - cell "사업장" [ref=e257]:
+                    - link "사업장" [ref=e258] [cursor=pointer]:
+                      - /url: javascript:cafeOpenPopup('ruddngus');
+                - row "1122 강남구 재건축 개포현대2차아파트 재건축정비사업 개포동 654 추진위원회승인 53건 100.0% 100.0% 사업장" [ref=e259]:
+                  - cell "1122" [ref=e260]
+                  - cell "강남구" [ref=e261]
+                  - cell "재건축" [ref=e262]
+                  - cell "개포현대2차아파트 재건축정비사업" [ref=e263]
+                  - cell "개포동 654" [ref=e264]
+                  - cell "추진위원회승인" [ref=e265]
+                  - cell "53건" [ref=e266]
+                  - cell "100.0%" [ref=e267]
+                  - cell "100.0%" [ref=e268]
+                  - cell "사업장" [ref=e269]:
+                    - link "사업장" [ref=e270] [cursor=pointer]:
+                      - /url: javascript:cafeOpenPopup('gaepohd2');
+                - row "1121 강남구 소규모재건축 개포현대2차아파트 200동,220동 소규모재건축사업조합 개포동 655 조합설립인가 25건 75.0% 100.0% 사업장" [ref=e271]:
+                  - cell "1121" [ref=e272]
+                  - cell "강남구" [ref=e273]
+                  - cell "소규모재건축" [ref=e274]
+                  - cell "개포현대2차아파트 200동,220동 소규모재건축사업조합" [ref=e275]
+                  - cell "개포동 655" [ref=e276]
+                  - cell "조합설립인가" [ref=e277]
+                  - cell "25건" [ref=e278]
+                  - cell "75.0%" [ref=e279]
+                  - cell "100.0%" [ref=e280]
+                  - cell "사업장" [ref=e281]:
+                    - link "사업장" [ref=e282] [cursor=pointer]:
+                      - /url: javascript:cafeOpenPopup('hd200220');
+                - row "1120 강남구 재건축 개포시영(아) 주택재건축정비사업조합 개포동 656 조합해산 2752건 100.0% 100.0% 사업장 지도" [ref=e283]:
+                  - cell "1120" [ref=e284]
+                  - cell "강남구" [ref=e285]
+                  - cell "재건축" [ref=e286]
+                  - cell "개포시영(아) 주택재건축정비사업조합" [ref=e287]
+                  - cell "개포동 656" [ref=e288]
+                  - cell "조합해산" [ref=e289]
+                  - cell "2752건" [ref=e290]
+                  - cell "100.0%" [ref=e291]
+                  - cell "100.0%" [ref=e292]
+                  - cell "사업장 지도" [ref=e293]:
+                    - link "사업장" [ref=e294] [cursor=pointer]:
+                      - /url: javascript:cafeOpenPopup('K0HnsE0P');
+                    - link "지도" [ref=e295] [cursor=pointer]:
+                      - /url: javascript:mapOpenPopup('11000AGZ202009030001');
+                - row "1119 강남구 재건축 개포시영아파트 중심상가 재건축정비사업조합 개포동 656-3 이전고시 985건 100.0% 100.0% 사업장 지도" [ref=e296]:
+                  - cell "1119" [ref=e297]
+                  - cell "강남구" [ref=e298]
+                  - cell "재건축" [ref=e299]
+                  - cell "개포시영아파트 중심상가 재건축정비사업조합" [ref=e300]
+                  - cell "개포동 656-3" [ref=e301]
+                  - cell "이전고시" [ref=e302]
+                  - cell "985건" [ref=e303]
+                  - cell "100.0%" [ref=e304]
+                  - cell "100.0%" [ref=e305]
+                  - cell "사업장 지도" [ref=e306]:
+                    - link "사업장" [ref=e307] [cursor=pointer]:
+                      - /url: javascript:cafeOpenPopup('gaepoS');
+                    - link "지도" [ref=e308] [cursor=pointer]:
+                      - /url: javascript:mapOpenPopup('11000AGZ202009030001');
+            - list [ref=e310]:
+              - listitem [ref=e311]:
+                - link "첫 페이지로 이동합니다." [ref=e312] [cursor=pointer]:
+                  - /url: /cleanup/bsnssttus/lscrMainIndx.do?cpage=1&pageSize=10
+              - listitem [ref=e313]:
+                - link "이동할 이전 페이지 없음" [ref=e314] [cursor=pointer]:
+                  - /url: "#n"
+              - listitem [ref=e315]:
+                - link "1" [ref=e316] [cursor=pointer]:
+                  - /url: "#n"
+              - listitem [ref=e317]:
+                - link "2" [ref=e318] [cursor=pointer]:
+                  - /url: /cleanup/bsnssttus/lscrMainIndx.do?cpage=2&pageSize=10
+              - listitem [ref=e319]:
+                - link "3" [ref=e320] [cursor=pointer]:
+                  - /url: /cleanup/bsnssttus/lscrMainIndx.do?cpage=3&pageSize=10
+              - listitem [ref=e321]:
+                - link "4" [ref=e322] [cursor=pointer]:
+                  - /url: /cleanup/bsnssttus/lscrMainIndx.do?cpage=4&pageSize=10
+              - listitem [ref=e323]:
+                - link "5" [ref=e324] [cursor=pointer]:
+                  - /url: /cleanup/bsnssttus/lscrMainIndx.do?cpage=5&pageSize=10
+              - listitem [ref=e325]:
+                - link "6" [ref=e326] [cursor=pointer]:
+                  - /url: /cleanup/bsnssttus/lscrMainIndx.do?cpage=6&pageSize=10
+              - listitem [ref=e327]:
+                - link "7" [ref=e328] [cursor=pointer]:
+                  - /url: /cleanup/bsnssttus/lscrMainIndx.do?cpage=7&pageSize=10
+              - listitem [ref=e329]:
+                - link "8" [ref=e330] [cursor=pointer]:
+                  - /url: /cleanup/bsnssttus/lscrMainIndx.do?cpage=8&pageSize=10
+              - listitem [ref=e331]:
+                - link "9" [ref=e332] [cursor=pointer]:
+                  - /url: /cleanup/bsnssttus/lscrMainIndx.do?cpage=9&pageSize=10
+              - listitem [ref=e333]:
+                - link "10" [ref=e334] [cursor=pointer]:
+                  - /url: /cleanup/bsnssttus/lscrMainIndx.do?cpage=10&pageSize=10
+              - listitem [ref=e335]:
+                - link "11번 페이지로 이동합니다." [ref=e336] [cursor=pointer]:
+                  - /url: /cleanup/bsnssttus/lscrMainIndx.do?cpage=11&pageSize=10
+              - listitem [ref=e337]:
+                - link "마지막 페이지로 이동합니다." [ref=e338] [cursor=pointer]:
+                  - /url: /cleanup/bsnssttus/lscrMainIndx.do?cpage=113&pageSize=10
+    - contentinfo [ref=e339]:
+      - generic [ref=e340]:
+        - generic [ref=e341]:
+          - generic [ref=e342]:
+            - list [ref=e344]:
+              - listitem [ref=e345]:
+                - link "이용약관" [ref=e346] [cursor=pointer]:
+                  - /url: /cleanup/view/useStplat.do
+              - listitem [ref=e347]:
+                - link "개인정보처리방침" [ref=e348] [cursor=pointer]:
+                  - /url: /cleanup/view/personInfo.do
+              - listitem [ref=e349]:
+                - link "저작권정책" [ref=e350] [cursor=pointer]:
+                  - /url: https://www.seoul.go.kr/helper/copyright.do
+              - listitem [ref=e351]:
+                - link "이용안내" [ref=e352] [cursor=pointer]:
+                  - /url: /cleanup/bbs/lscr.do?bbsClCode=1800
+              - listitem [ref=e353]:
+                - link "원격지원" [ref=e354] [cursor=pointer]:
+                  - /url: http://211.253.61.4/start/
+              - listitem [ref=e355]:
+                - link "원격지원 안내" [ref=e356] [cursor=pointer]:
+                  - /url: "#n"
+            - generic [ref=e357]:
+              - paragraph [ref=e358]: 홈페이지 이용 문의 안내
+              - list [ref=e359]:
+                - listitem [ref=e360]: 콜센터 02) 2126-4673,4674,4672
+              - text: 평일 09:00 ~ 18:00 이후 업무상담은 제한될 수 있습니다.
+          - link "과학기술정보통신부 WEB ACCESSIBILITY 마크(웹 접근성 품질인증 마크)" [ref=e362] [cursor=pointer]:
+            - /url: http://www.webwatch.or.kr/Situation/WA_Situation.html?MenuCD=110
+            - img "과학기술정보통신부 WEB ACCESSIBILITY 마크(웹 접근성 품질인증 마크)" [ref=e363]
+        - generic [ref=e364]:
+          - paragraph [ref=e365]: 유관기관 안내
+          - generic [ref=e366]:
+            - generic [ref=e367]:
+              - button "이전" [ref=e368] [cursor=pointer]:
+                - generic [ref=e369]: 이전
+              - button "다음" [ref=e370] [cursor=pointer]:
+                - generic [ref=e371]: 다음
+              - button "멈춤" [ref=e372] [cursor=pointer]:
+                - generic [ref=e373]: 멈춤
+              - button "전체보기" [ref=e374] [cursor=pointer]:
+                - generic [ref=e375]: 전체보기
+            - generic [ref=e378]:
+              - link [ref=e379] [cursor=pointer]:
+                - /url: https://seereal.lh.or.kr
+                - img [ref=e380]
+              - link [ref=e381] [cursor=pointer]:
+                - /url: http://www.vworld.kr/
+                - img [ref=e382]
+              - link [ref=e383] [cursor=pointer]:
+                - /url: http://www.iros.go.kr
+                - img [ref=e384]
+              - link [ref=e385] [cursor=pointer]:
+                - /url: https://www.gov.kr
+                - img [ref=e386]
+              - link [ref=e387] [cursor=pointer]:
+                - /url: http://www.kvoting.go.kr
+                - img [ref=e388]
+              - link [ref=e389] [cursor=pointer]:
+                - /url: https://uri.seoul.go.kr
+                - img [ref=e390]
+              - link "서울도시계획포털" [ref=e391] [cursor=pointer]:
+                - /url: http://urban.seoul.go.kr
+                - img "서울도시계획포털" [ref=e392]
+              - link "토지e음" [ref=e393] [cursor=pointer]:
+                - /url: http://www.luris.go.kr
+                - img "토지e음" [ref=e394]
+              - link "건축행정시스템 세움터" [ref=e395] [cursor=pointer]:
+                - /url: http://eais.go.kr
+                - img "건축행정시스템 세움터" [ref=e396]
+              - link "서울토지정보서비스" [ref=e397] [cursor=pointer]:
+                - /url: http://kras.seoul.go.kr/
+                - img "서울토지정보서비스" [ref=e398]
+              - link "서울시조례입법예고" [ref=e399] [cursor=pointer]:
+                - /url: https://legal.seoul.go.kr/legal/front/page/lawmake.html?pAct=lawmake_list
+                - img "서울시조례입법예고" [ref=e400]
+              - link "법령입법예고" [ref=e401] [cursor=pointer]:
+                - /url: http://www.mltm.go.kr/USR/law/m_46/lst.jsp
+                - img "법령입법예고" [ref=e402]
+              - link [ref=e403] [cursor=pointer]:
+                - /url: http://law.go.kr
+                - img [ref=e404]
+              - link [ref=e405] [cursor=pointer]:
+                - /url: http://land.seoul.go.kr
+                - img [ref=e406]
+              - link [ref=e407] [cursor=pointer]:
+                - /url: http://www.realtyprice.kr/
+                - img [ref=e408]
+              - link [ref=e409] [cursor=pointer]:
+                - /url: https://seereal.lh.or.kr
+                - img [ref=e410]
+              - link [ref=e411] [cursor=pointer]:
+                - /url: http://www.vworld.kr/
+                - img [ref=e412]
+              - link [ref=e413] [cursor=pointer]:
+                - /url: http://www.iros.go.kr
+                - img [ref=e414]
+              - link [ref=e415] [cursor=pointer]:
+                - /url: https://www.gov.kr
+                - img [ref=e416]
+              - link [ref=e417] [cursor=pointer]:
+                - /url: http://www.kvoting.go.kr
+                - img [ref=e418]
+              - link [ref=e419] [cursor=pointer]:
+                - /url: https://uri.seoul.go.kr
+                - img [ref=e420]
+              - link [ref=e421] [cursor=pointer]:
+                - /url: http://urban.seoul.go.kr
+                - img [ref=e422]
+              - link [ref=e423] [cursor=pointer]:
+                - /url: http://www.luris.go.kr
+                - img [ref=e424]
+              - link [ref=e425] [cursor=pointer]:
+                - /url: http://eais.go.kr
+                - img [ref=e426]
+              - link [ref=e427] [cursor=pointer]:
+                - /url: http://kras.seoul.go.kr/
+                - img [ref=e428]
+              - link [ref=e429] [cursor=pointer]:
+                - /url: https://legal.seoul.go.kr/legal/front/page/lawmake.html?pAct=lawmake_list
+                - img [ref=e430]
+              - link [ref=e431] [cursor=pointer]:
+                - /url: http://www.mltm.go.kr/USR/law/m_46/lst.jsp
+                - img [ref=e432]
+              - link [ref=e433] [cursor=pointer]:
+                - /url: http://law.go.kr
+                - img [ref=e434]
+              - link [ref=e435] [cursor=pointer]:
+                - /url: http://land.seoul.go.kr
+                - img [ref=e436]
+              - link [ref=e437] [cursor=pointer]:
+                - /url: http://www.realtyprice.kr/
+                - img [ref=e438]
+              - link [ref=e439] [cursor=pointer]:
+                - /url: https://seereal.lh.or.kr
+                - img [ref=e440]
+              - link [ref=e441] [cursor=pointer]:
+                - /url: http://www.vworld.kr/
+                - img [ref=e442]
+              - link [ref=e443] [cursor=pointer]:
+                - /url: http://www.iros.go.kr
+                - img [ref=e444]
+              - link [ref=e445] [cursor=pointer]:
+                - /url: https://www.gov.kr
+                - img [ref=e446]
+              - link [ref=e447] [cursor=pointer]:
+                - /url: http://www.kvoting.go.kr
+                - img [ref=e448]
+              - link [ref=e449] [cursor=pointer]:
+                - /url: https://uri.seoul.go.kr
+                - img [ref=e450]
+        - generic [ref=e451]:
+          - generic [ref=e452]:
+            - paragraph [ref=e453]: (04514) 서울 중구 서소문로 124 씨티스퀘어 13층 주거정비과 /
+            - paragraph [ref=e454]: © Seoul CleanupSystem. All rights reserved.
+          - generic [ref=e455]:
+            - text: "정비사업정보몽땅 홈페이지 메인 상단의 적용 이미지 (사진) 사용에 대한 저작권 출처: 2022, 서울시청, www.seoul.go.kr"
+            - text: "본 저작물은 서울특별시에서 ‘2022년’ 작성하여 공공누리 제4유형으로 개방한 ‘안양천(작성자: 서울시청 홍보담당관)’을 이용하였으며, 해당 저작물은 서울특별시 누리집(홈페이지) ‘http://www.seoul.go.kr’에서 무료로 다운받으실 수 있습니다."

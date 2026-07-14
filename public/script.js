@@ -61,6 +61,7 @@ const resultImage = document.getElementById('resultImage');
 const imagePlaceholder = document.getElementById('imagePlaceholder');
 
 let currentCaseData = null; // 선택된 물건 데이터 보관
+let isAutoAnalyze = false; // 자동 분석 여부 플래그
 
 // 사건번호 엔터 키 검색 이벤트
 if (caseNumberInput) {
@@ -103,6 +104,20 @@ searchCaseBtn.addEventListener('click', async () => {
                 secondaryInputScreen.style.display = 'flex';
                 // 첫 번째 물건 자동 선택
                 addressListContainer.querySelector('.address-btn').click();
+                
+                // 자동 권리분석 실행 연동
+                console.log("[Auto-Analyze] results loaded, isAutoAnalyze =", isAutoAnalyze);
+                if (typeof isAutoAnalyze !== 'undefined' && isAutoAnalyze) {
+                    console.log("[Auto-Analyze] triggering startBtn click in 500ms...");
+                    isAutoAnalyze = false;
+                    setTimeout(() => {
+                        console.log("[Auto-Analyze] startBtn state - disabled:", startBtn.disabled);
+                        if (startBtn && !startBtn.disabled) {
+                            startBtn.click();
+                            console.log("[Auto-Analyze] startBtn.click() invoked!");
+                        }
+                    }, 500);
+                }
             } else {
                 showError("조회된 물건이 없습니다. 사건번호를 확인해주세요.");
             }
@@ -305,7 +320,7 @@ startBtn.addEventListener('click', async () => {
         loadingState.style.display = 'none';
 
         if (data.status === "success") {
-            renderFinalReport(data.data.analysis);
+            renderFinalReport(data.data.analysis, data.data);
             finalReport.classList.remove('hidden');
             
             // 이미지 로드 처리 (전경사진, 위치도, 내부구조도)
@@ -497,7 +512,7 @@ startBtn.addEventListener('click', async () => {
 });
 
 // 마크다운에서 1~9단계 파싱 및 렌더링
-function renderFinalReport(markdownText) {
+function renderFinalReport(markdownText, caseData = null) {
     if(!markdownText) return;
     
     // 섹션별 분리 로직 (간단한 정규식 또는 split)
@@ -543,29 +558,58 @@ function renderFinalReport(markdownText) {
     let section10Text = extractSection(10, markdownText) || "";
 
     // Go/Neutral/Danger 추출 (섹션 10에서)
-    // 정규식을 유연하게 작성 (괄호 유무, 띄어쓰기 유연성, 여부/판정 모두 허용)
-    const goMatch = section10Text.match(/투자\s*(?:판정|여부|판단)\s*[:\-]?\s*\[?\s*(GO|Neutral|Danger)/i);
     const badge = document.getElementById('decisionBadge');
-    if (goMatch) {
-        let decision = goMatch[1].toUpperCase();
-        if(decision === 'NEUTRAL') decision = 'Neutral';
-        else if(decision === 'DANGER') decision = 'Danger';
-        badge.innerText = decision;
+    
+    if (caseData && caseData.is_ended) {
+        // 과거/종결된 사건 표시
+        const finalDate = caseData.final_date || "";
+        const finalResult = caseData.final_result || caseData.status || "종결";
+        badge.innerText = `${finalResult} (${finalDate})`;
         badge.className = 'badge';
         badge.style.fontWeight = 'bold';
+        badge.style.fontSize = '1.05rem';
+        badge.style.padding = '8px 18px';
         
-        if (decision === 'GO') {
+        if (finalResult.includes("낙찰")) {
             badge.style.background = 'rgba(46, 160, 67, 0.15)';
             badge.style.color = '#2ea043'; // Green
             badge.style.borderColor = '#2ea043';
-        } else if (decision === 'Neutral') {
+        } else if (finalResult.includes("변경") || finalResult.includes("대기")) {
             badge.style.background = 'rgba(210, 153, 34, 0.15)';
             badge.style.color = '#d29922'; // Yellow/Orange
             badge.style.borderColor = '#d29922';
         } else {
+            // 유찰, 취소, 취하 등
             badge.style.background = 'rgba(248, 81, 73, 0.15)';
             badge.style.color = '#f85149'; // Red
             badge.style.borderColor = '#f85149';
+        }
+    } else {
+        // 정규식을 유연하게 작성 (종결/유찰/낙찰 등 신규 판정도 수용)
+        const goMatch = section10Text.match(/투자\s*(?:판정|여부|판단)\s*[:\-]?\s*\[?\s*([^\]\n\r]+)\]?/i);
+        if (goMatch) {
+            let decision = goMatch[1].trim();
+            if(decision.toUpperCase() === 'NEUTRAL') decision = 'Neutral';
+            else if(decision.toUpperCase() === 'DANGER') decision = 'Danger';
+            else if(decision.toUpperCase() === 'GO') decision = 'GO';
+            
+            badge.innerText = decision;
+            badge.className = 'badge';
+            badge.style.fontWeight = 'bold';
+            
+            if (decision === 'GO' || decision.includes("낙찰")) {
+                badge.style.background = 'rgba(46, 160, 67, 0.15)';
+                badge.style.color = '#2ea043'; // Green
+                badge.style.borderColor = '#2ea043';
+            } else if (decision === 'Neutral' || decision.includes("변경") || decision.includes("대기")) {
+                badge.style.background = 'rgba(210, 153, 34, 0.15)';
+                badge.style.color = '#d29922'; // Yellow/Orange
+                badge.style.borderColor = '#d29922';
+            } else {
+                badge.style.background = 'rgba(248, 81, 73, 0.15)';
+                badge.style.color = '#f85149'; // Red
+                badge.style.borderColor = '#f85149';
+            }
         }
     }
 
@@ -797,9 +841,12 @@ function createWaterfallRow(label, value, maxVal, colorClass) {
 window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const caseParam = params.get('case');
+    console.log("[Auto-Analyze] DOMContentLoaded caseParam:", caseParam);
     if (caseParam && typeof caseNumberInput !== 'undefined' && caseNumberInput) {
         caseNumberInput.value = caseParam;
         if (typeof searchCaseBtn !== 'undefined' && searchCaseBtn && !searchCaseBtn.disabled) {
+            isAutoAnalyze = true;
+            console.log("[Auto-Analyze] Setting isAutoAnalyze = true and triggering searchCaseBtn.click()");
             searchCaseBtn.click();
         }
     }

@@ -1,0 +1,131 @@
+70: 
+71:         /* --- Top Navigation Bar --- */
+72:         .top-bar {
+73:             position: absolute;
+74:             top: 20px;
+75:             left: 20px;
+76:             right: 20px;
+77:             height: 60px;
+78:             background: var(--bg-panel);
+79:             border-radius: 12px;
+80:             box-shadow: var(--shadow-md);
+81:             z-index: 1000;
+82:             display: flex;
+83:             align-items: center;
+84:             justify-content: space-between;
+85:             padding: 0 20px;
+86:             backdrop-filter: blur(10px);
+87:             border: 1px solid var(--border-color);
+88:         }
+89: 
+90:         .top-brand {
+91:             font-family: 'Outfit', sans-serif;
+92:             font-size: 1.2rem;
+93:             font-weight: 700;
+94:             color: var(--primary-blue);
+95:             display: flex;
+96:             align-items: center;
+97:             gap: 10px;
+98:         }
+99: 
+100:         .top-center {
+101:             display: flex;
+102:             align-items: center;
+103:             gap: 15px;
+104:             flex: 1;
+105:             margin: 0 40px;
+106:         }
+107: 
+108:         .search-box {
+109:             display: flex;
+110:             background: #fff;
+111:             border: 1px solid var(--border-color);
+112:             border-radius: 8px;
+113:             overflow: hidden;
+114:             flex: 1;
+115:             max-width: 400px;
+116:         }
+117: 
+118:         .search-box input {
+119:             border: none;
+120:             padding: 10px 15px;
+121:             outline: none;
+122:             width: 100%;
+123:             font-family: 'Noto Sans KR', sans-serif;
+124:         }
+125: 
+126:         .search-box button {
+127:             background: var(--primary-blue);
+128:             color: #fff;
+129:             border: none;
+130:             padding: 0 20px;
+131:             white-space: nowrap;
+132:             word-break: keep-all;
+133:             flex-shrink: 0;
+134:             cursor: pointer;
+135:             font-weight: 500;
+136:             transition: background 0.2s;
+137:         }
+138: 
+139:         .search-box button:hover {
+140:             background: var(--primary-hover);
+141:         }
+142: 
+143:         .search-place-box:focus-within {
+144:             border-color: var(--primary-blue) !important;
+145:             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
+146:         }
+147: 
+148:         @keyframes bounce {
+149:             0% { transform: translateY(0); }
+150:             100% { transform: translateY(-6px); }
+151:         }
+152: 
+153:         .sale-type-toggles {
+154:             display: flex;
+155:             gap: 5px;
+156:             background: #f1f5f9;
+157:             padding: 4px;
+158:             border-radius: 8px;
+159:             border: 1px solid var(--border-color);
+160:         }
+161: 
+162:         .sale-type-toggles button {
+163:             border: none;
+164:             background: transparent;
+165:             padding: 6px 15px;
+166:             border-radius: 6px;
+167:             cursor: pointer;
+168:             font-weight: 600;
+169:             color: var(--text-muted);
+170:             transition: all 0.2s;
+171:         }
+172: 
+173:         .sale-type-toggles button.active.auction {
+174:             background: var(--color-auction);
+175:             color: white;
+176:         }
+177: 
+178:         .sale-type-toggles button.active.public {
+179:             background: var(--color-public);
+180:             color: white;
+181:         }
+182: 
+183:         .top-actions {
+184:             display: flex;
+185:             gap: 10px;
+186:         }
+187: 
+188:         .icon-btn {
+189:             background: #fff;
+190:             border: 1px solid var(--border-color);
+191:             color: var(--text-dark);
+192:             width: 40px;
+193:             height: 40px;
+194:             border-radius: 8px;
+195:             display: flex;
+196:             justify-content: center;
+197:             align-items: center;
+198:             cursor: pointer;
+199:             transition: all 0.2s;
+200:         }

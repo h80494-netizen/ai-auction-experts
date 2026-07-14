@@ -1,0 +1,1733 @@
+{
+  "status": "success",
+  "data": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.013296934392,
+              37.4858945147411
+            ],
+            [
+              127.017296934392,
+              37.4858945147411
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "남부터미널역 남측 맛집거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.22,
+          "avg_hourly_flow": 1066,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.014855327913,
+              37.5024799987573
+            ],
+            [
+              127.014855327913,
+              37.5054799987573
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "사평역 서측 카페거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.2,
+          "avg_hourly_flow": 994,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.016855327913,
+              37.5024799987573
+            ],
+            [
+              127.016855327913,
+              37.5054799987573
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "사평역 동측 이면도로",
+          "road_class": "소도로",
+          "flow_intensity": 0.2,
+          "avg_hourly_flow": 1115,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.01424592222101,
+              37.485076485833
+            ],
+            [
+              127.015845922221,
+              37.485876485832996
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "오피스텔 물건지 진입로",
+          "road_class": "골목길",
+          "flow_intensity": 0.2,
+          "avg_hourly_flow": 1167,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.014645922221,
+              37.485876485832996
+            ],
+            [
+              127.015445922221,
+              37.485076485833
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "주거 배후 생활도로",
+          "road_class": "골목길",
+          "flow_intensity": 0.2,
+          "avg_hourly_flow": 1069,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.01424592222101,
+              37.485076485833
+            ],
+            [
+              127.015845922221,
+              37.485876485832996
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "집합 물건지 진입로",
+          "road_class": "골목길",
+          "flow_intensity": 0.2,
+          "avg_hourly_flow": 1167,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.014645922221,
+              37.485876485832996
+            ],
+            [
+              127.015445922221,
+              37.485076485833
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "주거 배후 생활도로",
+          "road_class": "골목길",
+          "flow_intensity": 0.2,
+          "avg_hourly_flow": 1069,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.010855327913,
+              37.5039799987573
+            ],
+            [
+              127.020855327913,
+              37.5039799987573
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "사평역 메인 대로변",
+          "road_class": "대로변",
+          "flow_intensity": 0.22,
+          "avg_hourly_flow": 937,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.015855327913,
+              37.499979998757304
+            ],
+            [
+              127.015855327913,
+              37.5079799987573
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "사평역 연결 대로변",
+          "road_class": "대로변",
+          "flow_intensity": 0.2,
+          "avg_hourly_flow": 1097,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.03723629540767,
+              37.4841077780028
+            ],
+            [
+              127.04023629540765,
+              37.4841077780028
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "양재시장 상가 메인거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.22,
+          "avg_hourly_flow": 1125,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.03873629540766,
+              37.483107778002804
+            ],
+            [
+              127.03873629540766,
+              37.4851077780028
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "양재시장 상업 이면도로",
+          "road_class": "소도로",
+          "flow_intensity": 0.18,
+          "avg_hourly_flow": 1097,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.03773629540765,
+              37.4835077780028
+            ],
+            [
+              127.03973629540766,
+              37.4847077780028
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "양재시장 연계 보행골목",
+          "road_class": "골목길",
+          "flow_intensity": 0.2,
+          "avg_hourly_flow": 1146,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.00944738816996,
+              37.502142774318706
+            ],
+            [
+              127.01244738816995,
+              37.502142774318706
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "삼호가든사거리 상가 메인거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.21,
+          "avg_hourly_flow": 1016,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.01094738816995,
+              37.50114277431871
+            ],
+            [
+              127.01094738816995,
+              37.503142774318704
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "삼호가든사거리 상업 이면도로",
+          "road_class": "소도로",
+          "flow_intensity": 0.21,
+          "avg_hourly_flow": 998,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.00994738816995,
+              37.50154277431871
+            ],
+            [
+              127.01194738816996,
+              37.502742774318705
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "삼호가든사거리 연계 보행골목",
+          "road_class": "골목길",
+          "flow_intensity": 0.18,
+          "avg_hourly_flow": 929,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.013855327913,
+              37.504679998757304
+            ],
+            [
+              127.017855327913,
+              37.504679998757304
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "사평역 북측 먹자거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.19,
+          "avg_hourly_flow": 992,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.033706541873,
+              37.4953319972947
+            ],
+            [
+              127.035306541873,
+              37.4961319972947
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "단독 물건지 진입로",
+          "road_class": "골목길",
+          "flow_intensity": 0.18,
+          "avg_hourly_flow": 1070,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.034106541873,
+              37.4961319972947
+            ],
+            [
+              127.034906541873,
+              37.4953319972947
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "주거 배후 생활도로",
+          "road_class": "골목길",
+          "flow_intensity": 0.21,
+          "avg_hourly_flow": 1105,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.03570426859348,
+              37.49553304713569
+            ],
+            [
+              127.03870426859346,
+              37.49553304713569
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "구역삼세무서 상가 메인거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.19,
+          "avg_hourly_flow": 915,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.03720426859347,
+              37.49453304713569
+            ],
+            [
+              127.03720426859347,
+              37.496533047135685
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "구역삼세무서 상업 이면도로",
+          "road_class": "소도로",
+          "flow_intensity": 0.19,
+          "avg_hourly_flow": 966,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.03620426859347,
+              37.49493304713569
+            ],
+            [
+              127.03820426859347,
+              37.496133047135686
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "구역삼세무서 연계 보행골목",
+          "road_class": "골목길",
+          "flow_intensity": 0.19,
+          "avg_hourly_flow": 958,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02577944124201,
+              37.5033974893974
+            ],
+            [
+              127.02577944124201,
+              37.5063974893974
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "신논현역 동측 이면도로",
+          "road_class": "소도로",
+          "flow_intensity": 0.2,
+          "avg_hourly_flow": 1058,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02577944124201,
+              37.5033974893974
+            ],
+            [
+              127.02577944124201,
+              37.5063974893974
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "신논현역 동측 이면도로",
+          "road_class": "소도로",
+          "flow_intensity": 0.2,
+          "avg_hourly_flow": 1058,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02277944124201,
+              37.5055974893974
+            ],
+            [
+              127.026779441242,
+              37.5055974893974
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "신논현역 북측 먹자거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.18,
+          "avg_hourly_flow": 925,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02277944124201,
+              37.5055974893974
+            ],
+            [
+              127.026779441242,
+              37.5055974893974
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "신논현역 북측 먹자거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.18,
+          "avg_hourly_flow": 925,
+          "flow_type": "이면 연계통로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.023779441242,
+              37.5033974893974
+            ],
+            [
+              127.023779441242,
+              37.5063974893974
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "신논현역 서측 카페거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.59,
+          "avg_hourly_flow": 2315,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.023779441242,
+              37.5033974893974
+            ],
+            [
+              127.023779441242,
+              37.5063974893974
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "신논현역 서측 카페거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.59,
+          "avg_hourly_flow": 2315,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02711260731483,
+              37.502446158373125
+            ],
+            [
+              127.03011260731482,
+              37.502446158373125
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "국기원 상가 메인거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.61,
+          "avg_hourly_flow": 2437,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02861260731483,
+              37.50144615837313
+            ],
+            [
+              127.02861260731483,
+              37.50344615837312
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "국기원 상업 이면도로",
+          "road_class": "소도로",
+          "flow_intensity": 0.61,
+          "avg_hourly_flow": 2481,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02761260731482,
+              37.50184615837313
+            ],
+            [
+              127.02961260731483,
+              37.503046158373124
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "국기원 연계 보행골목",
+          "road_class": "골목길",
+          "flow_intensity": 0.62,
+          "avg_hourly_flow": 2427,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.031730802425,
+              37.4949255731048
+            ],
+            [
+              127.033330802425,
+              37.4957255731048
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "오피스텔 물건지 진입로",
+          "road_class": "골목길",
+          "flow_intensity": 0.6,
+          "avg_hourly_flow": 2406,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.032130802425,
+              37.4957255731048
+            ],
+            [
+              127.032930802425,
+              37.4949255731048
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "주거 배후 생활도로",
+          "road_class": "골목길",
+          "flow_intensity": 0.6,
+          "avg_hourly_flow": 2476,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.028855411347,
+              37.4913908682105
+            ],
+            [
+              127.03045541134699,
+              37.4921908682105
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "오피스텔 물건지 진입로",
+          "road_class": "골목길",
+          "flow_intensity": 0.58,
+          "avg_hourly_flow": 2189,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.029255411347,
+              37.4921908682105
+            ],
+            [
+              127.03005541134699,
+              37.4913908682105
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "주거 배후 생활도로",
+          "road_class": "골목길",
+          "flow_intensity": 0.61,
+          "avg_hourly_flow": 2384,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.01977944124201,
+              37.5048974893974
+            ],
+            [
+              127.029779441242,
+              37.5048974893974
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "신논현역 메인 대로변",
+          "road_class": "대로변",
+          "flow_intensity": 0.6,
+          "avg_hourly_flow": 2309,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.024779441242,
+              37.5008974893974
+            ],
+            [
+              127.024779441242,
+              37.5088974893974
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "신논현역 연결 대로변",
+          "road_class": "대로변",
+          "flow_intensity": 0.59,
+          "avg_hourly_flow": 2177,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.01977944124201,
+              37.5048974893974
+            ],
+            [
+              127.029779441242,
+              37.5048974893974
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "신논현역 메인 대로변",
+          "road_class": "대로변",
+          "flow_intensity": 0.6,
+          "avg_hourly_flow": 2309,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.024779441242,
+              37.5008974893974
+            ],
+            [
+              127.024779441242,
+              37.5088974893974
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "신논현역 연결 대로변",
+          "road_class": "대로변",
+          "flow_intensity": 0.59,
+          "avg_hourly_flow": 2177,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.009859892376,
+              37.507611599365596
+            ],
+            [
+              127.01385989237599,
+              37.507611599365596
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "반포역 남측 맛집거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.61,
+          "avg_hourly_flow": 2261,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02708124423,
+              37.4935600245321
+            ],
+            [
+              127.02868124423,
+              37.4943600245321
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "아파트 물건지 진입로",
+          "road_class": "골목길",
+          "flow_intensity": 0.62,
+          "avg_hourly_flow": 2524,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02748124423,
+              37.4943600245321
+            ],
+            [
+              127.02828124423,
+              37.4935600245321
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "주거 배후 생활도로",
+          "road_class": "골목길",
+          "flow_intensity": 0.58,
+          "avg_hourly_flow": 2417,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02906165578,
+              37.4890973016067
+            ],
+            [
+              127.03066165578,
+              37.489897301606696
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "집합 물건지 진입로",
+          "road_class": "골목길",
+          "flow_intensity": 0.59,
+          "avg_hourly_flow": 2304,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02946165578,
+              37.489897301606696
+            ],
+            [
+              127.03026165578,
+              37.4890973016067
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "주거 배후 생활도로",
+          "road_class": "골목길",
+          "flow_intensity": 0.61,
+          "avg_hourly_flow": 2402,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.027936302957,
+              37.4928233364574
+            ],
+            [
+              127.029536302957,
+              37.4936233364574
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "오피스텔 물건지 진입로",
+          "road_class": "골목길",
+          "flow_intensity": 0.61,
+          "avg_hourly_flow": 2351,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.028336302957,
+              37.4936233364574
+            ],
+            [
+              127.029136302957,
+              37.4928233364574
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "주거 배후 생활도로",
+          "road_class": "골목길",
+          "flow_intensity": 0.6,
+          "avg_hourly_flow": 2368,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.012859892376,
+              37.5068115993656
+            ],
+            [
+              127.012859892376,
+              37.5098115993656
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "반포역 동측 이면도로",
+          "road_class": "소도로",
+          "flow_intensity": 0.59,
+          "avg_hourly_flow": 2263,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02277944124201,
+              37.5041974893974
+            ],
+            [
+              127.026779441242,
+              37.5041974893974
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "신논현역 남측 맛집거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.61,
+          "avg_hourly_flow": 2379,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02277944124201,
+              37.5041974893974
+            ],
+            [
+              127.026779441242,
+              37.5041974893974
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "신논현역 남측 맛집거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.61,
+          "avg_hourly_flow": 2379,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02718071438099,
+              37.4955572543978
+            ],
+            [
+              127.02718071438099,
+              37.4985572543978
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 서측 카페거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.59,
+          "avg_hourly_flow": 2303,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02718071438099,
+              37.4955572543978
+            ],
+            [
+              127.02718071438099,
+              37.4985572543978
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 서측 카페거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.59,
+          "avg_hourly_flow": 2303,
+          "flow_type": "핵심 상업먹자거리"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02718071438099,
+              37.4955572543978
+            ],
+            [
+              127.02718071438099,
+              37.4985572543978
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 서측 카페거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.98,
+          "avg_hourly_flow": 3590,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.034471547006,
+              37.4974904930071
+            ],
+            [
+              127.036071547006,
+              37.4982904930071
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "오피스텔 물건지 진입로",
+          "road_class": "골목길",
+          "flow_intensity": 0.97,
+          "avg_hourly_flow": 3676,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.034871547006,
+              37.4982904930071
+            ],
+            [
+              127.035671547006,
+              37.4974904930071
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "주거 배후 생활도로",
+          "road_class": "골목길",
+          "flow_intensity": 0.98,
+          "avg_hourly_flow": 3604,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.006859892376,
+              37.5083115993656
+            ],
+            [
+              127.01685989237599,
+              37.5083115993656
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "반포역 메인 대로변",
+          "road_class": "대로변",
+          "flow_intensity": 0.99,
+          "avg_hourly_flow": 3615,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.011859892376,
+              37.5043115993656
+            ],
+            [
+              127.011859892376,
+              37.512311599365596
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "반포역 연결 대로변",
+          "road_class": "대로변",
+          "flow_intensity": 0.99,
+          "avg_hourly_flow": 3714,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.026180714381,
+              37.4963572543978
+            ],
+            [
+              127.03018071438099,
+              37.4963572543978
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 남측 맛집거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.98,
+          "avg_hourly_flow": 3626,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.026180714381,
+              37.4963572543978
+            ],
+            [
+              127.03018071438099,
+              37.4963572543978
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 남측 맛집거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.98,
+          "avg_hourly_flow": 3626,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.026180714381,
+              37.4963572543978
+            ],
+            [
+              127.03018071438099,
+              37.4963572543978
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 남측 맛집거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.98,
+          "avg_hourly_flow": 3626,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02625129423335,
+              37.497571920870165
+            ],
+            [
+              127.02925129423333,
+              37.497571920870165
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 상가 메인거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.98,
+          "avg_hourly_flow": 3433,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02775129423334,
+              37.49657192087017
+            ],
+            [
+              127.02775129423334,
+              37.49857192087016
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 상업 이면도로",
+          "road_class": "소도로",
+          "flow_intensity": 0.99,
+          "avg_hourly_flow": 3719,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.02675129423334,
+              37.496971920870166
+            ],
+            [
+              127.02875129423334,
+              37.49817192087016
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 연계 보행골목",
+          "road_class": "골목길",
+          "flow_intensity": 0.99,
+          "avg_hourly_flow": 3469,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.023180714381,
+              37.4970572543978
+            ],
+            [
+              127.03318071438099,
+              37.4970572543978
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 메인 대로변",
+          "road_class": "대로변",
+          "flow_intensity": 0.98,
+          "avg_hourly_flow": 3662,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.028180714381,
+              37.493057254397804
+            ],
+            [
+              127.028180714381,
+              37.5010572543978
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 연결 대로변",
+          "road_class": "대로변",
+          "flow_intensity": 0.98,
+          "avg_hourly_flow": 3706,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.023180714381,
+              37.4970572543978
+            ],
+            [
+              127.03318071438099,
+              37.4970572543978
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 메인 대로변",
+          "road_class": "대로변",
+          "flow_intensity": 0.98,
+          "avg_hourly_flow": 3662,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.028180714381,
+              37.493057254397804
+            ],
+            [
+              127.028180714381,
+              37.5010572543978
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 연결 대로변",
+          "road_class": "대로변",
+          "flow_intensity": 0.98,
+          "avg_hourly_flow": 3706,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.023180714381,
+              37.4970572543978
+            ],
+            [
+              127.03318071438099,
+              37.4970572543978
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 메인 대로변",
+          "road_class": "대로변",
+          "flow_intensity": 0.98,
+          "avg_hourly_flow": 3662,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.028180714381,
+              37.493057254397804
+            ],
+            [
+              127.028180714381,
+              37.5010572543978
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 연결 대로변",
+          "road_class": "대로변",
+          "flow_intensity": 0.98,
+          "avg_hourly_flow": 3706,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.009859892376,
+              37.5090115993656
+            ],
+            [
+              127.01385989237599,
+              37.5090115993656
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "반포역 북측 먹자거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.99,
+          "avg_hourly_flow": 3582,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.01085989237599,
+              37.5068115993656
+            ],
+            [
+              127.01085989237599,
+              37.5098115993656
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "반포역 서측 카페거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.97,
+          "avg_hourly_flow": 3427,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.026180714381,
+              37.497757254397804
+            ],
+            [
+              127.03018071438099,
+              37.497757254397804
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 북측 먹자거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.98,
+          "avg_hourly_flow": 3478,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.026180714381,
+              37.497757254397804
+            ],
+            [
+              127.03018071438099,
+              37.497757254397804
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 북측 먹자거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.98,
+          "avg_hourly_flow": 3478,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.026180714381,
+              37.497757254397804
+            ],
+            [
+              127.03018071438099,
+              37.497757254397804
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 북측 먹자거리",
+          "road_class": "소도로",
+          "flow_intensity": 0.98,
+          "avg_hourly_flow": 3478,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.029180714381,
+              37.4955572543978
+            ],
+            [
+              127.029180714381,
+              37.4985572543978
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 동측 이면도로",
+          "road_class": "소도로",
+          "flow_intensity": 0.97,
+          "avg_hourly_flow": 3595,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.029180714381,
+              37.4955572543978
+            ],
+            [
+              127.029180714381,
+              37.4985572543978
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 동측 이면도로",
+          "road_class": "소도로",
+          "flow_intensity": 0.97,
+          "avg_hourly_flow": 3595,
+          "flow_type": "메인 보행대로"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              127.029180714381,
+              37.4955572543978
+            ],
+            [
+              127.029180714381,
+              37.4985572543978
+            ]
+          ]
+        },
+        "properties": {
+          "road_name": "강남역 동측 이면도로",
+          "road_class": "소도로",
+          "flow_intensity": 0.97,
+          "avg_hourly_flow": 3595,
+          "flow_type": "메인 보행대로"
+        }
+      }
+    ]
+  }
+}

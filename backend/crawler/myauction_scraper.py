@@ -33,23 +33,34 @@ async def search_myauction_list(case_number: str):
         context = await browser.new_context()
         page = await context.new_page()
         
+        # 다이얼로그 핸들러 추가
+        async def handle_dialog(dialog):
+            print(f"Alert 뜸: {dialog.message}")
+            try:
+                await dialog.dismiss()
+            except:
+                pass
+        page.on("dialog", lambda dialog: asyncio.create_task(handle_dialog(dialog)))
+        
         try:
             try:
-                await page.goto("https://www.my-auction.co.kr/member/login.php", wait_until="domcontentloaded", timeout=10000)
+                await page.goto("http://www.my-auction.co.kr/member/login.php", wait_until="domcontentloaded", timeout=10000)
             except Exception as e:
                 print(f"login.php 이동 실패: {e}")
             try:
                 await page.wait_for_selector("#id", state="visible", timeout=3000)
                 await page.fill("#id", MYAUCTION_ID)
                 await page.fill("#passwd", MYAUCTION_PW)
-                try:
-                    await asyncio.wait_for(page.click("#btn_login"), timeout=3.0)
-                except:
-                    pass
+                # 로그인 버튼 클릭
+                await page.click("#btn_login")
+                # main.php 로딩 완료 대기
+                await page.wait_for_url("**/main.php", timeout=8000)
+                print("로그인 성공 (main.php)")
             except Exception as e:
-                print(f"로그인 폼 입력 실패 (이미 로그인 상태일 수 있음): {e}")
-            
-            await page.wait_for_timeout(2000)
+                print(f"로그인 중 오류/이미 로그인 상태: {e}")
+                # Fallback check if on main.php
+                if "main.php" in page.url:
+                    print("이미 main.php에 있습니다.")
             
             if "2026-0400" in clean_case:
                 await browser.close()
@@ -64,21 +75,20 @@ async def search_myauction_list(case_number: str):
                 }]}
 
             if is_public_sale:
-                await page.goto('https://www.my-auction.co.kr/auction/public.php')
+                await page.goto('http://www.my-auction.co.kr/auction/public.php')
                 await page.wait_for_timeout(1000)
                 await page.fill("input[name='cltr_mnmt_no']", clean_case)
                 async with page.expect_navigation(timeout=10000):
                     await page.click("form[name='frm'] button:has-text('검색')")
             else:
-                await page.goto('https://www.my-auction.co.kr/auction/search.php')
-                await page.wait_for_timeout(1000)
-                await page.select_option("form[name='frm'] select[name='sno']", year)
-                await page.locator("form[name='frm'] input[name='tno']").fill(num)
-                async with page.expect_navigation(timeout=10000):
-                    await page.click("form[name='frm'] button:has-text('검색')")
+                await page.goto("http://www.my-auction.co.kr/auction/search.php")
+                await page.evaluate(f"document.frm_top2.sno.value = '{year}';")
+                await page.evaluate(f"document.frm_top2.tno.value = '{num}';")
+                await page.evaluate("document.frm_top2.submit();")
+                await page.wait_for_load_state("domcontentloaded")
+                await page.wait_for_timeout(2000)
             
             await page.wait_for_load_state("domcontentloaded")
-            await page.wait_for_timeout(1000)
             
             rows = page.locator("table.tbl_auction_list tbody tr, table.tbl_auction_list tr")
             count = await rows.count()
@@ -90,6 +100,11 @@ async def search_myauction_list(case_number: str):
                 row_text = await rows.nth(i).inner_text()
                 # 헤더 제외
                 if "용도/사건" in row_text or "소재지" in row_text:
+                    continue
+                
+                # 원치 않는 결과(검색 실패로 인한 전체 목록 등) 필터링
+                target_str = f"{year}-{num}"
+                if target_str not in row_text:
                     continue
                     
                 # 텍스트 라인 단위 분리
@@ -173,40 +188,40 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
         page = await context.new_page()
         
         # 다이얼로그 핸들러 추가
-        page.on("dialog", lambda dialog: print(f"Alert 뜸: {dialog.message}"))
+        async def handle_dialog(dialog):
+            print(f"Alert 뜸: {dialog.message}")
+            try:
+                await dialog.dismiss()
+            except:
+                pass
+        page.on("dialog", lambda dialog: asyncio.create_task(handle_dialog(dialog)))
 
         try:
-            # 1. 로그인 페이지 접속 (마이옥션 기본 로그인 URL 추정)
+            # 1. 로그인 페이지 접속
             print("로그인 진행 중...")
-            await page.goto("https://www.my-auction.co.kr/")
+            await page.goto("http://www.my-auction.co.kr/")
             
-            # 로그인 페이지 직접 접속 (메인 클릭 우회)
+            # 로그인 페이지 직접 접속
             print("로그인 폼 접근 중...")
             try:
-                await page.goto("https://www.my-auction.co.kr/member/login.php", wait_until="domcontentloaded", timeout=10000)
+                await page.goto("http://www.my-auction.co.kr/member/login.php", wait_until="domcontentloaded", timeout=10000)
             except Exception as e:
                 print(f"login.php 이동 실패: {e}")
 
-            # ID/PW 입력
             try:
                 await page.wait_for_selector("#id", state="visible", timeout=3000)
                 await page.fill("#id", MYAUCTION_ID)
                 await page.fill("#passwd", MYAUCTION_PW)
                 # 로그인 버튼 클릭
-                try:
-                    await asyncio.wait_for(page.click("#btn_login"), timeout=3.0)
-                except:
-                    pass
+                await page.click("#btn_login")
+                # main.php 로딩 완료 대기
+                await page.wait_for_url("**/main.php", timeout=8000)
+                print("로그인 성공 (main.php)")
             except Exception as e:
-                print(f"로그인 폼 입력 실패 (이미 로그인 상태일 수 있음): {e}")
-                
-            # main.php 로딩 완료 대기
-            try:
-                await page.wait_for_url("**/main.php", timeout=5000)
-            except:
-                pass
-            await page.wait_for_timeout(1000)
-            print("로그인 성공 (main.php)")
+                print(f"로그인 중 오류/이미 로그인 상태: {e}")
+                # Fallback check if on main.php
+                if "main.php" in page.url:
+                    print("이미 main.php에 있습니다.")
 
             # 사건번호 파싱
             clean_case = case_number.replace(" ", "")
@@ -221,6 +236,9 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
                     "data": {
                         "case_number": case_number,
                         "status": "진행중",
+                        "is_ended": False,
+                        "final_date": "",
+                        "final_result": "",
                         "property_type": "아파트",
                         "appraised_value": "1500000000",
                         "minimum_value": "1200000000",
@@ -244,7 +262,7 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
             if is_public_sale:
                 print(f"공매 사건번호 인식: {clean_case}, 소재지 힌트={address_hint}")
                 await page.wait_for_timeout(2000)
-                await page.goto("https://www.my-auction.co.kr/auction/public.php")
+                await page.goto("http://www.my-auction.co.kr/auction/public.php")
                 await page.wait_for_timeout(1000)
                 
                 await page.fill("input[name='cltr_mnmt_no']", clean_case)
@@ -263,22 +281,12 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
                     year = match.group(1)
                     num = match.group(2)
                     print(f"파싱 결과: 연도={year}, 번호={num}, 소재지 힌트={address_hint}")
-                    # search.php 페이지로 이동
+                    await page.goto("http://www.my-auction.co.kr/auction/search.php")
+                    await page.evaluate(f"document.frm_top2.sno.value = '{year}';")
+                    await page.evaluate(f"document.frm_top2.tno.value = '{num}';")
+                    await page.evaluate("document.frm_top2.submit();")
+                    await page.wait_for_load_state("domcontentloaded")
                     await page.wait_for_timeout(2000)
-                    await page.goto("https://www.my-auction.co.kr/auction/search.php")
-                    await page.wait_for_timeout(1000)
-                    
-                    # search.php 폼을 이용하여 검색
-                    await page.select_option("form[name='frm'] select[name='sno']", year)
-                    await page.locator("form[name='frm'] input[name='tno']").fill(num)
-                    
-                    async with page.expect_navigation(timeout=10000):
-                        await page.click("form[name='frm'] button:has-text('검색')")
-                    try:
-                        await page.wait_for_url("**/search_list.php", timeout=5000)
-                    except:
-                        pass
-                    await page.wait_for_timeout(1000)
                     print("검색 결과 로딩 대기 중...")
                 else:
                     print("사건번호 형식을 파싱할 수 없습니다.")
@@ -288,14 +296,19 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
             rows = page.locator('table.list-table tbody tr, table tbody tr')
             count = await rows.count()
             found_link = None
+            matched_row_text = ""
             
             # 주소 힌트의 마지막 두 토큰을 사용하여 일치 여부 확인 (예: 능평동 734-21)
             hint_tokens = address_hint.strip().split()
             key_tokens = hint_tokens[-2:] if len(hint_tokens) >= 2 else hint_tokens
+            target_str = clean_case.replace("타경", "")
 
             for i in range(count):
                 row_text = await rows.nth(i).inner_text()
                 row_text_clean = row_text.replace(" ", "")
+                alt_target_str = clean_case.replace("타경", "-")
+                if target_str not in row_text_clean and alt_target_str not in row_text_clean:
+                    continue
                 
                 # key_tokens 가 모두 row_text_clean 에 포함되거나 원문에 포함되는지 확인
                 match_count = sum(1 for token in key_tokens if token in row_text or token.replace("도", "").replace("시", "") in row_text_clean)
@@ -304,6 +317,7 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
                     link = rows.nth(i).locator("a[href*='/view/'], a[href*='idx=']").first
                     if await link.count() > 0:
                         found_link = link
+                        matched_row_text = row_text
                         print(f"소재지 일치 물건 찾음: {address_hint}")
                         break
                     
@@ -311,6 +325,7 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
                         td_link = rows.nth(i).locator("[onclick*='detail_public.php']").first
                         if await td_link.count() > 0:
                             found_link = td_link
+                            matched_row_text = row_text
                             print(f"소재지 일치 공매 물건 찾음: {address_hint}")
                             break
                          
@@ -321,6 +336,19 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
                     found_link = page.locator("[onclick*='detail_public.php']").first
                 else:
                     found_link = page.locator("a[href*='/view/'], a[href*='idx='], .result-list a, .list-table a").first
+                
+                if await found_link.count() > 0 and count > 1:
+                    # 헤더(보통 index 0)를 제외한 첫 번째 데이터를 fallback으로
+                    matched_row_text = await rows.nth(1).inner_text()
+
+            # 검색결과 행에서 기본 진행상태 추출
+            row_status = "진행중"
+            if matched_row_text:
+                lines = [l.strip() for l in matched_row_text.splitlines() if l.strip()]
+                for line in lines:
+                    if any(kw in line for kw in ["유찰", "진행", "낙찰", "미납", "변경", "취소", "취하", "정지"]):
+                        row_status = line
+                        break
                 
             if await found_link.count() > 0:
                 try:
@@ -334,7 +362,7 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
                                 href = m.group(1)
                                 
                     if href:
-                        full_url = href if href.startswith("http") else f"https://www.my-auction.co.kr{href}"
+                        full_url = href if href.startswith("http") else f"http://www.my-auction.co.kr{href}"
                         print(f"상세 페이지로 이동: {full_url}")
                         await page.goto(full_url)
                     else:
@@ -372,7 +400,7 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
                             if src and src not in seen_srcs:
                                 seen_srcs.add(src)
                                 if src.startswith("//"): src = "https:" + src
-                                elif src.startswith("/"): src = "https://www.my-auction.co.kr" + src
+                                elif src.startswith("/"): src = "http://www.my-auction.co.kr" + src
                                 
                                 import urllib.request
                                 req = urllib.request.Request(src, headers={'User-Agent': 'Mozilla/5.0'})
@@ -389,7 +417,9 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
                         print(f"이미지 스크랩 전반 실패: {img_err}")
                         
                 except Exception as e:
+                    import traceback
                     print("결과 클릭/이동 중 오류:", e)
+                    traceback.print_exc()
             else:
                 # 결과 테이블 파악을 위해 HTML 덤프
                 html_content = await page.content()
@@ -400,7 +430,10 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
 
             parsed_data = {
                 "case_number": case_number,
-                "status": "진행중",
+                "status": row_status,
+                "is_ended": False,
+                "final_date": "",
+                "final_result": "",
                 "property_type": "",
                 "appraised_value": "",
                 "minimum_value": "",
@@ -644,6 +677,58 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
                         })
             parsed_data["history"] = history
 
+            # 과거/종결 사건 여부 및 결과 판별
+            final_date = ""
+            final_result = ""
+            is_ended = False
+            status = parsed_data.get("status", "진행중")
+
+            # 기일이 이미 지나갔고 최종 상태가 유찰/낙찰 등인 경우 종결로 판별
+            if history:
+                last_event = history[-1]
+                final_date = last_event.get("date", "")
+                last_status = last_event.get("status", "")
+                
+                from datetime import datetime
+                is_past_date = False
+                if final_date:
+                    try:
+                        date_str = final_date.replace(".", "-").split(" ")[0]
+                        event_date = datetime.strptime(date_str, "%Y-%m-%d")
+                        current_date = datetime.now()
+                        if event_date < current_date:
+                            is_past_date = True
+                    except Exception as date_err:
+                        print(f"Date parsing error: {date_err}")
+
+                # 낙찰, 취소, 취하, 정지, 종결 등은 날짜 불문하고 바로 종결
+                if last_status in ["낙찰", "취소", "취하", "정지", "종결"]:
+                    is_ended = True
+                    status = last_status
+                elif last_status == "유찰" and is_past_date:
+                    # 유찰이고 기일이 지났다면 (새로운 기일이 잡히기 전까지는 임시 종결/과거 사건 취급)
+                    is_ended = True
+                    status = last_status
+
+                # 최종 결과 텍스트 포맷팅
+                if last_status == "유찰":
+                    final_result = f"유찰 ({len(history)}회)"
+                elif last_status == "낙찰":
+                    # 낙찰일 경우 낙찰가 정보 포함
+                    final_result = f"낙찰 ({last_event.get('price', '')})"
+                else:
+                    final_result = last_status
+            else:
+                # history가 없는 경우에도 기본 status가 낙찰/취소/취하 등 완료된 경우이면 종결 처리
+                if any(kw in status for kw in ["낙찰", "취소", "취하", "정지", "종결"]):
+                    is_ended = True
+                    final_result = status
+
+            parsed_data["status"] = status
+            parsed_data["is_ended"] = is_ended
+            parsed_data["final_date"] = final_date
+            parsed_data["final_result"] = final_result or status
+
 
             # 만약 파싱에 실패했다면 (테스트용 하드코딩 폴백)
             if not parsed_data['address'] or parsed_data['address'] == "":
@@ -799,7 +884,9 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
             }
 
         except Exception as e:
+            import traceback
             print(f"크롤링 에러 발생: {e}")
+            traceback.print_exc()
             return {
                 "success": False,
                 "error": str(e)

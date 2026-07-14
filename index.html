@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 자동화 투자 분석 대시보드</title>
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@400;600;800&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="background-effects">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+        <div class="glow-orb orb-3"></div>
+    </div>
+
+    <main class="dashboard-container">
+        <!-- Header & Search -->
+        <header class="header">
+            <h1 class="title">AI Auction <span class="neon-text">Investigator</span></h1>
+            <p class="subtitle">6인의 AI 에이전트 다중 교차 검증 시스템</p>
+
+            <div class="search-container">
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="caseNumberInput" placeholder="사건번호를 입력하세요 (예: 2023타경1234)"
+                        autocomplete="off">
+                </div>
+                <button id="startBtn" class="primary-btn">분석 시작 <i class="fa-solid fa-play"></i></button>
+            </div>
+            <div id="errorMsg" class="error-msg"></div>
+        </header>
+
+        <!-- Agent Status Board -->
+        <section class="agents-board" id="agentsBoard">
+            <!-- Agent 1 -->
+            <div class="agent-card" id="agent-1" data-order="1">
+                <div class="agent-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+                <h3 class="agent-name">권리분석가</h3>
+                <p class="agent-role">등기부·매각명세서 분석</p>
+                <div class="status-indicator">
+                    <span class="status-text">대기 중</span>
+                    <div class="spinner"></div>
+                    <i class="fa-solid fa-circle-check check-icon"></i>
+                </div>
+            </div>
+            <!-- Agent 2 -->
+            <div class="agent-card" id="agent-2" data-order="2">
+                <div class="agent-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+                <h3 class="agent-name">수익계산가</h3>
+                <p class="agent-role">8대 비용 및 세후수익 계산</p>
+                <div class="status-indicator">
+                    <span class="status-text">대기 중</span>
+                    <div class="spinner"></div>
+                    <i class="fa-solid fa-circle-check check-icon"></i>
+                </div>
+            </div>
+            <!-- Agent 3 -->
+            <div class="agent-card" id="agent-3" data-order="3">
+                <div class="agent-icon"><i class="fa-solid fa-chart-line"></i></div>
+                <h3 class="agent-name">시세조사관</h3>
+                <p class="agent-role">실거래·호가·전세가 종합</p>
+                <div class="status-indicator">
+                    <span class="status-text">대기 중</span>
+                    <div class="spinner"></div>
+                    <i class="fa-solid fa-circle-check check-icon"></i>
+                </div>
+            </div>
+            <!-- Agent 4 -->
+            <div class="agent-card" id="agent-4" data-order="4">
+                <div class="agent-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <h3 class="agent-name">리스크심판관</h3>
+                <p class="agent-role">숨은 권리·세금 규제 색출</p>
+                <div class="status-indicator">
+                    <span class="status-text">대기 중</span>
+                    <div class="spinner"></div>
+                    <i class="fa-solid fa-circle-check check-icon"></i>
+                </div>
+            </div>
+            <!-- Agent 5 -->
+            <div class="agent-card" id="agent-5" data-order="5">
+                <div class="agent-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+                <h3 class="agent-name">입지분석가</h3>
+                <p class="agent-role">상권·인프라 점수화</p>
+                <div class="status-indicator">
+                    <span class="status-text">대기 중</span>
+                    <div class="spinner"></div>
+                    <i class="fa-solid fa-circle-check check-icon"></i>
+                </div>
+            </div>
+            <!-- Agent 6 -->
+            <div class="agent-card" id="agent-6" data-order="6">
+                <div class="agent-icon"><i class="fa-solid fa-chess-knight"></i></div>
+                <h3 class="agent-name">전략가 (체어맨)</h3>
+                <p class="agent-role">최종 판정 및 출구 전략</p>
+                <div class="status-indicator">
+                    <span class="status-text">대기 중</span>
+                    <div class="spinner"></div>
+                    <i class="fa-solid fa-circle-check check-icon"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Final Report Section -->
+        <section class="final-report hidden" id="finalReport">
+            <div class="report-header">
+                <h2><i class="fa-solid fa-file-contract"></i> 최종 분석 리포트</h2>
+                <div class="badge badge-success" id="finalDecisionBadge">입찰 권장</div>
+            </div>
+
+            <div class="report-grid">
+                <div class="report-item">
+                    <h4><i class="fa-solid fa-scale-balanced"></i> 말소기준권리</h4>
+                    <p id="res-rights">2018.05.12 근저당 (신한은행)</p>
+                </div>
+                <div class="report-item highlight-box">
+                    <h4><i class="fa-solid fa-hand-holding-dollar"></i> 예상 세후 수익률</h4>
+                    <p id="res-profit" class="neon-text-sm">18.5% (약 3,200만원)</p>
+                </div>
+                <div class="report-item">
+                    <h4><i class="fa-solid fa-chart-line"></i> 시세 현황</h4>
+                    <p id="res-market">최근 실거래 4.5억 / 현재 호가 4.2~4.7억</p>
+                </div>
+                <div class="report-item">
+                    <h4><i class="fa-solid fa-shield-halved"></i> 리스크 체크</h4>
+                    <p id="res-risk">체납관리비 없음. 임차인 대항력 없음.</p>
+                </div>
+                <div class="report-item">
+                    <h4><i class="fa-solid fa-map-location-dot"></i> 입지 점수</h4>
+                    <p id="res-location">85점 (초품아, 역세권 5분 거리)</p>
+                </div>
+                <div class="report-item summary-box">
+                    <h4><i class="fa-solid fa-chess-knight"></i> 전략가 코멘트</h4>
+                    <p id="res-strategy">권리 상의 하자가 없으며 보수적 접근 시에도 양도세 차감 후 준수한 수익이 예상됨. 단기 매각 전략으로 입찰가 3.8억 이하 권장.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

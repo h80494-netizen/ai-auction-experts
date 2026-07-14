@@ -17,6 +17,7 @@ if sys.platform == "win32":
 
 # 로컬 스크래퍼 모듈 임포트
 from crawler.myauction_scraper import scrape_myauction_case
+import pdf_analyzer
 
 import logging
 logging.basicConfig(filename='server.log', level=logging.INFO, 
@@ -61,6 +62,13 @@ class AnalyzeRequest(BaseModel):
 class SearchRequest(BaseModel):
     case_number: str
 
+class PdfRequest(BaseModel):
+    pdf_url: str
+
+@app.post("/api/pdf_extract")
+async def extract_pdf_location(req: PdfRequest):
+    return pdf_analyzer.analyze_pdf_for_location(req.pdf_url)
+
 class PasswordRequest(BaseModel):
     password: str
 
@@ -95,7 +103,185 @@ async def search_cases(request: SearchRequest):
     if result.get("success"):
         return {"status": "success", "data": result.get("items", [])}
     else:
-        return {"status": "error", "message": result.get("error", "검색 실패")}
+        return {"status": "error", "message": result.get("message", result.get("error", "검색 실패"))}
+
+@app.get("/api/naver-realestate")
+async def get_naver_realestate(
+    estate_type: str = "아파트",
+    min_lat: float = None,
+    max_lat: float = None,
+    min_lng: float = None,
+    max_lng: float = None
+):
+    import sqlite3, os
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='naver_real_estate'")
+    if not cursor.fetchone():
+        return {"status": "error", "message": "네이버 부동산 데이터가 DB에 없습니다. 스크립트를 실행해주세요."}
+    
+    query = "SELECT * FROM naver_real_estate WHERE estate_type = ?"
+    params = [estate_type]
+    
+    if min_lat is not None and max_lat is not None and min_lng is not None and max_lng is not None:
+        query += " AND lat >= ? AND lat <= ? AND lng >= ? AND lng <= ?"
+        params.extend([min_lat, max_lat, min_lng, max_lng])
+        
+    query += " LIMIT 1000"
+    
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    
+    grouped = {}
+    for row in rows:
+        lat = row["lat"]
+        lng = row["lng"]
+        coord_key = (lat, lng)
+        
+        if coord_key not in grouped:
+            grouped[coord_key] = {
+                "lat": lat,
+                "lng": lng,
+                "address": row["address"],
+                "total_count": 0,
+                "age_info": row["age_info"] if "age_info" in row.keys() else "",
+                "pyung_groups": {}
+            }
+        
+        # In case the first row didn't have age_info, try to grab it from subsequent rows
+        if not grouped[coord_key].get("age_info") and ("age_info" in row.keys() and row["age_info"]):
+            grouped[coord_key]["age_info"] = row["age_info"]
+            
+        group = grouped[coord_key]
+        group["total_count"] += 1
+        
+        area_str = str(row["area"])
+        try:
+            area_val = float(area_str)
+            pyung = round(area_val / 3.3058)
+        except:
+            pyung = 0
+            
+        pyung_key = f"{pyung}평" if pyung > 0 else "기타"
+        
+        if pyung_key not in group["pyung_groups"]:
+            group["pyung_groups"][pyung_key] = {
+                "count": 0,
+                "min_price": float('inf'),
+                "max_price": 0,
+                "min_price_per_pyung": float('inf'),
+                "max_price_per_pyung": 0,
+                "estate_ids": []
+            }
+            
+        pg = group["pyung_groups"][pyung_key]
+        pg["count"] += 1
+        
+        estate_id = str(row["estate_id"])
+        if estate_id:
+            pg["estate_ids"].append(estate_id)
+            
+        try:
+            price_val = float(str(row["price"]))
+        except:
+            price_val = 0
+            
+        if price_val > 0:
+            if price_val < pg["min_price"]: pg["min_price"] = price_val
+            if price_val > pg["max_price"]: pg["max_price"] = price_val
+            
+            if pyung > 0:
+                ppp = price_val / (area_val / 3.3058)
+                if ppp < pg["min_price_per_pyung"]: pg["min_price_per_pyung"] = ppp
+                if ppp > pg["max_price_per_pyung"]: pg["max_price_per_pyung"] = ppp
+
+    data = []
+    for (lat, lng), group_data in grouped.items():
+        # Convert infinities back to 0 for JSON serialization
+        pyung_list = []
+        for p_key, p_data in group_data["pyung_groups"].items():
+            if p_data["min_price"] == float('inf'): p_data["min_price"] = 0
+            if p_data["min_price_per_pyung"] == float('inf'): p_data["min_price_per_pyung"] = 0
+            
+            pyung_list.append({
+                "pyung": p_key,
+                "count": p_data["count"],
+                "min_price": p_data["min_price"],
+                "max_price": p_data["max_price"],
+                "min_price_per_pyung": p_data["min_price_per_pyung"],
+                "max_price_per_pyung": p_data["max_price_per_pyung"],
+                "estate_ids": p_data["estate_ids"]
+            })
+            
+        # Sort pyung_list by pyung size numerically if possible
+        def sort_key(x):
+            try: return int(x["pyung"].replace("평", ""))
+            except: return 0
+        pyung_list.sort(key=sort_key)
+        
+        data.append({
+            "lat": lat,
+            "lng": lng,
+            "address": group_data["address"],
+            "total_count": group_data["total_count"],
+            "pyung_groups": pyung_list
+        })
+        
+    return {"status": "success", "data": data}
+
+@app.get("/api/naver-realestate-details")
+async def get_naver_realestate_details(
+    lat: float,
+    lng: float,
+    estate_type: str = "아파트"
+):
+    import sqlite3, os
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # We will query with a small tolerance for floating point matching
+    query = """
+        SELECT * FROM naver_real_estate
+        WHERE estate_type = ? 
+        AND lat BETWEEN ? AND ?
+        AND lng BETWEEN ? AND ?
+    """
+    epsilon = 0.000001
+    cursor.execute(query, (estate_type, lat - epsilon, lat + epsilon, lng - epsilon, lng + epsilon))
+    rows = cursor.fetchall()
+    conn.close()
+    
+    data = []
+    for row in rows:
+        row_dict = dict(row)
+        
+        area_str = str(row_dict.get("area", "0"))
+        try:
+            area_val = float(area_str)
+            pyung = round(area_val / 3.3058)
+        except:
+            pyung = 0
+            area_val = 0
+            
+        try:
+            price_val = float(str(row_dict.get("price", "0")))
+        except:
+            price_val = 0
+            
+        ppp = 0
+        if pyung > 0 and price_val > 0:
+            ppp = round(price_val / (area_val / 3.3058))
+            
+        row_dict["pyung"] = pyung
+        row_dict["price_per_pyung"] = ppp
+        data.append(row_dict)
+        
+    return {"status": "success", "data": data}
 
 import uuid
 
@@ -170,6 +356,16 @@ async def _background_analyze(task_id: str, request: AnalyzeRequest):
             except Exception as e:
                 doc_msg = f"보고서 생성 실패: {str(e)}"
                 
+            try:
+                import json
+                safe_case = case_number.replace(" ", "_").replace("/", "_")
+                json_path = os.path.join(downloads_dir, f"{safe_case}_data.json")
+                with open(json_path, 'w', encoding='utf-8') as jf:
+                    json.dump(result["data"], jf, ensure_ascii=False, indent=4)
+                print(f"Saved scraped data JSON cache to {json_path}")
+            except Exception as e:
+                print(f"Failed to save JSON cache: {e}")
+                
             analysis_tasks[task_id] = {
                 "status": "success",
                 "message": f"데이터 수집 및 문서 생성 완료. AI 에이전트 분석 중... ({doc_msg})",
@@ -213,6 +409,21 @@ def get_property_issues(region: Optional[str] = None):
     except Exception as e:
         import traceback
         logging.error(f"Error in get_property_issues: {str(e)}\n{traceback.format_exc()}")
+        return {"status": "error", "message": str(e)}
+
+class AnalyzePdfRequest(BaseModel):
+    pdf_url: str
+    title: str = ""
+
+@app.post("/api/issues/analyze_pdf")
+def api_analyze_pdf(request: AnalyzePdfRequest):
+    try:
+        from pdf_analyzer import analyze_pdf_for_location
+        result = analyze_pdf_for_location(request.pdf_url, request.title)
+        return result
+    except Exception as e:
+        import traceback
+        logging.error(f"Error in api_analyze_pdf: {str(e)}\n{traceback.format_exc()}")
         return {"status": "error", "message": str(e)}
 
 @app.get("/api/analyze/status/{task_id}")
@@ -456,7 +667,7 @@ def get_map_pois(
 
     subways = []
     if not active_types or "subways" in active_types:
-        cursor.execute(f"SELECT line, name, address, lat, lng FROM subways{combined_condition} LIMIT 500", combined_params)
+        cursor.execute(f"SELECT line, name, address, lat, lng, status FROM subways{combined_condition} LIMIT 500", combined_params)
         subways = [dict(row) for row in cursor.fetchall()]
     
     universities = []
@@ -537,10 +748,14 @@ def get_map_redevelopment_zones(
         conn.close()
         return {"status": "success", "data": []}
         
-    query = '''
+    c_lat = (min_lat + max_lat) / 2.0
+    c_lng = (min_lng + max_lng) / 2.0
+    
+    query = f'''
         SELECT id, name, propel_cd, geojson FROM redevelopment_zones
         WHERE max_lat >= ? AND min_lat <= ? 
           AND max_lng >= ? AND min_lng <= ?
+        ORDER BY (max_lat - {c_lat})*(max_lat - {c_lat}) + (max_lng - {c_lng})*(max_lng - {c_lng}) ASC
         LIMIT 1000
     '''
     cursor.execute(query, (min_lat, max_lat, min_lng, max_lng))
@@ -724,11 +939,107 @@ def get_district_units(
         conn.close()
         return {"status": "success", "data": []}
         
-    query = '''
+    c_lat = (min_lat + max_lat) / 2.0
+    c_lng = (min_lng + max_lng) / 2.0
+    
+    query = f'''
         SELECT id, name, geojson FROM district_units
         WHERE max_lat >= ? AND min_lat <= ? 
           AND max_lng >= ? AND min_lng <= ?
-        LIMIT 500
+        ORDER BY (max_lat - {c_lat})*(max_lat - {c_lat}) + (max_lng - {c_lng})*(max_lng - {c_lng}) ASC
+        LIMIT 1000
+    '''
+    cursor.execute(query, (min_lat, max_lat, min_lng, max_lng))
+    data = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return {"status": "success", "data": data}
+
+@app.get("/api/map/deregulation_zones")
+def get_deregulation_zones(
+    min_lat: Optional[float] = None,
+    max_lat: Optional[float] = None,
+    min_lng: Optional[float] = None,
+    max_lng: Optional[float] = None
+):
+    if not os.path.exists(DB_PATH):
+        return {"status": "error", "message": "DB not found"}
+        
+    if not (min_lat and max_lat and min_lng and max_lng):
+        return {"status": "success", "data": []}
+        
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='deregulation_zones'")
+    if not cursor.fetchone():
+        conn.close()
+        # Mock data for demonstration since the table doesn't exist
+        c_lat = (min_lat + max_lat) / 2.0
+        c_lng = (min_lng + max_lng) / 2.0
+        import json
+        mock_geojson = {
+            "type": "Polygon",
+            "coordinates": [[
+                [c_lng - 0.005, c_lat - 0.005],
+                [c_lng + 0.005, c_lat - 0.005],
+                [c_lng + 0.005, c_lat + 0.005],
+                [c_lng - 0.005, c_lat + 0.005],
+                [c_lng - 0.005, c_lat - 0.005]
+            ]]
+        }
+        return {"status": "success", "data": [
+            {"id": 99999, "name": "가상 규제완화 시범지구", "geojson": json.dumps(mock_geojson)}
+        ]}
+        
+    c_lat = (min_lat + max_lat) / 2.0
+    c_lng = (min_lng + max_lng) / 2.0
+    
+    query = f'''
+        SELECT id, name, type, details, geojson FROM deregulation_zones
+        WHERE max_lat >= ? AND min_lat <= ? 
+          AND max_lng >= ? AND min_lng <= ?
+        ORDER BY (max_lat - {c_lat})*(max_lat - {c_lat}) + (max_lng - {c_lng})*(max_lng - {c_lng}) ASC
+        LIMIT 1000
+    '''
+    cursor.execute(query, (min_lat, max_lat, min_lng, max_lng))
+    data = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return {"status": "success", "data": data}
+
+@app.get("/api/map/unexecuted_facilities")
+def get_map_unexecuted_facilities(
+    min_lat: Optional[float] = None,
+    max_lat: Optional[float] = None,
+    min_lng: Optional[float] = None,
+    max_lng: Optional[float] = None
+):
+    if not os.path.exists(DB_PATH):
+        return {"status": "error", "message": "DB not found"}
+        
+    if not (min_lat and max_lat and min_lng and max_lng):
+        return {"status": "success", "data": []}
+        
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='unexecuted_facilities'")
+    if not cursor.fetchone():
+        conn.close()
+        return {"status": "success", "data": []}
+        
+    c_lat = (min_lat + max_lat) / 2.0
+    c_lng = (min_lng + max_lng) / 2.0
+    
+    query = f'''
+        SELECT id, name, geojson FROM unexecuted_facilities
+        WHERE max_lat >= ? AND min_lat <= ? 
+          AND max_lng >= ? AND min_lng <= ?
+        ORDER BY (max_lat - {c_lat})*(max_lat - {c_lat}) + (max_lng - {c_lng})*(max_lng - {c_lng}) ASC
+        LIMIT 1000
     '''
     cursor.execute(query, (min_lat, max_lat, min_lng, max_lng))
     data = [dict(row) for row in cursor.fetchall()]
@@ -751,7 +1062,7 @@ def get_map_subway_lines():
         conn.close()
         return {"status": "success", "data": []}
         
-    cursor.execute("SELECT id, line, coordinates_json FROM subway_lines")
+    cursor.execute("SELECT id, line, status, coordinates_json FROM subway_lines")
     lines = [dict(row) for row in cursor.fetchall()]
     conn.close()
     
@@ -775,7 +1086,8 @@ def get_map_auctions(
     min_households: Optional[int] = None,
     regions: Optional[str] = None,
     special_rights: Optional[str] = None,
-    land_prices: Optional[str] = None
+    land_prices: Optional[str] = None,
+    unexecuted_only: Optional[bool] = False
 ):
     if not os.path.exists(DB_PATH):
         return {"status": "error", "message": "DB not found"}
@@ -791,7 +1103,10 @@ def get_map_auctions(
 
     query = "SELECT * FROM auctions WHERE 1=1"
     params = []
-    
+
+    if unexecuted_only:
+        pass # query += " AND is_unexecuted = 1"  # Column does not exist in DB
+
     if min_lat and max_lat and min_lng and max_lng:
         query += " AND lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?"
         params.extend([min_lat, max_lat, min_lng, max_lng])
@@ -822,15 +1137,15 @@ def get_map_auctions(
                 type_clauses.append("property_type = '오피스텔'")
             elif t == '단독':
                 type_clauses.append("property_type = '단독'")
-            elif t == '지산':
+            elif t in ('지산', '공장창고(집합)'):
                 type_clauses.append("property_type = '지산'")
-            elif t == '집합':
+            elif t in ('집합', '상가(집합)'):
                 type_clauses.append("property_type = '집합'")
-            elif t == '일반':
+            elif t in ('일반', '상가(일반)'):
                 type_clauses.append("property_type = '일반'")
             elif t == '토지':
                 type_clauses.append("property_type = '토지'")
-            elif t == '공장':
+            elif t in ('공장', '공장창고(일반)'):
                 type_clauses.append("property_type = '공장'")
             elif t == '기타':
                 type_clauses.append("(property_type NOT IN ('아파트', '다세대', '오피스텔', '단독', '지산', '집합', '일반', '토지', '공장'))")
@@ -867,6 +1182,8 @@ def get_map_auctions(
         for r in rights_list:
             if r == '기타':
                 rights_clauses.append("special_notes != ''")
+            elif r == '대항력없음':
+                rights_clauses.append("(special_notes IS NULL OR special_notes = '' OR special_notes = '0' OR special_notes = '0.0' OR special_notes LIKE '0 %' OR special_notes LIKE '%대항력 없음%' OR special_notes LIKE '%대항력없음%')")
             elif r == '법정지상권':
                 rights_clauses.append("(special_notes LIKE ? OR special_notes LIKE ? OR special_notes LIKE ?)")
                 params.extend([f"%{r}%", "%토지만매각%", "%건물만매각%"])
@@ -969,15 +1286,15 @@ def export_map_auctions(
                 type_clauses.append("property_type = '오피스텔'")
             elif t == '단독':
                 type_clauses.append("property_type = '단독'")
-            elif t == '지산':
+            elif t in ('지산', '공장창고(집합)'):
                 type_clauses.append("property_type = '지산'")
-            elif t == '집합':
+            elif t in ('집합', '상가(집합)'):
                 type_clauses.append("property_type = '집합'")
-            elif t == '일반':
+            elif t in ('일반', '상가(일반)'):
                 type_clauses.append("property_type = '일반'")
             elif t == '토지':
                 type_clauses.append("property_type = '토지'")
-            elif t == '공장':
+            elif t in ('공장', '공장창고(일반)'):
                 type_clauses.append("property_type = '공장'")
             elif t == '기타':
                 type_clauses.append("(property_type NOT IN ('아파트', '다세대', '오피스텔', '단독', '지산', '집합', '일반', '토지', '공장'))")
@@ -1014,6 +1331,8 @@ def export_map_auctions(
         for r in rights_list:
             if r == '기타':
                 rights_clauses.append("special_notes != ''")
+            elif r == '대항력없음':
+                rights_clauses.append("(special_notes IS NULL OR special_notes = '' OR special_notes = '0' OR special_notes = '0.0' OR special_notes LIKE '0 %' OR special_notes LIKE '%대항력 없음%' OR special_notes LIKE '%대항력없음%')")
             elif r == '법정지상권':
                 rights_clauses.append("(special_notes LIKE ? OR special_notes LIKE ? OR special_notes LIKE ?)")
                 params.extend([f"%{r}%", "%토지만매각%", "%건물만매각%"])
@@ -1163,8 +1482,449 @@ def get_population_heatmap(min_lat: float, max_lat: float, min_lng: float, max_l
     
     return {"status": "success", "data": grids}
 
+def parse_property_floor(address: str):
+    """
+    주소 문자열에서 물건의 층수를 추출합니다.
+    반환값: (floor_type, floor_str)
+    - floor_type: 'basement' (지하층), 'first' (1층), 'upper' (2층 이상), 'unknown' (미확인)
+    - floor_str: 사용자 표시용 층수 문자열
+    """
+    import re
+    if not address:
+        return 'unknown', '지상층(확인 필요)'
+        
+    address_clean = str(address).strip()
+    
+    # 1. 지하층 패턴 체크
+    if '지하' in address_clean:
+        m = re.search(r'지하\s*(\d+)층', address_clean)
+        if m:
+            return 'basement', f"지하 {m.group(1)}층"
+        return 'basement', '지하층'
+        
+    # 2. 명시적 층수 표현 체크 (예: 3층, 1층)
+    m = re.search(r'(\d+)\s*층', address_clean)
+    if m:
+        floor_num = int(m.group(1))
+        if floor_num == 1:
+            return 'first', '1층'
+        elif floor_num >= 2:
+            return 'upper', f"{floor_num}층"
+            
+    # 3. 호수 패턴 체크 (예: 102호, 1205호)
+    # 한글 주소에서 일반적으로 백의 자리 이상이 층수를 나타냄
+    m = re.search(r'(\d{3,4})\s*호', address_clean)
+    if m:
+        unit_num = int(m.group(1))
+        floor_num = unit_num // 100
+        if floor_num == 1:
+            return 'first', '1층'
+        elif floor_num >= 2:
+            return 'upper', f"{floor_num}층"
+            
+    return 'unknown', '1층(추정)'
+
+
+def generate_recommendation_based_on_specs(res_pop: int, wrk_pop: int, floating_pop: dict, address: str, area_size: Optional[float]):
+    """
+    물건의 평수, 층수, 주거/직장인구, 유동인구를 모두 종합적으로 반영하여
+    가장 현실적이고 데이터에 기반한 추천 업종 및 추천 사유를 생성합니다.
+    """
+    # 1. 층수 분석
+    floor_type, floor_str = parse_property_floor(address)
+    
+    # 2. 평수 분석
+    if area_size is not None and area_size > 0:
+        if area_size < 15:
+            size_class = "small"
+            size_str = f"소형(약 {area_size:.1f}평)"
+        elif area_size < 40:
+            size_class = "medium"
+            size_str = f"중형(약 {area_size:.1f}평)"
+        elif area_size < 80:
+            size_class = "large"
+            size_str = f"대형(약 {area_size:.1f}평)"
+        else:
+            size_class = "xlarge"
+            size_str = f"초대형(약 {area_size:.1f}평)"
+    else:
+        size_class = "medium"
+        size_str = "중형(평수 미확인)"
+        area_size = 0.0
+
+    # 3. 배후수요 성격 판별 (오피스 중심 vs 주거 중심)
+    if wrk_pop > res_pop * 0.7:
+        demand_type = "office"
+        demand_str = "오피스/직장인 중심"
+    else:
+        demand_type = "residential"
+        demand_str = "주거 배후 중심"
+
+    # 추천 매트릭스 정의
+    matrix = {
+        "office": {
+            "basement": {
+                "small": {
+                    "biz": "무인 공유창고(셀프 스토리지), 1인 PT 스튜디오, 소형 세미나/연습실",
+                    "desc": "오피스 상권 지하 소형 면적으로, 인근 직장인의 부족한 수납 공간을 해결하는 무인 창고나 예약제 PT 스튜디오가 적합합니다."
+                },
+                "medium": {
+                    "biz": "피트니스/필라테스 샵, 실내 스크린 스포츠(야구/골프), 다트/이색 펍 주점",
+                    "desc": "직장인들의 퇴근 후 건강 관리 및 스트레스 해소를 타깃으로 하는 필라테스나 스크린 오락시설, 또는 분위기 중심의 지하 펍이 적합합니다."
+                },
+                "large": {
+                    "biz": "구내식당(한식 뷔페), 스크린골프 연습장, 크로스핏 체육관, 오피스 보조 아카이브",
+                    "desc": "인근 직장인들의 점심 식사 수요를 집중 흡수할 수 있는 대형 한식 뷔식이나 소음 걱정 없는 지하 대형 체육/레저 시설이 유리합니다."
+                },
+                "xlarge": {
+                    "biz": "프리미엄 피트니스 클럽, 대규모 스크린골프 아카데미, 실내 볼링장",
+                    "desc": "대형 오피스 빌딩 단지의 풍부한 직장인 수요를 수용할 수 있는 프리미엄 피트니스 또는 대규모 스크린스포츠 공간으로의 기획이 가장 현실적입니다."
+                }
+            },
+            "first": {
+                "small": {
+                    "biz": "테이크아웃 전문 커피숍, 샐러드/샌드위치 전문점, 소형 편의점, 토스트 전문점",
+                    "desc": "출퇴근 및 점심시간 고밀도 유동인구 동선 상에서 회전율을 극대화할 수 있는 테이크아웃 F&B 업종이 최적입니다."
+                },
+                "medium": {
+                    "biz": "캐주얼 한식/퓨전 레스토랑, 베이커리 카페, 수제버거 전문점, 약국, 대리점",
+                    "desc": "직장인 점심/저녁 식사 수요를 흡수하는 요식업 브랜드나 처방/매출 안정성이 높은 1층 약국, 안테나 매장이 적합합니다."
+                },
+                "large": {
+                    "biz": "대형 프랜차이즈 식당(고깃집, 일식당), 프리미엄 카페, 드럭스토어, 브랜드 편집숍",
+                    "desc": "직장인 단체 회식 및 풍부한 유동인구의 소비를 이끌어낼 수 있는 대형 요식업 브랜드 또는 브랜드 쇼룸 매장이 유리합니다."
+                },
+                "xlarge": {
+                    "biz": "수입차/가전 전시장, 시중은행 금융센터, 대형 프랜차이즈 뷔페, 대형 SSM",
+                    "desc": "가시성이 뛰어난 전면 노출을 활용한 대형 전시장, 금융 기관 지점, 혹은 넓은 면적이 필요한 대형 식음 시설 입지가 적절합니다."
+                }
+            },
+            "upper": {
+                "small": {
+                    "biz": "전문직 개인 사무실(세무사, 변리사, 행정사), 1인 오피스, 소형 예약제 뷰티숍",
+                    "desc": "비교적 저렴한 임대료를 활용하여 인근 기업체를 대상으로 B2B 서비스를 제공하는 세무/법률 사무소나 1인 예약제 샵이 유리합니다."
+                },
+                "medium": {
+                    "biz": "치과/이비인후과 의원, 기구 필라테스 스튜디오, 소형 공유 오피스",
+                    "desc": "직장인들의 점심 시간이나 퇴근 직후 진료/이용이 용이한 치과/이비인후과 의원이나 필라테스, 공유 소형 사무실 임대가 유망합니다."
+                },
+                "large": {
+                    "biz": "종합 검진 내과의원, 중형 공유 오피스, IT 벤처/지식산업 기업 사무실",
+                    "desc": "주변 직장인들의 건강검진 수요를 충당할 수 있는 대형 내과 병원이나 중소 IT 벤처 사무실 용도로 기획하는 것이 가장 현실적입니다."
+                },
+                "xlarge": {
+                    "biz": "기업 본사 사무소, 어학/직무 교육 종합 학원, 대형 메디컬 센터, 뷔페/연회장",
+                    "desc": "대면적 임차가 필수적인 중견 IT/벤처 기업 본사, 직무 어학원, 혹은 전체 층을 활용하는 대형 종합 메디컬 센터 유치가 적합합니다."
+                }
+            }
+        },
+        "residential": {
+            "basement": {
+                "small": {
+                    "biz": "주민 전용 무인 공유창고, 악기/음악 개인 연습실, 24시 무인 코인 빨래방",
+                    "desc": "주거지 밀집 특성상 실내 수납 공간 부족을 해결해 줄 공유 창고나 소음 민원을 방지할 수 있는 방음 연습실이 유리합니다."
+                },
+                "medium": {
+                    "biz": "24시간 코인 빨래방, 무인 코인 노래방, 동네 탁구장/실내 운동시설",
+                    "desc": "인근 주민 및 1인 가구가 일상적으로 이용할 수 있는 코인 빨래방이나 소형 실내 놀거리 시설이 적합합니다."
+                },
+                "large": {
+                    "biz": "어린이 전용 수영장/스포츠 교습소, 주민 스크린골프 클럽, 크로스핏 체육관",
+                    "desc": "학부모 수요가 높은 어린이 스포츠 센터나 주민들이 도보로 이용할 수 있는 스크린골프, 대형 헬스시설이 우수합니다."
+                },
+                "xlarge": {
+                    "biz": "프리미엄 스크린골프 아카데미, 대형 키즈 카페, 주민 복합 피트니스 센터, 지하 대형 식자재마트",
+                    "desc": "넓은 바닥 공간이 필수적인 주민용 프리미엄 스크린골프나 키즈카페, 혹은 주민 밀집 상권의 지하 마트 기획이 유리합니다."
+                }
+            },
+            "first": {
+                "small": {
+                    "biz": "밀착형 편의점, 반찬 전문점, 소형 무인 매장(아이스크림), 미용실, 동네 분식점",
+                    "desc": "단지 내 도보 동선에 위치하여 가벼운 일상 소비를 즉각적으로 해결할 수 있는 반찬점, 무인 점포, 1인 미용실이 최적입니다."
+                },
+                "medium": {
+                    "biz": "프랜차이즈 베이커리, 주민 친화형 중형 카페, 소아청소년과/이비인후과 의원, 동물병원",
+                    "desc": "아파트 단지 입구나 중심 상가 코너 자리로, 집객력 있는 베이커리 브랜드, 카페 또는 소아과/이비인후과가 적합합니다."
+                },
+                "large": {
+                    "biz": "중형 식자재 마트, 거점 메디컬 클리닉(내과, 가정의학과), 동물 메디컬 센터, 프랜차이즈 식당",
+                    "desc": "배후 주거 인구의 일상 소비를 독점하는 마트나 단지 내 핵심 위치에 입점하는 패밀리 레스토랑, 소아과 등의 전문 병원이 유리합니다."
+                },
+                "xlarge": {
+                    "biz": "단지 상가 대형 SSM, 대형 생활용품점(다이소형), 대형 프랜차이즈 패밀리 레스토랑",
+                    "desc": "수천 세대의 배후 가구를 대상으로 하는 대형 식자재/생활용품 마트나 주말 가족 외식 수요를 흡수하는 대형 F&B 매장이 강력 추천됩니다."
+                }
+            },
+            "upper": {
+                "small": {
+                    "biz": "단과 보습 교습소(수학/영어), 피아노/미술 공부방, 예약제 1인 헤어숍",
+                    "desc": "비교적 조용하고 아늑한 분위기를 활용하여 인근 단지 초중등 학생을 타깃으로 하는 개인 공부방 및 예체능 교습소가 유망합니다."
+                },
+                "medium": {
+                    "biz": "보습/입시 전문 학원, 예체능(태권도/발레) 아카데미, 독서실/스터디 카페, 소아치과 의원",
+                    "desc": "학부모와 학생층의 접근이 우수한 곳으로 보습 학원, 태권도장, 또는 조용한 스터디 카페나 소아치과 개원이 안성맞춤입니다."
+                },
+                "large": {
+                    "biz": "종합 입시 학원, 대형 태권도/체육 학원, 프리미엄 스터디 카페, 내과/정형외과 의원",
+                    "desc": "단지 상가 고층부의 대형 면적으로, 종합 학원가 입지나 노령/가족층이 많이 찾는 정형외과, 내과 의원으로의 임대가 장기적으로 안전합니다."
+                },
+                "xlarge": {
+                    "biz": "어린이 실내 놀이터/키즈 카페, 노인 주간보호센터(데이케어), 종합 메디컬 타워층",
+                    "desc": "학부모들이 선호하는 대규모 키즈카페, 혹은 실버 세대를 위한 주간보호센터(데이케어), 층 전체를 쓰는 학원/메디컬 센터가 최적입니다."
+                }
+            }
+        }
+    }
+
+    # floor_type 매핑 안전장치
+    lookup_floor = floor_type if floor_type in ["basement", "first", "upper"] else "first"
+    
+    # 추천 데이터 조회
+    biz_data = matrix[demand_type][lookup_floor][size_class]
+    recom_biz = biz_data["biz"]
+    base_desc = biz_data["desc"]
+
+    # 4. 실시간 배후수요 데이터 연계 가공
+    weekday_pop = floating_pop.get("weekday", 0)
+    weekend_pop = floating_pop.get("weekend", 0)
+    lunch_pop = floating_pop.get("lunch", 0)
+    dinner_pop = floating_pop.get("dinner", 0)
+    total_250 = floating_pop.get("total", 0)
+
+    # 입지 세부 정보
+    spec_line = f"📍 [분석 기준] 전용면적: {size_str} | 층수: {floor_str} | 배후수요 성격: {demand_str}"
+    
+    # 인구 구성 정보
+    if demand_type == "office":
+        demo_fact = f"이 입지는 반경 500m 내 직장인구({wrk_pop:,}명)가 거주인구({res_pop:,}명) 대비 두드러지게 밀집한 오피스 상업 지대입니다."
+    else:
+        demo_fact = f"이 입지는 반경 500m 내 거주인구({res_pop:,}명, 약 {int(res_pop/2.25):,}세대)의 두터운 소비층이 중심이 되는 주거밀집 지대입니다."
+
+    # 유동인구 구성 정보
+    if weekday_pop > weekend_pop * 1.2:
+        flow_fact = f"250m 이내 유동인구는 주중 일평균 {weekday_pop:,}명으로 주말({weekend_pop:,}명)보다 직장인 통근 동선이 매우 발달하여 점심({lunch_pop:,}명) 및 퇴근시간 저녁({dinner_pop:,}명) 식음료/근린생활 업종의 집객률이 탁월합니다."
+    elif weekend_pop > weekday_pop * 1.2:
+        flow_fact = f"250m 이내 유동인구는 주말 일평균 {weekend_pop:,}명으로 주중({weekday_pop:,}명) 대비 주말 가족 여가/외식 동선이 풍부하여, 가족 단위 타깃 업종 및 생활밀착형 서비스의 영업 가치가 큽니다."
+    else:
+        flow_fact = f"250m 이내 유동인구는 주중({weekday_pop:,}명)과 주말({weekend_pop:,}명)의 흐름이 고르고, 일평균 {total_250:,}명의 탄탄한 기본 도보 동선이 지속되어 안정적 영업이 가능합니다."
+
+    # 최종 상세 소견 작성
+    recom_desc = (
+        f"{spec_line}\n\n"
+        f"💡 [입지 분석 특징]\n{demo_fact} {flow_fact}\n\n"
+        f"🎯 [추천 가이드]\n{base_desc} 본 물건의 {size_str} 면적과 {floor_str}이라는 물리적 조건을 감안할 때, 추천 업종인 '{recom_biz.split(',')[0]}' 등의 입점 또는 임대 구성을 통해 공실 최소화 및 임대수익 극대화 효과를 거둘 수 있습니다."
+    )
+
+    return recom_biz, recom_desc
+
+
+def get_auction_property_specs(case_no: Optional[str], address: Optional[str], property_type: str, area_size: Optional[float]):
+    import re
+    import json
+    import os
+    from datetime import datetime
+    
+    # 1. Floor parsing
+    floor_num = None
+    floor_str = "지상층"
+    total_floors = None
+    
+    addr_str = address or ""
+    
+    # Check if address contains total floors (e.g. "15층 중 3층", "5층 건내 2층")
+    m_total = re.search(r'(\d+)\s*층\s*(?:중|건내|건물\s*내)\s*(\d+)\s*층', addr_str)
+    if m_total:
+        total_floors = int(m_total.group(1))
+        floor_num = int(m_total.group(2))
+        floor_str = f"{floor_num}층"
+    else:
+        if "지하" in addr_str:
+            floor_str = "지하"
+            floor_num = -1
+        else:
+            m_floor = re.search(r'(\d+)\s*층', addr_str)
+            if m_floor:
+                floor_num = int(m_floor.group(1))
+                floor_str = f"{floor_num}층"
+            else:
+                m_unit = re.search(r'(\d+)\s*호', addr_str)
+                if m_unit:
+                    unit = int(m_unit.group(1))
+                    if unit >= 100:
+                        floor_num = unit // 100
+                        floor_str = f"{floor_num}층"
+    
+    # Estimate total floors if unknown
+    if not total_floors:
+        if floor_num and floor_num > 0:
+            if "아파트" in property_type:
+                total_floors = max(15, floor_num + 2)
+            elif any(k in property_type for k in ["다세대", "빌라", "단독"]):
+                total_floors = max(5, floor_num + 1)
+            else:
+                total_floors = max(5, floor_num + 1)
+        else:
+            total_floors = 5 # default fallback
+            
+    # Classify floor
+    is_comm = any(k in property_type for k in ["상가", "상업", "업무", "근린"])
+    if floor_str == "지하":
+        floor_class = "지하"
+    elif floor_num == 1 and is_comm:
+        floor_class = "1층"
+    elif floor_num and floor_num > 0:
+        ratio = floor_num / total_floors
+        if ratio <= 0.334:
+            floor_class = "저층 (총층수의 1/3 이하)"
+        elif ratio <= 0.667:
+            floor_class = "중층 (총층수의 2/3 이하)"
+        else:
+            floor_class = "고층 (총층수의 3/3)"
+    else:
+        floor_class = "지상층 (층수 미확인)"
+        
+    # 2. Pyeong classification
+    pyeong = area_size or 0.0
+    if pyeong >= 35:
+        pyeong_class = "대(35평 이상)"
+    elif pyeong >= 20:
+        pyeong_class = "중(20평 이상)"
+    elif pyeong >= 10:
+        pyeong_class = "소형(10평 이상)"
+    else:
+        pyeong_class = "초소형(10평 미만)"
+        
+    # 3. Build year / Age lookup
+    build_year = None
+    age = None
+    age_class = "연식 정보 미크롤링 (리포트 실행 필요)"
+    
+    # Try to load from saved JSON cache
+    if case_no:
+        safe_case = case_no.replace(" ", "_").replace("/", "_")
+        cache_path = os.path.join(downloads_dir, f"{safe_case}_data.json")
+        if os.path.exists(cache_path):
+            try:
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    cache_data = json.load(f)
+                    app_date = cache_data.get("approval_date")
+                    if app_date:
+                        # Extract 4 digit year
+                        m_year = re.search(r'(\d{4})', str(app_date))
+                        if m_year:
+                            build_year = int(m_year.group(1))
+                            current_year = datetime.now().year
+                            age = current_year - build_year
+            except Exception as e:
+                print(f"Error loading cache JSON: {e}")
+                
+    if age is not None:
+        if age <= 10:
+            age_class = f"신축 (10년 이하) - {build_year}년식 ({age}년 경과)"
+        elif age <= 25:
+            age_class = f"준신축 (25년 이하) - {build_year}년식 ({age}년 경과)"
+        else:
+            age_class = f"노후 (25년 초과) - {build_year}년식 ({age}년 경과)"
+            
+    return {
+        "floor": floor_str,
+        "total_floors": total_floors,
+        "floor_class": floor_class,
+        "pyeong": pyeong,
+        "pyeong_class": pyeong_class,
+        "build_year": build_year,
+        "age": age,
+        "age_class": age_class
+    }
+
+
+def generate_specs_comparison_comments(specs: dict, property_type: str, matched_grid: Optional[dict]):
+    pyeong = specs["pyeong"]
+    pyeong_class = specs["pyeong_class"]
+    floor = specs["floor"]
+    floor_class = specs["floor_class"]
+    age = specs["age"]
+    age_class = specs["age_class"]
+    
+    comments = []
+    
+    # 1. Pyeong (면적/평수) 코멘트
+    comments.append(f"■ 물건 평수대: <strong>{pyeong:.1f}평</strong> ({pyeong_class})")
+    if pyeong >= 35:
+        comments.append("└ 대형 평형대로서 넓은 주거/상업 공간을 필요로 하는 패밀리 세대나 중대형 식음료/사무소 배후수요에 적합합니다. 다만 단위 면적당 단가는 소형 대비 낮게 형성될 수 있습니다.")
+    elif pyeong >= 20:
+        comments.append("└ 가장 대중적인 중형 평형대로서 3~4인 가구의 탄탄한 실수요와 넓은 범주의 상업 업종(일반 요식업, 판매점 등) 집객에 가장 유리하여 환금성이 우수합니다.")
+    elif pyeong >= 10:
+        comments.append("└ 소형 평형대로서 1~2인 가구의 거주 임차 수요와 소자본 테이크아웃 및 밀착형 소형 근린생활 시설에 매우 최적화되어 있습니다.")
+    elif pyeong > 0:
+        comments.append("└ 초소형 평형대로서 1인 가구, 직장인 단독 세대 타깃의 초소형 주거 혹은 무인 업종(무인 아이스크림, 공유 창고 등)에 최적화된 컴팩트한 입지입니다.")
+    else:
+        comments.append("└ 평형대 정보를 확인할 수 없는 물건입니다.")
+
+    # 2. Floor (층수) 코멘트
+    comments.append(f"■ 물건 층수대: <strong>{floor}</strong> (총 {specs['total_floors']}층 중 {floor_class})")
+    is_comm = any(k in property_type for k in ["상가", "상업", "업무", "근린"])
+    if is_comm:
+        if "지하" in floor_class:
+            comments.append("└ 상가 지하층은 접근성이 낮으나 소음 제한이 없고 임대료가 저렴하여 무인 공유창고, 연습실, 스크린골프, 크로스핏 등 공간 중심 목적형 업종에 특화됩니다.")
+        elif "1층" in floor_class:
+            comments.append("└ 상가 1층은 유동인구의 동선 노출과 가시성이 최상인 핵심 입지로서 F&B, 테이크아웃, 편의점 등 고집객 생활밀착 업종의 권장 매출력이 극대화됩니다.")
+        else:
+            comments.append("└ 상가 지상층(저/중/고층)은 1층 대비 저렴한 임대료를 레버리지하여 목적형 방문 업종인 병의원, 학원, 전문직 사무실, 뷰티숍 임대 구성에 적절합니다.")
+    else:
+        if "지하" in floor_class:
+            comments.append("└ 주거 지하층은 습기 및 환기 유의가 필요하나, 가격 경쟁력이 매우 높으므로 저렴한 임차 수요층이나 창고 겸용 소형 주거 공간으로 적합합니다.")
+        elif "저층" in floor_class:
+            comments.append("└ 주거 저층은 어린이집, 은퇴 세대의 실거주 선호가 높은 반면 사생활 노출 방지를 위한 조경 매칭이나 필로티 구조 여부가 가치 형성에 중요하게 작용합니다.")
+        elif "중층" in floor_class:
+            comments.append("└ 주거 중층은 채광과 조망이 무난하고 냉난방 효율이 가장 우수하여 대중적인 수요층의 임차 선호도가 가장 두텁습니다.")
+        elif "고층" in floor_class:
+            comments.append("└ 주거 고층은 뛰어난 조망권과 채광으로 인한 프리미엄이 크게 붙으며, 인근 실거래 분석 상 로얄층 선호 비율에 따라 시세 차익 극대화가 가능합니다.")
+        else:
+            comments.append("└ 주거 지상층으로서 세부 층비율을 파악하기 어렵습니다.")
+
+    # 3. Age (노후도/건축년도) 코멘트
+    comments.append(f"■ 물건 노후도: <strong>{age_class}</strong>")
+    if age is not None:
+        if age <= 10:
+            comments.append("└ 준공 10년 이하의 신축급 물건으로, 시설 노후화로 인한 추가 수리/유지 보수비가 거의 들지 않아 실입주 및 전세 임차인 모집 경쟁력에서 절대적으로 유리합니다.")
+        elif age <= 25:
+            comments.append("└ 준공 25년 이하의 중간 연식 물건으로, 관리 상태에 따라 전용 공간 리모델링(섀시, 욕실 등)을 통해 자산 가치를 리빌딩하여 주변 신축 격차를 좁힐 수 있는 가성비 물건입니다.")
+        else:
+            comments.append("└ 준공 25년을 초과한 노후 건물이므로 철저한 누수/노후 배관 등 현장 조사가 필수적입니다. 다만, 향후 재건축/재개발 등 정비사업 추진에 따른 미래 자산가치 상승 매리트가 큽니다.")
+    else:
+        comments.append("└ (연식 분석) 건축년도가 아직 수집되지 않았습니다. 우측 상단 '권리분석 리포트 보기'를 실행해 주시면 마이옥션 정밀 크롤링을 통해 건축년도가 실시간 동기화되어 정교한 노후도 비교 소견이 채워집니다.")
+
+    # 4. 실거래 격자 지표와의 융합 비교 코멘트
+    if matched_grid:
+        avg_price = matched_grid.get("avg_price", 0)
+        age_prem = matched_grid.get("age_premium", 0)
+        floor_sens = matched_grid.get("floor_sensitivity", 0)
+        
+        has_grid_info = age_prem > 0 or floor_sens > 0
+        if has_grid_info:
+            comments.append("\n💡 [실거래 격자 지표 연계 분석]")
+            if age_prem > 0 and age is not None:
+                comments.append(f"- 주변 신축/구축 가격 격차 비율이 <strong>{age_prem:.2f}배</strong>로 나타납니다. " + 
+                                (f"본 물건은 {age_class.split(' - ')[0]}이므로 " + 
+                                 ("주변 노후 주택 대비 높은 가격 프리미엄 형성이 가능할 것입니다." if age <= 10 else "감가상각이 반영되어 저렴한 가격에 낙찰받아 부가가치를 올릴 타이밍입니다.") if age else ""))
+            if floor_sens > 0 and floor_class != "지하" and "미확인" not in floor_class:
+                comments.append(f"- 이 격자의 층별 로얄층 가격 민감도는 <strong>{floor_sens:.2f}배</strong>입니다. " +
+                                (f"본 물건은 {floor_class}에 속하므로 " + 
+                                 ("시세 리딩의 주요 수혜를 받아 매매 가치가 우세할 것입니다." if "고층" in floor_class or "중층" in floor_class else "낙찰가 산정 시 가격 조정을 신중히 고려해야 합니다.")))
+
+    return "\n".join(comments)
+
+
 @app.get("/api/map/demographics")
-def get_map_demographics(lat: float, lng: float):
+def get_map_demographics(
+    lat: float, 
+    lng: float, 
+    address: Optional[str] = None, 
+    area_size: Optional[float] = None,
+    case_no: Optional[str] = None,
+    property_type: Optional[str] = None
+):
     """
     물건지 클릭 시 반경 1km 내 배후수요 분석 데이터를 반환합니다.
     SGIS OpenAPI를 연동하며, 실패 시 로컬 공간 추정 엔진(Fallback)이 작동합니다.
@@ -1182,6 +1942,21 @@ def get_map_demographics(lat: float, lng: float):
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
+    
+    # Resolve case specifications from auctions database if case_no is provided
+    if case_no:
+        try:
+            cursor.execute("SELECT property_type, area_size, address FROM auctions WHERE case_no = ?", (case_no,))
+            row = cursor.fetchone()
+            if row:
+                if not property_type:
+                    property_type = row["property_type"] or "아파트"
+                if not area_size or area_size == 0:
+                    area_size = row["area_size"]
+                if not address:
+                    address = row["address"]
+        except Exception as e:
+            print(f"Error querying auctions table for specs: {e}")
     
     # 하버사인 거리 계산 헬퍼 함수
     def haversine_distance(lat1, lon1, lat2, lon2):
@@ -1424,7 +2199,38 @@ def get_map_demographics(lat: float, lng: float):
                 'address': closest_grouped['address']
             }
 
+    # Query nearest grid indicators for specs comparison
+    base_lat_step = 0.00225
+    base_lng_step = 0.0028
+    lat_idx = int(lat / base_lat_step)
+    lng_idx = int(lng / base_lng_step)
+    
+    matched_grid = None
+    try:
+        cursor.execute('''
+            SELECT avg_price_per_pyeong, age_premium_ratio, floor_sensitivity
+            FROM realprice_grids
+            WHERE lat_idx = ? AND lng_idx = ?
+            LIMIT 1
+        ''', (lat_idx, lng_idx))
+        grid_row = cursor.fetchone()
+        if grid_row:
+            g = dict(grid_row)
+            matched_grid = {
+                "avg_price": g["avg_price_per_pyeong"] or 0.0,
+                "age_premium": g["age_premium_ratio"] or 0.0,
+                "floor_sensitivity": g["floor_sensitivity"] or 0.0
+            }
+    except Exception as e:
+        print(f"Error querying realprice_grids in demographics: {e}")
+
     conn.close()
+    
+    # Estimate specs & generate comparison comments
+    norm_property_type = property_type or "아파트"
+    norm_area_size = area_size or 0.0
+    specs = get_auction_property_specs(case_no, address, norm_property_type, norm_area_size)
+    comparison_comments = generate_specs_comparison_comments(specs, norm_property_type, matched_grid)
     
     # 6. 종합 및 배후수요 종합 분석 평가
     res_pop = demographics["residential_population"]
@@ -1434,22 +2240,25 @@ def get_map_demographics(lat: float, lng: float):
     if wrk_pop > res_pop * 0.7:
         demand_assessment = "오피스 상업 중심지 (유동/직장인 유입 최상)"
         assessment_detail = "주거 밀도보다 일자리가 고밀도로 밀집한 핵심 경제 활동 구역입니다. 직장인 배후수요가 매우 강해 직산이나 상가 임대수요가 극대화되는 지역입니다."
-        recom_biz = "커피전문점, 테이크아웃 샐러드/샌드위치 전문점, 직장인 대상 캐주얼 한식/일식당, 피트니스/필라테스 센터, 퓨전 요리 주점"
-        recom_desc = "직장인들의 점심 시간 소비 및 퇴근 후 여가 소비가 집중되는 지역으로, 고회전율 식음료 업종 및 스트레스 해소형 운동시설을 적극 추천합니다."
     elif res_pop > 150000:
         demand_assessment = "주거 초고밀도 구역 (배후수요 안정성 극대)"
         assessment_detail = "가구 및 주택 밀집도가 대단히 높은 초대형 아파트 단지 및 주택가입니다. 생필품, 소매점, 학군 중심의 실수요 배후가 탄탄하며 낙찰 시 매매/전세 회전율이 우수합니다."
-        recom_biz = "프랜차이즈 베이커리, 입시/보습 학원, 대형 편의점 및 무인 아이스크림점, 세탁/수선 전문점, 소아과/치과 의원"
-        recom_desc = "탄탄한 고정 가족 단위 배후 수요를 바탕으로 생활 밀착형 소매점, 교육 서비스, 가족 단위 외식 및 필수 의료 서비스 업종이 매우 안정적입니다."
     else:
         demand_assessment = "배후수요 안정지대 (주거밀집 구역)"
         assessment_detail = "주거 배후수요와 근린 생활 수요가 조화롭게 분포된 지역입니다. 지하철 접근성에 따라 가치가 민감하게 반응하므로 지하철 인프라 연동 분석을 필히 활용하세요."
-        recom_biz = "근린 생활 밀착형 편의점, 베이커리 카페, 무인 빨래방, 반찬 전문점, 헤어숍/미용실"
-        recom_desc = "안정적인 주거 배후를 바탕으로 일상 소비 빈도가 높은 무인 점포 및 1인 가구/가족 소단위 밀착형 서비스가 지속적이고 안정적인 매출을 보장합니다."
 
     # 유동인구 250m 특징 추가
     floating_detail = f"\n\n[입지 평가 특징 - 250m 이내 유동인구]\n- 주중 일평균 유동인구: 약 {weekday_pop:,}명 | 주말 일평균 유동인구: 약 {weekend_pop:,}명\n- 시간대별 분포: 점심(11~14시) 약 {lunch_pop:,}명 | 저녁(18~21시) 약 {dinner_pop:,}명"
     assessment_detail += floating_detail
+
+    # 맞춤형 추천업종 및 사유 생성
+    recom_biz, recom_desc = generate_recommendation_based_on_specs(
+        res_pop=res_pop,
+        wrk_pop=wrk_pop,
+        floating_pop=floating_population_250,
+        address=address,
+        area_size=norm_area_size
+    )
 
     # 추천업종 추가
     recommended_detail = f"\n\n[입지 기반 추천 업종]\n- 권장 업종: {recom_biz}\n- 추천 사유: {recom_desc}"
@@ -1467,7 +2276,8 @@ def get_map_demographics(lat: float, lng: float):
             "class": demand_assessment,
             "detail": assessment_detail,
             "recom_biz": recom_biz,
-            "recom_desc": recom_desc
+            "recom_desc": recom_desc,
+            "specs_comparison": comparison_comments
         }
     }
 
@@ -1475,18 +2285,14 @@ def get_map_demographics(lat: float, lng: float):
 def get_grid_demographics(
     min_lat: float, max_lat: float, min_lng: float, max_lng: float,
     type: str = "residential",  # "residential" | "workplace" | "floating"
-    regions: Optional[str] = "서울"
+    regions: Optional[str] = "서울,경기,인천"
 ):
     """
-    지도 화면(BBox) 영역 내 격자형 인구 데이터를 조회합니다.
-    서울은 기존 DB에서, 경기/인천은 고성능 공간 추정 엔진(Fallback)으로 실시간 생성하여 독립 로컬 정규화를 지원합니다.
+    지도 화면(BBox) 영역 내 500m 격자형 인구 데이터를 조회합니다.
     """
-    import math
-    import random
-    
-    # 250m 격자 위경도 증가 스텝 기본값 선언
-    lat_step = 0.00225
-    lng_step = 0.0028
+    # 500m 격자 위경도 증가 스텝 (약 500m에 해당하는 위경도 차이)
+    lat_step = 0.0045
+    lng_step = 0.0056
     
     db_path = os.path.join(os.path.dirname(__file__), 'data', 'map_data.db')
     if not os.path.exists(db_path):
@@ -1496,321 +2302,36 @@ def get_grid_demographics(
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
-    selected_regions = regions.split(',') if regions else ["서울"]
-    show_seoul = any("서울" in r for r in selected_regions)
-    show_gyeonggi = any("경기" in r for r in selected_regions)
-    show_incheon = any("인천" in r for r in selected_regions)
-    
     grids = []
     
-    # 1. 서울 그리드 로딩 (기존 DB 활용)
-    if show_seoul:
-        seoul_grids = []
-        if type == "workplace":
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='commercial_areas'")
-            if cursor.fetchone():
-                query = '''
-                    SELECT lat, lng, population as avg_population, name as grid_id FROM commercial_areas
-                    WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-                    LIMIT 1000
-                '''
-                cursor.execute(query, (min_lat, max_lat, min_lng, max_lng))
-                seoul_grids = [dict(row) for row in cursor.fetchall()]
-        elif type == "residential":
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='population_grids'")
-            if cursor.fetchone():
-                query = '''
-                    SELECT lat, lng, (avg_population * 0.85) as avg_population, grid_id FROM population_grids
-                    WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-                    LIMIT 1000
-                '''
-                cursor.execute(query, (min_lat, max_lat, min_lng, max_lng))
-                seoul_grids = [dict(row) for row in cursor.fetchall()]
-        else:  # "floating"
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='population_grids'")
-            if cursor.fetchone():
-                query = '''
-                    SELECT lat, lng, avg_population, grid_id FROM population_grids
-                    WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-                    LIMIT 1000
-                '''
-                cursor.execute(query, (min_lat, max_lat, min_lng, max_lng))
-                seoul_grids = [dict(row) for row in cursor.fetchall()]
-                
-        # 서울 그리드 태깅
-        for g in seoul_grids:
-            g["region"] = "seoul"
-            grids.append(g)
-
-    # 2. 경기 & 인천 그리드 초고속 실시간 합성 (POI 배치 로드 + 메모리 연산)
-    if (show_gyeonggi or show_incheon) and (max_lat - min_lat < 0.50) and (max_lng - min_lng < 0.55):
-        # Bbox 외곽 1km 패딩을 주어 경계지역 버스정류장/지하철 등이 짤리지 않게 처리
-        pad_lat = 0.009
-        pad_lng = 0.011
-        
-        # 단 1번의 배치 DB 쿼리로 Bbox 안의 모든 관련 POI 수집 (메모리 로딩)
-        # 지하철역 배치 로드
-        cursor.execute('''
-            SELECT name, address, lat, lng FROM subways
-            WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-        ''', (min_lat - pad_lat, max_lat + pad_lat, min_lng - pad_lng, max_lng + pad_lng))
-        subways = [dict(r) for r in cursor.fetchall()]
-        
-        # 학교 배치 로드
-        cursor.execute('''
-            SELECT name, address, lat, lng FROM middle_schools
-            WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-        ''', (min_lat - pad_lat, max_lat + pad_lat, min_lng - pad_lng, max_lng + pad_lng))
-        schools = [dict(r) for r in cursor.fetchall()]
-        
-        cursor.execute('''
-            SELECT name, address, lat, lng FROM universities
-            WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-        ''', (min_lat - pad_lat, max_lat + pad_lat, min_lng - pad_lng, max_lng + pad_lng))
-        schools.extend([dict(r) for r in cursor.fetchall()])
-        
-        # 경공매 물건지 배치 로드 (물건지 근방은 고밀도 주거지로 설정)
-        cursor.execute('''
-            SELECT address, lat, lng, property_type FROM auctions
-            WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-        ''', (min_lat - pad_lat, max_lat + pad_lat, min_lng - pad_lng, max_lng + pad_lng))
-        auctions = [dict(r) for r in cursor.fetchall()]
-        
-        # 버스정류장 배치 로드 (지연 방지를 위해 최대 300개 제한)
-        cursor.execute('''
-            SELECT name, lat, lng FROM bus_stops
-            WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-            LIMIT 300
-        ''', (min_lat - pad_lat, max_lat + pad_lat, min_lng - pad_lng, max_lng + pad_lng))
-        bus_stops = [dict(r) for r in cursor.fetchall()]
-        
-        # 초고속 메모리 Euclidean Approximation 함수
-        # 위도 37.5도 기준: 위도 1도=111,000m, 경도 1도=88,000m
-        # (제곱 거리 반환하여 math.sqrt 배제)
-        def fast_dist_sq(lat1, lng1, lat2, lng2):
-            dy = (lat1 - lat2) * 111000.0
-            dx = (lng1 - lng2) * 88000.0
-            return dx*dx + dy*dy
-
-        # 1-3. POI들을 공간 그리드 버킷(크기: 0.006도)에 매핑하여 spatial index 구축
-        bucket_size = 0.006
-        
-        # 지하철역
-        subway_spatial = {}
-        for s in subways:
-            b_lat = int(s["lat"] / bucket_size)
-            b_lng = int(s["lng"] / bucket_size)
-            key = (b_lat, b_lng)
-            if key not in subway_spatial:
-                subway_spatial[key] = []
-            subway_spatial[key].append(s)
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='population_500m_grids'")
+    if cursor.fetchone():
+        if type == "residential":
+            query = '''
+                SELECT lat, lng, residential_pop as avg_population, grid_code as grid_id 
+                FROM population_500m_grids
+                WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ? AND residential_pop > 0
+                LIMIT 50000
+            '''
+        elif type == "workplace":
+            query = '''
+                SELECT lat, lng, worker_pop as avg_population, grid_code as grid_id 
+                FROM population_500m_grids
+                WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ? AND worker_pop > 0
+                LIMIT 50000
+            '''
+        else: # floating
+            # 유동인구는 일단 주거+직장의 합계로 대체
+            query = '''
+                SELECT lat, lng, (residential_pop + worker_pop) as avg_population, grid_code as grid_id 
+                FROM population_500m_grids
+                WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ? AND (residential_pop + worker_pop) > 0
+                LIMIT 50000
+            '''
             
-        # 버스정류장
-        bus_spatial = {}
-        for b in bus_stops:
-            b_lat = int(b["lat"] / bucket_size)
-            b_lng = int(b["lng"] / bucket_size)
-            key = (b_lat, b_lng)
-            if key not in bus_spatial:
-                bus_spatial[key] = []
-            bus_spatial[key].append(b)
-            
-        # 경공매 물건지
-        auction_spatial = {}
-        for a in auctions:
-            b_lat = int(a["lat"] / bucket_size)
-            b_lng = int(a["lng"] / bucket_size)
-            key = (b_lat, b_lng)
-            if key not in auction_spatial:
-                auction_spatial[key] = []
-            auction_spatial[key].append(a)
-            
-        # 학교/대학
-        school_spatial = {}
-        for sch in schools:
-            b_lat = int(sch["lat"] / bucket_size)
-            b_lng = int(sch["lng"] / bucket_size)
-            key = (b_lat, b_lng)
-            if key not in school_spatial:
-                school_spatial[key] = []
-            school_spatial[key].append(sch)
-            
-        # 지역 탐색용 통합 POI (지하철, 학교, 경매 통합)
-        region_pois = []
-        for s in subways:
-            region_pois.append((s["lat"], s["lng"], s.get("address", "") or ""))
-        for sch in schools:
-            region_pois.append((sch["lat"], sch["lng"], sch.get("address", "") or ""))
-        for a in auctions:
-            region_pois.append((a["lat"], a["lng"], a.get("address", "") or ""))
-            
-        region_spatial = {}
-        for lat, lng, addr in region_pois:
-            b_lat = int(lat / bucket_size)
-            b_lng = int(lng / bucket_size)
-            key = (b_lat, b_lng)
-            if key not in region_spatial:
-                region_spatial[key] = []
-            region_spatial[key].append((lat, lng, addr))
-
-        # BBox 내에 250m 간격으로 중심점 그리드 매핑
-        grid_id_counter = 0
-        
-        # 루프를 돌기 전 루프 횟수가 1200개를 초과하면 가벼운 스텝으로 자동 스케일 조절해 속도 강제 방어
-        while True:
-            lat_count = int((max_lat - min_lat) / lat_step) + 1
-            lng_count = int((max_lng - min_lng) / lng_step) + 1
-            if lat_count * lng_count > 1200:
-                lat_step *= 1.5
-                lng_step *= 1.5
-            else:
-                break
-            
-        curr_lat = min_lat
-        while curr_lat <= max_lat:
-            curr_lng = min_lng
-            while curr_lng <= max_lng:
-                # 1. 주변 가장 가까운 POI(지하철, 학교, 경매)의 주소를 조회해 경기/인천 여부 판정
-                nearest_poi = None
-                min_poi_d_sq = float('inf')
-                
-                grid_b_lat = int(curr_lat / bucket_size)
-                grid_b_lng = int(curr_lng / bucket_size)
-                
-                # 인접 9개 버킷 검색
-                for d_lat in [-1, 0, 1]:
-                    for d_lng in [-1, 0, 1]:
-                        key = (grid_b_lat + d_lat, grid_b_lng + d_lng)
-                        if key in region_spatial:
-                            for lat, lng, addr in region_spatial[key]:
-                                dy = (curr_lat - lat) * 111000.0
-                                dx = (curr_lng - lng) * 88000.0
-                                d_sq = dx*dx + dy*dy
-                                if d_sq < min_poi_d_sq:
-                                    min_poi_d_sq = d_sq
-                                    nearest_poi = {"address": addr}
-                                    
-                # 소속 지역 판단
-                grid_region = None
-                if nearest_poi:
-                    address_str = nearest_poi.get("address", "")
-                    if "인천" in address_str or "인천광역시" in address_str:
-                        grid_region = "incheon"
-                    elif "경기" in address_str or "경기도" in address_str:
-                        grid_region = "gyeonggi"
-                    elif "서울" in address_str or "서울특별시" in address_str:
-                        grid_region = "seoul"
-                else:
-                    # 인접 POI가 전혀 없으면 순수 외곽지역 좌표로 단순 추정
-                    if curr_lng < 126.734:
-                        grid_region = "incheon"
-                    else:
-                        grid_region = "gyeonggi"
-                        
-                # 경기 혹은 인천 그리드이면서, 유저가 클릭해 활성화된 지역인 경우에만 연산 수행
-                if grid_region and grid_region != "seoul":
-                    is_active = (grid_region == "incheon" and show_incheon) or (grid_region == "gyeonggi" and show_gyeonggi)
-                    if is_active:
-                        # 2. 고성능 인메모리 근접 가중치 계산 (Distance-Decay Weight)
-                        score = 0.0
-                        
-                        # 가중치 튜닝 변수
-                        w_sub, w_bus, w_auc, w_sch = 1.0, 1.0, 1.0, 1.0
-                        if type == "residential":
-                            w_sub, w_bus, w_auc, w_sch = 0.8, 0.9, 1.3, 1.2
-                        elif type == "workplace":
-                            w_sub, w_bus, w_auc, w_sch = 1.2, 1.1, 1.1, 0.6
-                        else: # floating
-                            w_sub, w_bus, w_auc, w_sch = 1.4, 1.3, 0.8, 0.7
-                            
-                        # 지하철 기여도 (500m)
-                        for d_lat in [-1, 0, 1]:
-                            for d_lng in [-1, 0, 1]:
-                                key = (grid_b_lat + d_lat, grid_b_lng + d_lng)
-                                if key in subway_spatial:
-                                    for s in subway_spatial[key]:
-                                        dy = (curr_lat - s["lat"]) * 111000.0
-                                        if abs(dy) > 500.0: continue
-                                        dx = (curr_lng - s["lng"]) * 88000.0
-                                        if abs(dx) > 500.0: continue
-                                        d_sq = dx*dx + dy*dy
-                                        if d_sq <= 250000.0:
-                                            d = math.sqrt(d_sq)
-                                            score += 12000 * (1 - d / 500.0) * w_sub
-                                            
-                        # 버스정류장 기여도 (200m)
-                        for d_lat in [-1, 0, 1]:
-                            for d_lng in [-1, 0, 1]:
-                                key = (grid_b_lat + d_lat, grid_b_lng + d_lng)
-                                if key in bus_spatial:
-                                    for b in bus_spatial[key]:
-                                        dy = (curr_lat - b["lat"]) * 111000.0
-                                        if abs(dy) > 200.0: continue
-                                        dx = (curr_lng - b["lng"]) * 88000.0
-                                        if abs(dx) > 200.0: continue
-                                        d_sq = dx*dx + dy*dy
-                                        if d_sq <= 40000.0:
-                                            d = math.sqrt(d_sq)
-                                            score += 2500 * (1 - d / 200.0) * w_bus
-                                            
-                        # 경공매 물건지 기여도 (300m)
-                        for d_lat in [-1, 0, 1]:
-                            for d_lng in [-1, 0, 1]:
-                                key = (grid_b_lat + d_lat, grid_b_lng + d_lng)
-                                if key in auction_spatial:
-                                    for auc in auction_spatial[key]:
-                                        dy = (curr_lat - auc["lat"]) * 111000.0
-                                        if abs(dy) > 300.0: continue
-                                        dx = (curr_lng - auc["lng"]) * 88000.0
-                                        if abs(dx) > 300.0: continue
-                                        d_sq = dx*dx + dy*dy
-                                        if d_sq <= 90000.0:
-                                            d = math.sqrt(d_sq)
-                                            p_type = auc.get("property_type", "주택")
-                                            multi = 1.0
-                                            if type == "workplace" and p_type in ["지산", "집합", "공장", "일반"]:
-                                                multi = 1.5
-                                            elif type == "residential" and p_type in ["아파트", "다세대", "오피스텔", "단독"]:
-                                                multi = 1.5
-                                            score += 5000 * (1 - d / 300.0) * w_auc * multi
-                                            
-                        # 학교 기여도 (300m)
-                        for d_lat in [-1, 0, 1]:
-                            for d_lng in [-1, 0, 1]:
-                                key = (grid_b_lat + d_lat, grid_b_lng + d_lng)
-                                if key in school_spatial:
-                                    for sch in school_spatial[key]:
-                                        dy = (curr_lat - sch["lat"]) * 111000.0
-                                        if abs(dy) > 300.0: continue
-                                        dx = (curr_lng - sch["lng"]) * 88000.0
-                                        if abs(dx) > 300.0: continue
-                                        d_sq = dx*dx + dy*dy
-                                        if d_sq <= 90000.0:
-                                            d = math.sqrt(d_sq)
-                                            score += 3500 * (1 - d / 300.0) * w_sch
-                                            
-                        # 3. 사실적 분포 연산 및 결과 저장
-                        # 숲이나 외딴 비주거 무인 지역(score < 2000)은 그리드를 아예 그리지 않아 속도 향상
-                        if score >= 2000:
-                            # 결정론적 난수를 시드로 적용하여 격자에 미세한 사실감 넘치는 노이즈 생성
-                            random_seed = int((curr_lat * 10000 + curr_lng * 10000) % 100000)
-                            rng = random.Random(random_seed)
-                            noise = rng.uniform(0.85, 1.15)
-                            
-                            avg_pop = int(score * 0.95 * noise)
-                            
-                            grid_id = f"synth_{grid_region}_{grid_id_counter}"
-                            grids.append({
-                                "lat": round(curr_lat, 6),
-                                "lng": round(curr_lng, 6),
-                                "avg_population": avg_pop,
-                                "grid_id": grid_id,
-                                "region": grid_region
-                            })
-                            grid_id_counter += 1
-                            
-                curr_lng += lng_step
-            curr_lat += lat_step
+        cursor.execute(query, (min_lat, max_lat, min_lng, max_lng))
+        for row in cursor.fetchall():
+            grids.append(dict(row))
             
     conn.close()
     return {
@@ -1819,6 +2340,7 @@ def get_grid_demographics(
         "lat_step": lat_step, 
         "lng_step": lng_step
     }
+
 
 @app.get("/api/map/road_flows")
 def get_road_flows(
@@ -1850,16 +2372,16 @@ def get_road_flows(
     center_lat = (min_lat + max_lat) / 2.0
     center_lng = (min_lng + max_lng) / 2.0
 
-    # 250m 반경 영역에 대한 Bounding Box 정의 (안전 마진으로 300m 설정)
-    # 위도 300m ≈ 0.0027도, 경도 300m ≈ 0.0034도
-    flow_min_lat = center_lat - 0.0027
-    flow_max_lat = center_lat + 0.0027
-    flow_min_lng = center_lng - 0.0034
-    flow_max_lng = center_lng + 0.0034
+    # 500m 반경 영역에 대한 Bounding Box 정의 (안전 마진으로 550m 설정)
+    # 위도 550m ≈ 0.0050도, 경도 550m ≈ 0.0062도
+    flow_min_lat = center_lat - 0.0050
+    flow_max_lat = center_lat + 0.0050
+    flow_min_lng = center_lng - 0.0062
+    flow_max_lng = center_lng + 0.0062
 
-    # 1. 중심부 반경 250m 격자 공간 연산을 위해 250m 패딩을 주어 유동인구 격자 수집
-    pad_lat = 0.00225
-    pad_lng = 0.00285
+    # 1. 중심부 반경 500m 격자 공간 연산을 위해 500m 패딩을 주어 유동인구 격자 수집
+    pad_lat = 0.0045
+    pad_lng = 0.0056
     
     grid_min_lat = flow_min_lat - pad_lat
     grid_max_lat = flow_max_lat + pad_lat
@@ -2147,11 +2669,11 @@ def get_road_flows(
                 seg_mid_lng = (pt1[0] + pt2[0]) / 2.0
                 seg_mid_lat = (pt1[1] + pt2[1]) / 2.0
                 
-                # 2. 지도의 중심부 기준으로 반경 250m 이내의 소도로/뒷골목만 필터링 (제곱 거리 비교로 math.sqrt 제거)
+                # 2. 지도의 중심부 기준으로 반경 500m 이내의 소도로/뒷골목만 필터링 (제곱 거리 비교로 math.sqrt 제거)
                 dy = (seg_mid_lat - center_lat) * 111000.0
                 dx = (seg_mid_lng - center_lng) * 88000.0
                 dist_from_center_sq = dx*dx + dy*dy
-                if dist_from_center_sq > 62500.0:  # 250.0 ** 2
+                if dist_from_center_sq > 250000.0:  # 500.0 ** 2
                     continue
                 
                 score = 0.0
@@ -2166,9 +2688,9 @@ def get_road_flows(
                                 dy_tg = (seg_mid_lat - tg["lat"]) * 111000.0
                                 dx_tg = (seg_mid_lng - tg["lng"]) * 88000.0
                                 d_sq = dx_tg*dx_tg + dy_tg*dy_tg
-                                if d_sq <= 62500.0:  # 250.0 ** 2
+                                if d_sq <= 250000.0:  # 500.0 ** 2
                                     d = math.sqrt(d_sq)
-                                    decay = 1.0 - d / 250.0
+                                    decay = 1.0 - d / 500.0
                                     step_weight = (tg["step"] - 5) / 5.0
                                     score += tg["avg_population"] * decay * step_weight
                                     
@@ -2224,15 +2746,15 @@ def get_road_flows(
                 seed_val = int((rd["coordinates"][0][0] * 100000 + rd["coordinates"][0][1] * 100000) % 100000)
                 rng = random.Random(seed_val)
                 if adjusted_step >= 9:
-                    avg_flow = rng.randint(5000, 6200)
+                    avg_flow = rng.randint(3000, 4500)
                 elif adjusted_step >= 7:
-                    avg_flow = rng.randint(3000, 4800)
-                elif adjusted_step >= 5:
                     avg_flow = rng.randint(2000, 2900)
+                elif adjusted_step >= 5:
+                    avg_flow = rng.randint(1000, 1900)
                 elif adjusted_step >= 3:
-                    avg_flow = rng.randint(1500, 1950)
+                    avg_flow = rng.randint(500, 950)
                 else:
-                    avg_flow = rng.randint(500, 1400)
+                    avg_flow = rng.randint(100, 450)
                 
                 # Apply fine-grained scaling to avg_flow to make numbers look smooth and dynamic
                 flow_multiplier = 1.0
@@ -2325,8 +2847,8 @@ def get_road_flows(
             seg_mid_lng = (coords[0][0] + coords[1][0]) / 2.0
             seg_mid_lat = (coords[0][1] + coords[1][1]) / 2.0
             
-            # 중심에서 반경 250m 이내만 가상 생성
-            if fast_dist(seg_mid_lat, seg_mid_lng, center_lat, center_lng) <= 250.0:
+            # 중심에서 반경 500m 이내만 가상 생성
+            if fast_dist(seg_mid_lat, seg_mid_lng, center_lat, center_lng) <= 500.0:
                 candidate_roads.append({
                     "coordinates": coords,
                     "name": name,
@@ -2443,9 +2965,9 @@ def get_road_flows(
                             dy_tg = (mid_lat - tg["lat"]) * 111000.0
                             dx_tg = (mid_lng - tg["lng"]) * 88000.0
                             d_sq = dx_tg*dx_tg + dy_tg*dy_tg
-                            if d_sq <= 62500.0:  # 250.0 ** 2
+                            if d_sq <= 250000.0:  # 500.0 ** 2
                                 d = math.sqrt(d_sq)
-                                decay = 1.0 - d / 250.0
+                                decay = 1.0 - d / 500.0
                                 step_weight = (tg["step"] - 5) / 5.0
                                 score += tg["avg_population"] * decay * step_weight
             rc["score"] = score
@@ -2531,14 +3053,223 @@ def get_road_flows(
     
     return {"status": "success", "data": geojson_result}
 
+@app.get("/api/map/realprice_indicators")
+def get_realprice_indicators(
+    min_lat: float,
+    max_lat: float,
+    min_lng: float,
+    max_lng: float,
+    property_type: str = "아파트",
+    indicator_type: str = "avg_price_per_pyeong",
+    grid_size: int = 1000
+):
+    """
+    지정한 BBox 영역 내 실거래 격자 가격지표 데이터를 조회합니다.
+    """
+    base_lat_step = 0.00225
+    base_lng_step = 0.0028
+    
+    scale = float(grid_size) / 250.0
+    lat_step = base_lat_step * scale
+    lng_step = base_lng_step * scale
+    
+    if not os.path.exists(DB_PATH):
+        return {"status": "error", "message": "DB not found"}
+        
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Check if table exists
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='realprice_grids'")
+    if not cursor.fetchone():
+        conn.close()
+        return {"status": "error", "message": "Real price table not initialized yet."}
+        
+    # Query within BBox with padding to catch boundary grids
+    query = '''
+        SELECT lat_idx, lng_idx, lat, lng, 
+               avg_price_per_pyeong, avg_deposit_per_pyeong, avg_rent, 
+               jeonse_ratio, transaction_count, sale_count, rent_count, 
+               age_premium_ratio, floor_sensitivity,
+               sales_count_under_10, sales_count_10_to_20, sales_count_20_to_30, sales_count_over_30,
+               sale_price_change_rate, rent_price_change_rate
+        FROM realprice_grids
+        WHERE lat BETWEEN ? AND ? 
+          AND lng BETWEEN ? AND ?
+          AND property_type = ?
+    '''
+    pad_lat = lat_step
+    pad_lng = lng_step
+    cursor.execute(query, (min_lat - pad_lat, max_lat + pad_lat, min_lng - pad_lng, max_lng + pad_lng, property_type))
+    rows = cursor.fetchall()
+    conn.close()
+    
+    # Group fine-grained (250m) grids from DB into custom-sized grid cells
+    grouped_grids = {}
+    for r in rows:
+        d = dict(r)
+        new_lat_idx = int(d["lat"] / lat_step)
+        new_lng_idx = int(d["lng"] / lng_step)
+        key = (new_lat_idx, new_lng_idx)
+        if key not in grouped_grids:
+            grouped_grids[key] = []
+        grouped_grids[key].append(d)
+        
+    grids = []
+    for (lat_idx, lng_idx), sub_cells in grouped_grids.items():
+        total_tx = sum(c["transaction_count"] or 0 for c in sub_cells)
+        if total_tx <= 0:
+            continue
+            
+        weighted_lat = sum(c["lat"] * (c["transaction_count"] or 0) for c in sub_cells) / total_tx
+        weighted_lng = sum(c["lng"] * (c["transaction_count"] or 0) for c in sub_cells) / total_tx
+        
+        def get_weighted_avg(field):
+            valid_cells = [c for c in sub_cells if c[field] and c[field] > 0]
+            valid_tx = sum(c["transaction_count"] or 0 for c in valid_cells)
+            if valid_tx > 0:
+                return sum(c[field] * (c["transaction_count"] or 0) for c in valid_cells) / valid_tx
+            vals = [c[field] for c in sub_cells if c[field] and c[field] > 0]
+            return sum(vals) / len(vals) if vals else 0.0
+
+        def get_sum(field):
+            return sum(c[field] or 0 for c in sub_cells)
+            
+        avg_price = get_weighted_avg("avg_price_per_pyeong")
+        avg_deposit = get_weighted_avg("avg_deposit_per_pyeong")
+        avg_rent = get_weighted_avg("avg_rent")
+        age_premium = get_weighted_avg("age_premium_ratio")
+        floor_sensitivity = get_weighted_avg("floor_sensitivity")
+        
+        sale_count = get_sum("sale_count")
+        rent_count = get_sum("rent_count")
+        
+        sales_under_10 = get_sum("sales_count_under_10")
+        sales_10_to_20 = get_sum("sales_count_10_to_20")
+        sales_20_to_30 = get_sum("sales_count_20_to_30")
+        sales_over_30 = get_sum("sales_count_over_30")
+        
+        valid_sale_rates = [c["sale_price_change_rate"] for c in sub_cells if c["sale_price_change_rate"] is not None]
+        avg_sale_rate = sum(valid_sale_rates) / len(valid_sale_rates) if valid_sale_rates else 0.0
+
+        valid_rent_rates = [c["rent_price_change_rate"] for c in sub_cells if c["rent_price_change_rate"] is not None]
+        avg_rent_rate = sum(valid_rent_rates) / len(valid_rent_rates) if valid_rent_rates else 0.0
+
+        
+        # Calculate main pyeong type and percentage
+        categories = {
+            "10평 이하": sales_under_10,
+            "20평 이하": sales_10_to_20,
+            "30평 이하": sales_20_to_30,
+            "30평 초과": sales_over_30
+        }
+        total_sales = sales_under_10 + sales_10_to_20 + sales_20_to_30 + sales_over_30
+        
+        main_pyeong_type = "-"
+        main_pyeong_ratio = 0.0
+        if total_sales > 0:
+            max_cat = max(categories, key=categories.get)
+            if categories[max_cat] > 0:
+                main_pyeong_type = max_cat
+                main_pyeong_ratio = (categories[max_cat] / total_sales) * 100
+        
+        if avg_price > 0 and avg_deposit > 0:
+            jeonse_ratio = (avg_deposit / avg_price) * 100
+        else:
+            jeonse_ratio = get_weighted_avg("jeonse_ratio")
+            
+        val = 0.0
+        if indicator_type == "avg_price_per_pyeong":
+            val = avg_price
+        elif indicator_type == "avg_deposit_per_pyeong":
+            val = avg_deposit
+        elif indicator_type == "jeonse_ratio":
+            val = jeonse_ratio
+        elif indicator_type == "transaction_count":
+            val = float(total_tx)
+        elif indicator_type == "main_pyeong_type":
+            val = main_pyeong_ratio
+        elif indicator_type == "age_premium_ratio":
+            val = age_premium
+        elif indicator_type == "floor_sensitivity":
+            val = floor_sensitivity
+            
+        grids.append({
+            "lat_idx": lat_idx,
+            "lng_idx": lng_idx,
+            "lat": weighted_lat,
+            "lng": weighted_lng,
+            "val": val,
+            "avg_price": avg_price,
+            "avg_deposit": avg_deposit,
+            "avg_rent": avg_rent,
+            "jeonse_ratio": jeonse_ratio,
+            "count": total_tx,
+            "sale_count": sale_count,
+            "rent_count": rent_count,
+            "main_pyeong_type": main_pyeong_type,
+            "main_pyeong_ratio": main_pyeong_ratio,
+            "sales_under_10": sales_under_10,
+            "sales_10_to_20": sales_10_to_20,
+            "sales_20_to_30": sales_20_to_30,
+            "sales_over_30": sales_over_30,
+            "age_premium": age_premium,
+            "floor_sensitivity": floor_sensitivity,
+            "sale_price_change_rate": avg_sale_rate,
+            "rent_price_change_rate": avg_rent_rate
+        })
+        
+    return {
+        "status": "success",
+        "lat_step": lat_step,
+        "lng_step": lng_step,
+        "data": grids
+    }
+
 # 이미지 제공용 스태틱 라우트
 test_images_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_images")
 if os.path.exists(test_images_dir):
     app.mount("/test_images", StaticFiles(directory=test_images_dir), name="images")
+
+
+from naver_price_analyzer import analyze_price
+
+class NaverPriceRequest(BaseModel):
+    lat: float
+    lon: float
+    type: str
+    area_pyeong: float
+    floor: str
+    total_floor: str
+    build_year: str
+    appraised_price: float
+    min_price: float
+    senior_debt: float
+
+@app.post("/api/naver_price_analysis")
+async def naver_price_analysis(req: NaverPriceRequest):
+    try:
+        result = analyze_price(
+            target_lat=req.lat,
+            target_lon=req.lon,
+            target_type=req.type,
+            target_area_pyeong=req.area_pyeong,
+            target_floor=req.floor,
+            target_total_floor=req.total_floor,
+            target_build_year=req.build_year,
+            target_appraised_price=req.appraised_price,
+            target_min_price=req.min_price,
+            target_senior_debt=req.senior_debt
+        )
+        return {"status": "success", "data": result}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 
 public_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "public")
 if os.path.exists(public_dir):
     app.mount("/", StaticFiles(directory=public_dir, html=True), name="static")
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8000)
+    uvicorn.run("app:app", host="0.0.0.0", port=8001)

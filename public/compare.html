@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Auction Expert - 중첩 물건 AI 비교분석</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Variables & Theme */
+        :root {
+            --bg-dark: #0a0c10;
+            --bg-card: rgba(20, 24, 34, 0.6);
+            --glass-border: rgba(192, 38, 211, 0.15);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            --neon-purple: #c026d3;
+            --neon-purple-glow: rgba(192, 38, 211, 0.6);
+            --neon-blue: #00eeff;
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+            --success: #2ea043;
+            --danger: #f85149;
+            --warning: #d29922;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Background Effects */
+        .background-effects {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.15;
+            animation: float 20s infinite ease-in-out alternate;
+        }
+
+        .orb-1 { width: 500px; height: 500px; background: var(--neon-purple); top: -10%; left: -10%; }
+        .orb-2 { width: 400px; height: 400px; background: #0044ff; bottom: -10%; right: -5%; animation-delay: -5s; }
+        .orb-3 { width: 300px; height: 300px; background: var(--neon-blue); top: 40%; left: 50%; animation-delay: -10s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .brand-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .neon-text {
+            color: var(--neon-purple);
+            text-shadow: 0 0 10px var(--neon-purple-glow), 0 0 20px var(--neon-purple-glow);
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+
+        .back-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--text-main);
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: #fff;
+        }
+
+        /* Case Input Box */
+        .input-card {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--glass-shadow);
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .input-label {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-area {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px 15px;
+            color: #fff;
+            font-size: 0.95rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            resize: vertical;
+            min-height: 70px;
+        }
+
+        .input-area:focus {
+            border-color: var(--neon-purple);
+            box-shadow: 0 0 10px rgba(192, 38, 211, 0.15);
+        }
+
+        .action-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .help-text {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .analyze-btn {
+            background: linear-gradient(135deg, var(--neon-purple), #851ea3);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(192, 38, 211, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(192, 38, 211, 0.45);
+        }
+
+        .analyze-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Loading / Message States */
+        .status-box {
+            text-align: center;
+            padding: 50px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--glass-shadow);
+            backdrop-filter: blur(12px);
+        }
+
+        .spinner {
+            width: 45px;
+            height: 45px;
+            border: 4px solid rgba(192, 38, 211, 0.1);
+            border-top-color: var(--neon-purple);
+            border-right-color: var(--neon-purple);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .status-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Recommendations Section */
+        .rec-section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .recommendations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 18px;
+        }
+
+        .recommend-card {
+            border-radius: 14px;
+            padding: 22px;
+            position: relative;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: transform 0.2s;
+        }
+
+        .recommend-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .top-badge {
+            position: absolute;
+            top: 15px;
+            right: 18px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .rec-label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .case-link {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #fff;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.2s;
+        }
+
+        .case-link:hover {
+            text-decoration: underline;
+        }
+
+        .rec-desc {
+            font-size: 0.88rem;
+            line-height: 1.55;
+            color: #e2e8f0;
+            border-top: 1px dashed rgba(255,255,255,0.08);
+            padding-top: 12px;
+            font-weight: 500;
+            word-break: keep-all;
+        }
+
+        /* Comparison Table Section */
+        .table-card {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--glass-shadow);
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.85rem;
+            min-width: 950px;
+            table-layout: fixed;
+        }
+
+        th {
+            background: rgba(192, 38, 211, 0.08);
+            border-bottom: 1.5px solid rgba(192, 38, 211, 0.25);
+            padding: 14px 16px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            vertical-align: top;
+            color: #e2e8f0;
+            font-weight: 500;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.015);
+        }
+
+        /* Badges */
+        .potential-badge {
+            font-weight: bold;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .badge-high { background: rgba(236, 72, 153, 0.18); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.25); }
+        .badge-mid { background: rgba(59, 130, 246, 0.18); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.25); }
+        .badge-low { background: rgba(148, 163, 184, 0.18); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.25); }
+
+        .takeover-risk {
+            color: var(--danger);
+            font-weight: bold;
+        }
+
+        .return-rate {
+            color: #2ea043;
+            font-weight: 800;
+            font-size: 0.95rem;
+        }
+
+        .star-rating {
+            white-space: nowrap;
+            display: inline-flex;
+            gap: 2px;
+        }
+
+        .star-icon {
+            color: #eab308;
+            font-size: 0.85rem;
+        }
+
+        .star-empty {
+            color: rgba(255, 255, 255, 0.15);
+            font-size: 0.85rem;
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="background-effects">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+        <div class="glow-orb orb-3"></div>
+    </div>
+
+    <div class="container">
+        
+        <!-- Header -->
+        <header>
+            <div>
+                <h1 class="brand-title">AI Auction <span class="neon-text">Expert 2.0</span></h1>
+                <p class="subtitle"><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--neon-purple);"></i> 중첩 물건 AI 비교분석 및 투자 추천 대시보드</p>
+            </div>
+            <button class="back-btn" onclick="window.history.back() || window.close() || (window.location.href='/map.html')">
+                <i class="fa-solid fa-map-location-dot"></i> 지도화면 돌아가기
+            </button>
+        </header>
+
+        <!-- Input Box -->
+        <div class="input-card">
+            <div class="input-label">
+                <i class="fa-solid fa-paste" style="color:var(--neon-purple);"></i>
+                <span>비교분석할 사건번호 입력</span>
+            </div>
+            <textarea class="input-area" id="casesInput" placeholder="비교할 사건번호들을 쉽표(,) 또는 줄바꿈으로 구분하여 입력하십시오.&#10;예: 2024타경5020, 2024타경12431(5)"></textarea>
+            
+            <div class="action-row">
+                <div class="help-text">
+                    * 사건번호가 데이터베이스에 존재해야 정상적으로 정보 수집 및 AI 분석이 수행됩니다.<br>
+                    * 지도화면의 형광펜 중첩 필터를 통해 URL 매개변수로 자동 전달될 수도 있습니다.
+                </div>
+                <button class="analyze-btn" onclick="runComparison()">
+                    <i class="fa-solid fa-brain"></i> AI 정밀 비교 분석 실행
+                </button>
+            </div>
+        </div>
+
+        <!-- Status / Spinner Container -->
+        <div class="status-box" id="statusContainer" style="display: none;">
+            <div class="spinner"></div>
+            <div class="status-title" id="statusTitle">AI 에이전트 분석 중...</div>
+            <div class="status-desc" id="statusDesc">각 물건의 입지, 밸류업 가능성, 권리 리스크, 수익률을 정밀 연산 중입니다. 약 5~15초 소요됩니다.</div>
+        </div>
+
+        <!-- Recommendations Container -->
+        <div id="recommendationsContainer" style="display: none;" class="fade-in">
+            <h3 class="rec-section-title">
+                <i class="fa-solid fa-award" style="color: #eab308;"></i>
+                <span>AI 실전 전문가 선별 추천 물건 (TOP 2~3 추천)</span>
+            </h3>
+            <div class="recommendations-grid" id="recommendationsGrid">
+                <!-- Recommendations Cards will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="table-card" id="tableContainer" style="display: none;" class="fade-in">
+            <h3 class="rec-section-title">
+                <i class="fa-solid fa-table-list" style="color: var(--neon-purple);"></i>
+                <span>종합 비교표 (동일 기준 평가)</span>
+            </h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">사건번호 / 종류</th>
+                            <th style="width: 220px;">소재지</th>
+                            <th style="width: 85px; text-align: center;">3년후 가치</th>
+                            <th style="width: 220px;">밸류업 가능성 / 미래 상승세</th>
+                            <th style="width: 120px;">예상 인수금액</th>
+                            <th style="width: 100px; text-align: center;">최저가 수익률</th>
+                            <th style="width: 220px;">리스크 / 추가조사사항</th>
+                            <th style="width: 110px; text-align: center;">투자 매력도</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Table rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Check URL parameters for initial cases on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const casesParam = urlParams.get('cases');
+            if (casesParam) {
+                document.getElementById('casesInput').value = casesParam;
+                runComparison();
+            }
+        });
+
+        async function runComparison() {
+            const inputText = document.getElementById('casesInput').value.trim();
+            if (!inputText) {
+                alert('사건번호를 입력해주십시오.');
+                return;
+            }
+
+            // Split by comma or newline and clean empty items
+            const cases = inputText.split(/[,\n]/)
+                .map(item => item.trim())
+                .filter(item => item.length > 0);
+
+            if (cases.length < 2) {
+                alert('비교분석을 위해서는 최소 2개 이상의 사건번호를 입력해야 합니다.');
+                return;
+            }
+
+            // Show loading
+            const statusContainer = document.getElementById('statusContainer');
+            const statusTitle = document.getElementById('statusTitle');
+            const statusDesc = document.getElementById('statusDesc');
+            const recommendationsContainer = document.getElementById('recommendationsContainer');
+            const tableContainer = document.getElementById('tableContainer');
+
+            statusContainer.style.display = 'block';
+            statusTitle.innerText = 'AI 에이전트 분석 중...';
+            statusDesc.innerText = '각 물건의 입지, 밸류업 가능성, 권리 리스크, 수익률을 정밀 연산 중입니다. 약 5~15초 소요됩니다.';
+            
+            recommendationsContainer.style.display = 'none';
+            tableContainer.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/map/auctions/compare', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ case_numbers: cases })
+                });
+                
+                const json = await res.json();
+
+                if (json.status === 'success' && json.data) {
+                    statusContainer.style.display = 'none';
+                    renderComparisonResults(json.data);
+                } else {
+                    throw new Error(json.message || '분석 결과를 도출하지 못했습니다. 사건번호가 유효하고 데이터베이스에 등록되어 있는지 확인하십시오.');
+                }
+            } catch (err) {
+                statusContainer.style.display = 'block';
+                statusTitle.innerText = '분석 오류 발생';
+                statusDesc.innerHTML = `<span style="color: var(--danger); font-weight: bold;">오류: ${err.message}</span>`;
+            }
+        }
+
+        function renderComparisonResults(data) {
+            const recommendationsContainer = document.getElementById('recommendationsContainer');
+            const recommendationsGrid = document.getElementById('recommendationsGrid');
+            const tableContainer = document.getElementById('tableContainer');
+            const tableBody = document.getElementById('tableBody');
+
+            // 1. Render Recommendations
+            recommendationsGrid.innerHTML = '';
+            if (data.recommendations && data.recommendations.length > 0) {
+                data.recommendations.forEach((rec, index) => {
+                    let matchedRow = data.comparison_table.find(row => row.case_no === rec.case_no);
+                    let address = matchedRow ? matchedRow.address : '소재지 정보 없음';
+                    let type = matchedRow ? matchedRow.property_type : '부동산';
+
+                    let colors = [
+                        'linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(234, 179, 8, 0.03))',
+                        'linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(168, 85, 247, 0.03))',
+                        'linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(6, 182, 212, 0.03))'
+                    ];
+                    let borderColors = ['#eab308', '#a855f7', '#06b6d4'];
+                    let badgeColors = ['#fef9c3', '#f3e8ff', '#ecfeff'];
+                    let badgeTextColors = ['#854d0e', '#6b21a8', '#075985'];
+
+                    let bg = colors[index % colors.length];
+                    let border = borderColors[index % borderColors.length];
+                    let badgeBg = badgeColors[index % badgeColors.length];
+                    let badgeText = badgeTextColors[index % badgeTextColors.length];
+
+                    let cardHtml = `
+                        <div class="recommend-card" style="background: ${bg}; border: 1.5px solid ${border};">
+                            <div class="top-badge" style="background: ${badgeBg}; color: ${badgeText};">
+                                TOP ${index + 1}
+                            </div>
+                            <div class="rec-label" style="color: ${border};">
+                                Recommended Property
+                            </div>
+                            <div>
+                                <a href="/?case=${encodeURIComponent(rec.case_no)}" target="_blank" class="case-link">
+                                    ${rec.case_no} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.8rem; opacity: 0.7;"></i>
+                                </a>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;">
+                                    ${type} | ${address}
+                                </div>
+                            </div>
+                            <div class="rec-desc">
+                                ${rec.reason}
+                            </div>
+                        </div>
+                    `;
+                    recommendationsGrid.insertAdjacentHTML('beforeend', cardHtml);
+                });
+                recommendationsContainer.style.display = 'block';
+            }
+
+            // 2. Render Table Rows
+            tableBody.innerHTML = '';
+            if (data.comparison_table && data.comparison_table.length > 0) {
+                data.comparison_table.forEach(row => {
+                    let badgeClass = 'badge-low';
+                    if (row.valueup_potential === '상') badgeClass = 'badge-high';
+                    else if (row.valueup_potential === '중') badgeClass = 'badge-mid';
+
+                    // Stars Rating
+                    let starsHtml = '';
+                    const starsCount = parseInt(row.attractiveness_stars) || 3;
+                    for (let i = 1; i <= 5; i++) {
+                        if (i <= starsCount) {
+                            starsHtml += `<i class="fa-solid fa-star star-icon"></i>`;
+                        } else {
+                            starsHtml += `<i class="fa-regular fa-star star-empty"></i>`;
+                        }
+                    }
+
+                    let takeoverClass = '';
+                    if (row.takeover_amount && row.takeover_amount !== '인수 금액 없음') {
+                        takeoverClass = 'takeover-risk';
+                    }
+
+                    let trHtml = `
+                        <tr>
+                            <td style="font-weight: 700; white-space: nowrap;">
+                                <a href="/?case=${encodeURIComponent(row.case_no)}" target="_blank" style="color: #c084fc; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                                    ${row.case_no} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.7rem;"></i>
+                                </a>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; font-weight: 500;">
+                                    ${row.property_type}
+                                </div>
+                            </td>
+                            <td style="line-height: 1.45; word-break: keep-all;">
+                                ${row.address}
+                            </td>
+                            <td style="text-align: center;">
+                                <span class="potential-badge ${badgeClass}">
+                                    ${row.valueup_potential}
+                                </span>
+                            </td>
+                            <td style="line-height: 1.45; color: #cbd5e1; word-break: keep-all;">
+                                ${row.valueup_degree}
+                            </td>
+                            <td class="${takeoverClass}" style="line-height: 1.45; word-break: keep-all;">
+                                ${row.takeover_amount}
+                            </td>
+                            <td style="text-align: center;">
+                                <span class="return-rate">${row.estimated_return_rate}</span>
+                            </td>
+                            <td style="line-height: 1.45; color: #cbd5e1; word-break: keep-all;">
+                                ${row.risks_and_investigations}
+                            </td>
+                            <td style="text-align: center; white-space: nowrap;">
+                                <div class="star-rating">${starsHtml}</div>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.insertAdjacentHTML('beforeend', trHtml);
+                });
+                tableContainer.style.display = 'flex';
+            }
+        }
+    </script>
+</body>
+</html>

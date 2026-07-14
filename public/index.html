@@ -45,7 +45,7 @@
                     <button onclick="window.open('/issues.html', '_blank')" class="primary-btn" style="background:var(--neon-purple); border-color:var(--neon-purple); font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;">
                         <i class="fa-solid fa-newspaper"></i> 이슈보기
                     </button>
-                    <button onclick="window.open('/map.html?v=1', '_blank')" class="primary-btn" style="background:var(--neon-blue); border-color:var(--neon-blue); font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;">
+                    <button onclick="window.open('/map.html?v=25&refresh=123456789', '_blank')" class="primary-btn" style="background:var(--neon-blue); border-color:var(--neon-blue); font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;">
                         <i class="fa-solid fa-map-location-dot"></i> 지도보기
                     </button>
                 </div>
@@ -161,7 +161,6 @@
                 </div>
                 
                 <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;" id="downloadButtonsContainer">
-                    <button id="viewIssuesBtn" class="primary-btn" style="background: var(--neon-purple); border-color: var(--neon-purple); color: white;"><i class="fa-solid fa-newspaper"></i> 이슈보기</button>
                     <button id="downloadBtn" class="primary-btn" style="background: var(--success); border-color: var(--success); color: white;"><i class="fa-solid fa-file-word"></i> 전문 리포트(Word) 다운로드</button>
                     <button id="downloadPdfBtn" class="primary-btn" style="background: var(--danger); border-color: var(--danger); color: white;"><i class="fa-solid fa-file-pdf"></i> 화면 캡쳐(PDF) 다운로드</button>
                 </div>
@@ -267,6 +266,6 @@
         </section>
     </main>
 
-    <script src="script.js?v=10"></script>
+    <script src="script.js?v=12"></script>
 </body>
 </html>

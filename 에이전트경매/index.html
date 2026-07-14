@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 기반 경공매 마스터 40H</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>🎓 AI 경공매 마스터</h2>
+                <p>40H 에이전트 시스템</p>
+            </div>
+            <ul id="nav-list" class="nav-list">
+                <!-- Dynamically injected -->
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="content-header">
+                <div class="part-badge" id="part-badge">Part 1</div>
+                <h1 id="slide-title">경매와 공매의 공통점, 차이점</h1>
+                <div class="time-badge" id="time-badge">1-2H</div>
+            </header>
+
+            <div class="content-body">
+                <!-- Theory Section -->
+                <section class="theory-section glass-panel">
+                    <h2>💡 핵심 이론 (Theory)</h2>
+                    <ul id="theory-list" class="theory-list">
+                        <!-- Dynamically injected -->
+                    </ul>
+                </section>
+
+                <!-- Agent Workspace (Chat UI) -->
+                <section class="agent-section glass-panel">
+                    <div class="agent-header">
+                        <span class="agent-icon" id="agent-icon">👔</span>
+                        <h2 id="agent-name">총괄 매니저</h2>
+                        <span class="badge">AI Agent Prompt</span>
+                        <button class="copy-btn" id="copy-btn" onclick="copyPrompt()">복사하기 📋</button>
+                    </div>
+                    
+                    <div class="chat-ui">
+                        <!-- System Prompt -->
+                        <div class="message system-msg">
+                            <div class="msg-avatar">⚙️</div>
+                            <div class="msg-bubble">
+                                <strong>[System]</strong>
+                                <p id="prompt-system">당신은 경공매 기초 튜터입니다.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- User Prompt -->
+                        <div class="message user-msg">
+                            <div class="msg-avatar">👤</div>
+                            <div class="msg-bubble">
+                                <strong>[User]</strong>
+                                <p id="prompt-user">여기에 프롬프트 내용이 들어갑니다.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

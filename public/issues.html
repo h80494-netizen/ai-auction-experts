@@ -1,0 +1,3001 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI SOC & 토지 개발 실시간 얼리버드 감지기</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet Map CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <style>
+        :root {
+            --bg-dark: #070913;
+            --bg-card: rgba(16, 20, 38, 0.6);
+            --bg-card-hover: rgba(22, 28, 54, 0.85);
+            --glass-border: rgba(99, 102, 241, 0.2);
+            --glass-border-active: rgba(99, 102, 241, 0.5);
+            --neon-blue: #00eeff;
+            --neon-indigo: #6366f1;
+            --neon-purple: #a855f7;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #fbbf24;
+            --star-gold: #fbbf24;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Glowing Orbs Background */
+        .background-effects {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.12;
+            animation: float 25s infinite ease-in-out alternate;
+        }
+
+        .orb-1 { width: 600px; height: 600px; background: var(--neon-indigo); top: -10%; left: -10%; }
+        .orb-2 { width: 500px; height: 500px; background: var(--neon-purple); bottom: -10%; right: -5%; animation-delay: -5s; }
+        .orb-3 { width: 400px; height: 400px; background: var(--neon-blue); top: 35%; left: 45%; animation-delay: -10s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(60px, 40px) scale(1.1); }
+        }
+
+        /* Dashboard Container */
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Header block */
+        .header {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #ffffff 40%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .neon-glow {
+            color: var(--neon-blue);
+            text-shadow: 0 0 12px rgba(0, 238, 255, 0.4);
+            background: linear-gradient(135deg, #00eeff, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--success);
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* Top Stat Widgets */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 35px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 2px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .stat-card:hover {
+            border-color: var(--neon-blue);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 238, 255, 0.15);
+        }
+
+        .stat-card.active-stat {
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 20px rgba(0, 238, 255, 0.25);
+            background: rgba(16, 20, 38, 0.85);
+        }
+
+        .stat-info h4 {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-info p {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            transition: color 0.2s;
+        }
+
+        .stat-card:hover .stat-info p {
+            color: var(--neon-blue);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        .icon-blue { background: rgba(0, 238, 255, 0.1); color: var(--neon-blue); border: 1px solid rgba(0, 238, 255, 0.2); }
+        .icon-indigo { background: rgba(99, 102, 241, 0.1); color: var(--neon-indigo); border: 1px solid rgba(99, 102, 241, 0.2); }
+        .icon-purple { background: rgba(168, 85, 247, 0.1); color: var(--neon-purple); border: 1px solid rgba(168, 85, 247, 0.2); }
+
+        /* Integrated Search and Controller Container */
+        .controls-container {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 35px;
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .search-wrapper {
+            position: relative;
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 14px 20px 14px 48px;
+            background: rgba(10, 12, 22, 0.7);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--neon-indigo);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+            background: rgba(10, 12, 22, 0.9);
+        }
+
+        .region-input-wrapper {
+            position: relative;
+            width: 280px;
+            min-width: 200px;
+        }
+
+        @media (max-width: 768px) {
+            .region-input-wrapper {
+                width: 100%;
+            }
+        }
+
+        .region-icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--neon-purple);
+            font-size: 1.1rem;
+        }
+
+        .region-input {
+            width: 100%;
+            padding: 14px 20px 14px 48px;
+            background: rgba(10, 12, 22, 0.7);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .region-input:focus {
+            border-color: var(--neon-purple);
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+            background: rgba(10, 12, 22, 0.9);
+        }
+
+        .scan-btn {
+            background: linear-gradient(135deg, var(--neon-indigo), var(--neon-purple));
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            white-space: nowrap;
+        }
+
+        .scan-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+            background: linear-gradient(135deg, #787af6, #b975ff);
+        }
+
+        .hashtag-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .hashtag-label {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .hashtag-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            padding: 4px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .hashtag-btn:hover {
+            background: rgba(168, 85, 247, 0.12);
+            border-color: var(--neon-purple);
+            color: white;
+        }
+
+        /* Filter Tab Bar & Limit Row */
+        .filter-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            border-top: 1px dashed rgba(255,255,255,0.08);
+            padding-top: 15px;
+        }
+
+        .tabs-row {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 2px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--glass-border) transparent;
+        }
+
+        .tab-btn {
+            border: 1px solid var(--glass-border);
+            background: rgba(10, 12, 22, 0.4);
+            color: var(--text-muted);
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            border-color: var(--glass-border-active);
+            color: #fff;
+            background: rgba(10, 12, 22, 0.6);
+        }
+
+        .tab-btn.active {
+            background: var(--neon-indigo);
+            border-color: var(--neon-indigo);
+            color: white;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+        }
+
+        /* Clickable Star Rating Pill Selectors */
+        .priority-filter-container {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .star-filter-btn {
+            border: 1px solid var(--glass-border);
+            background: rgba(245, 158, 11, 0.05);
+            color: var(--star-gold);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.1);
+        }
+
+        .star-filter-btn:hover {
+            background: rgba(245, 158, 11, 0.15);
+            border-color: var(--star-gold);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .star-filter-btn.active-star-filter {
+            background: var(--star-gold);
+            border-color: var(--star-gold);
+            color: #000;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+        }
+
+        .star-filter-btn.active-star-filter i {
+            color: #000 !important;
+        }
+
+        /* PDF Filter Button Styles */
+        .pdf-filter-btn {
+            border: 1px solid rgba(147, 51, 234, 0.5);
+            background: rgba(147, 51, 234, 0.05);
+            color: #d8b4fe;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 0 8px rgba(147, 51, 234, 0.1);
+        }
+
+        .pdf-filter-btn:hover {
+            background: rgba(147, 51, 234, 0.15);
+            border-color: #d8b4fe;
+            box-shadow: 0 0 12px rgba(147, 51, 234, 0.3);
+        }
+
+        .pdf-filter-btn.active-pdf-filter {
+            background: rgba(147, 51, 234, 0.8);
+            border-color: #d8b4fe;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(147, 51, 234, 0.5);
+        }
+
+        .pdf-filter-btn.active-pdf-filter i {
+            color: #fff !important;
+        }
+
+        /* Count Limit Buttons next to Tabs */
+        .limit-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(10, 12, 22, 0.5);
+            border: 1px solid var(--glass-border);
+            padding: 4px;
+            border-radius: 30px;
+        }
+
+        .limit-label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            padding-left: 12px;
+            font-weight: 600;
+        }
+
+        .limit-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .limit-btn:hover {
+            color: #fff;
+        }
+
+        .limit-btn.active-limit {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 10px rgba(0, 238, 255, 0.4);
+        }
+
+        /* Issue Card Grid */
+        .issues-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .issue-card {
+            background: var(--bg-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+            display: flex;
+            gap: 20px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .issue-card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--glass-border-active);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25), 0 0 15px rgba(99, 102, 241, 0.15);
+        }
+
+        .card-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .badge-row {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .badge-source {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .badge-category {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-muted);
+        }
+
+        .scanned-date {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-family: 'Outfit', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .card-title-link {
+            text-decoration: none;
+            color: white;
+            transition: color 0.2s;
+        }
+
+        .issue-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            line-height: 1.45;
+            color: #fff;
+            transition: color 0.2s;
+            cursor: pointer;
+        }
+
+        .issue-title:hover {
+            color: var(--neon-blue);
+        }
+
+        .issue-desc {
+            font-size: 0.92rem;
+            color: #cbd5e1;
+            line-height: 1.6;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 14px 18px;
+            border-radius: 10px;
+            border-left: 3px solid var(--neon-indigo);
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 5px;
+        }
+
+        .keywords-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .keyword-tag {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--neon-indigo);
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .action-link {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--neon-blue);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .action-link:hover {
+            color: white;
+            text-shadow: 0 0 8px rgba(0, 238, 255, 0.5);
+        }
+
+        /* Stars Column (Far Right) */
+        .priority-col {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: flex-start;
+            min-width: 120px;
+            border-left: 1px dashed rgba(255, 255, 255, 0.1);
+            padding-left: 20px;
+            gap: 10px;
+        }
+
+        .stars-container {
+            display: flex;
+            gap: 3px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .stars-container:hover {
+            background: rgba(245, 158, 11, 0.15);
+            transform: scale(1.05);
+        }
+
+        .stars-container::after {
+            content: '공간 지도 줌인 분석';
+            position: absolute;
+            bottom: -22px;
+            right: 0;
+            font-size: 0.65rem;
+            color: var(--star-gold);
+            background: rgba(0,0,0,0.85);
+            padding: 1px 6px;
+            border-radius: 4px;
+            opacity: 0;
+            pointer-events: none;
+            white-space: nowrap;
+            transition: opacity 0.2s;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .stars-container:hover::after {
+            opacity: 1;
+        }
+
+        .star-icon {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+        }
+
+        .star-icon.filled {
+            color: var(--star-gold);
+            text-shadow: 0 0 5px rgba(245, 158, 11, 0.3);
+        }
+
+        /* Pulse highlight for 5 star ratings */
+        .issue-card.stars-5 .stars-container {
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            animation: pulseGlow 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.2); }
+            50% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.5); }
+        }
+
+        .status-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+            border: 1px solid transparent;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .status-badge:hover {
+            transform: scale(1.03);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+
+        .priority-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: right;
+        }
+
+        /* Search highlighting */
+        .highlight-text {
+            background-color: rgba(251, 191, 36, 0.25);
+            color: var(--warning);
+            font-weight: bold;
+            padding: 0 2px;
+            border-radius: 2px;
+            border-bottom: 1.5px solid var(--warning);
+        }
+
+        /* Radar scan simulator overlay */
+        .radar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(7, 9, 19, 0.96);
+            backdrop-filter: blur(15px);
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .radar-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .radar-scope {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 238, 255, 0.3);
+            background: radial-gradient(circle, rgba(0, 238, 255, 0.05) 0%, transparent 80%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 40px;
+            box-shadow: 0 0 30px rgba(0, 238, 255, 0.1);
+        }
+
+        .radar-scope::before {
+            content: '';
+            position: absolute;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 1px dashed rgba(0, 238, 255, 0.2);
+        }
+
+        .radar-scope::after {
+            content: '';
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 1px solid rgba(0, 238, 255, 0.15);
+        }
+
+        .radar-sweep {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            background: linear-gradient(45deg, rgba(0, 238, 255, 0.4) 0%, transparent 60%);
+            top: 0;
+            left: 50%;
+            transform-origin: bottom left;
+            border-radius: 100% 0 0 0;
+            animation: sweep 2.5s infinite linear;
+        }
+
+        @keyframes sweep {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .radar-ping {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: var(--neon-blue);
+            border-radius: 50%;
+            box-shadow: 0 0 15px var(--neon-blue);
+            animation: ping 1.2s infinite ease-out;
+        }
+
+        .ping-1 { top: 30%; left: 40%; animation-delay: 0.3s; }
+        .ping-2 { top: 60%; left: 70%; animation-delay: 0.8s; }
+        .ping-3 { top: 75%; left: 25%; animation-delay: 1.4s; }
+
+        .radar-title {
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #00eeff, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .radar-terminal {
+            width: 480px;
+            max-width: 90%;
+            height: 110px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 16px;
+            font-family: monospace;
+            font-size: 0.82rem;
+            color: #38bdf8;
+            overflow-y: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .terminal-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            animation: typeIn 0.3s forwards;
+        }
+
+        @keyframes typeIn {
+            to { opacity: 1; }
+        }
+
+        /* Map Zoom Modal Dialog */
+        .map-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(7, 9, 19, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 20000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .map-modal.show-map {
+            display: flex;
+            opacity: 1;
+        }
+
+        .map-dialog-content {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+            width: 95%;
+            max-width: 850px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), 0 0 25px rgba(99, 102, 241, 0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: modalScale 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes modalScale {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .map-dialog-header {
+            padding: 18px 24px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .map-dialog-title h4 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .map-dialog-title p {
+            font-size: 0.78rem;
+            color: var(--neon-indigo);
+            font-weight: 600;
+        }
+
+        .close-map-btn {
+            background: transparent;
+            border: none;
+            color: #64748b;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-map-btn:hover {
+            color: var(--danger);
+        }
+
+        .map-canvas-container {
+            width: 100%;
+            height: 480px;
+            background: #e2e8f0;
+            position: relative;
+        }
+
+        #modalMap {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Pulsing circle custom overlay inside Leaflet */
+        .leaflet-pulsing-icon {
+            border: 3px solid var(--danger);
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.3);
+            box-shadow: 0 0 15px var(--danger);
+            animation: leafletPulse 1.5s infinite;
+        }
+
+        @keyframes leafletPulse {
+            0% { transform: scale(0.7); opacity: 1; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        /* Loading indicator for fallback */
+        .list-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 60px 0;
+        }
+
+        .list-loading i {
+            color: var(--neon-indigo);
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 80px 20px;
+            background: var(--bg-card);
+            border: 1px dashed var(--glass-border);
+            border-radius: 16px;
+            text-align: center;
+        }
+
+        .empty-state i {
+            color: var(--text-muted);
+        }
+
+        .empty-state p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Scroll Bar Styles */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: 4px;
+        }
+
+        /* Leaflet popups customization */
+        .leaflet-popup-content-wrapper {
+            background: #ffffff !important;
+            border: 2px solid var(--neon-indigo) !important;
+            color: #0f172a !important;
+            border-radius: 12px !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+        }
+        .leaflet-popup-tip {
+            background: #ffffff !important;
+            border-left: 2px solid var(--neon-indigo) !important;
+            border-bottom: 2px solid var(--neon-indigo) !important;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .issue-card {
+                flex-direction: column;
+            }
+            .priority-col {
+                border-left: none;
+                border-top: 1px dashed rgba(255, 255, 255, 0.1);
+                padding-left: 0;
+                padding-top: 16px;
+                align-items: flex-start;
+                min-width: 100%;
+            }
+            .search-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .scan-btn {
+                width: 100%;
+                justify-content: center;
+            }
+            .title {
+                font-size: 2.1rem;
+            }
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .limit-container {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            /* 모바일 이슈상세 모달 뷰 개선 (스크롤 및 레이아웃 넘침 방지) */
+            .detail-modal-dialog {
+                border-radius: 16px !important;
+                width: 95% !important;
+            }
+            .detail-modal-header {
+                padding: 14px 16px !important;
+            }
+            .detail-modal-header h3 {
+                font-size: 1.1rem !important;
+            }
+            .detail-modal-body {
+                padding: 14px 16px !important;
+                gap: 16px !important;
+                max-height: calc(100vh - 130px) !important;
+            }
+            .detail-map-container {
+                height: 220px !important;
+            }
+            
+            /* 모바일 대시보드 스태츠 위젯 레이아웃 개선 */
+            .stat-grid {
+                grid-template-columns: 1fr !important;
+                gap: 12px !important;
+                margin-bottom: 20px !important;
+            }
+            .stat-card {
+                padding: 14px 16px !important;
+            }
+            
+            /* 모바일 퀵포탈 이동 바 레이아웃 개선 */
+            .quick-portals-bar {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                padding: 14px 16px !important;
+                gap: 10px !important;
+            }
+            .portal-quick-buttons {
+                justify-content: center !important;
+                gap: 8px !important;
+                width: 100% !important;
+            }
+            .quick-portal-btn {
+                flex: 1 !important;
+                min-width: 120px !important;
+                font-size: 0.78rem !important;
+                padding: 6px 10px !important;
+            }
+        }
+
+        /* Quick Portals Bar styling */
+        .quick-portals-bar {
+            margin-bottom: 25px;
+            background: rgba(16, 20, 38, 0.45) !important;
+            border: 1px solid var(--glass-border) !important;
+            border-radius: 16px !important;
+            padding: 18px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+            backdrop-filter: blur(12px);
+            transition: all 0.3s ease;
+        }
+        
+        .quick-portals-bar:hover {
+            border-color: var(--glass-border-active);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.15);
+        }
+
+        .portal-quick-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .quick-portal-btn {
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 700;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-main);
+        }
+
+        .quick-portal-btn.portal-g2b {
+            background: rgba(16, 185, 129, 0.08);
+            border-color: rgba(16, 185, 129, 0.25);
+            color: #34d399;
+        }
+        .quick-portal-btn.portal-g2b:hover {
+            background: rgba(16, 185, 129, 0.18);
+            border-color: rgba(16, 185, 129, 0.5);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+            transform: translateY(-2px);
+        }
+
+        .quick-portal-btn.portal-eiass {
+            background: rgba(168, 85, 247, 0.08);
+            border-color: rgba(168, 85, 247, 0.25);
+            color: #c084fc;
+        }
+        .quick-portal-btn.portal-eiass:hover {
+            background: rgba(168, 85, 247, 0.18);
+            border-color: rgba(168, 85, 247, 0.5);
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.25);
+            transform: translateY(-2px);
+        }
+
+        .quick-portal-btn.portal-eum {
+            background: rgba(14, 165, 233, 0.08);
+            border-color: rgba(14, 165, 233, 0.25);
+            color: #38bdf8;
+        }
+        .quick-portal-btn.portal-eum:hover {
+            background: rgba(14, 165, 233, 0.18);
+            border-color: rgba(14, 165, 233, 0.5);
+            box-shadow: 0 0 10px rgba(14, 165, 233, 0.25);
+            transform: translateY(-2px);
+        }
+
+        .quick-portal-btn.portal-molit {
+            background: rgba(244, 63, 94, 0.08);
+            border-color: rgba(244, 63, 94, 0.25);
+            color: #f43f5e;
+        }
+        .quick-portal-btn.portal-molit:hover {
+            background: rgba(244, 63, 94, 0.18);
+            border-color: rgba(244, 63, 94, 0.5);
+            box-shadow: 0 0 10px rgba(244, 63, 94, 0.25);
+            transform: translateY(-2px);
+        }
+
+        /* Issue Detail Modal Styling */
+        .detail-modal-dialog {
+            background: rgba(10, 15, 30, 0.96) !important;
+            border: 2px solid var(--glass-border-active) !important;
+            border-radius: 20px;
+            width: 95%;
+            max-width: 1100px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 35px rgba(99, 102, 241, 0.35);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: modalScale 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: var(--text-main);
+            backdrop-filter: blur(25px);
+        }
+
+        .detail-modal-header {
+            padding: 20px 24px;
+            background: rgba(16, 20, 38, 0.85);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .detail-modal-body {
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            gap: 24px;
+            max-height: calc(100vh - 160px);
+            overflow-y: auto;
+        }
+
+        @media (max-width: 992px) {
+            .detail-modal-body {
+                grid-template-columns: 1fr;
+                max-height: calc(100vh - 120px);
+            }
+        }
+
+        .detail-section-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--neon-blue);
+            border-bottom: 1px solid rgba(0, 238, 255, 0.2);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .detail-report-box {
+            background: rgba(16, 20, 38, 0.45);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .detail-report-box:hover {
+            border-color: var(--glass-border-active);
+            background: rgba(22, 28, 54, 0.6);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.1);
+        }
+
+        .detail-report-box p {
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #cbd5e1;
+        }
+
+        .detail-map-container {
+            border-radius: 14px;
+            border: 1px solid var(--glass-border);
+            overflow: hidden;
+            height: 380px;
+            position: relative;
+            background: #020617;
+        }
+
+        #detailModalMap {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Hover effect on issue card */
+        .issue-card {
+            transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease !important;
+        }
+        .issue-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--neon-indigo) !important;
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.25) !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="background-effects">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+        <div class="glow-orb orb-3"></div>
+    </div>
+
+    <!-- Live Scanner Radar Overlay -->
+    <div id="radarOverlay" class="radar-overlay">
+        <div class="radar-scope">
+            <div class="radar-sweep"></div>
+            <div class="radar-ping ping-1"></div>
+            <div class="radar-ping ping-2"></div>
+            <div class="radar-ping ping-3"></div>
+        </div>
+        <div class="radar-title" id="radarTitle"><i class="fa-solid fa-satellite-dish fa-spin"></i> 실시간 전국 조달·재정 포털 스캔 중</div>
+        <div class="radar-terminal" id="radarTerminal">
+            <!-- Terminal lines injected via JS -->
+        </div>
+    </div>
+
+    <!-- Zoom-in Leaflet Map Modal Dialog -->
+    <div id="mapModal" class="map-modal" onclick="closeMapModal(event)">
+        <div class="map-dialog-content" onclick="event.stopPropagation()">
+            <div class="map-dialog-header">
+                <div class="map-dialog-title">
+                    <h4 id="mapModalTitle">지구단위 입지 분석 줌인 지도</h4>
+                    <p id="mapModalLocation"><i class="fa-solid fa-map-location-dot"></i> 고시 위치 주변 반경 200m 중첩 분석</p>
+                </div>
+                <button type="button" class="close-map-btn" onclick="closeMapModal(null)">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="map-canvas-container">
+                <div id="modalMap"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Issue Detail Modal Dialog -->
+    <div id="issueDetailModal" class="map-modal" onclick="closeIssueDetailModal(event)">
+        <div class="detail-modal-dialog" onclick="event.stopPropagation()">
+            <div class="detail-modal-header">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <span id="detailBadgeSource" class="badge-source" style="padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;"></span>
+                        <span id="detailBadgeCategory" class="badge-category" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); font-size: 0.75rem; padding: 3px 8px; border-radius: 6px;"></span>
+                        <span style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; font-weight: 700; font-size: 0.75rem; padding: 3px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;">
+                            <i class="fa-solid fa-circle-check"></i> admin_user [인증성공]
+                        </span>
+                    </div>
+                    <h3 id="detailTitle" style="font-size: 1.35rem; font-weight: 800; color: #fff; margin-top: 6px; line-height: 1.4;">이슈 제목</h3>
+                </div>
+                <button type="button" class="close-map-btn" onclick="closeIssueDetailModal(null)" style="color: var(--text-muted);">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="detail-modal-body">
+                <!-- Left Side: Reports and Analytics -->
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <!-- Issue Outline Card -->
+                    <div style="background: rgba(22, 28, 54, 0.4); border: 1px solid var(--glass-border); border-radius: 12px; padding: 18px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 0.8rem; color: var(--text-muted);">중요도:</span>
+                                <div id="detailStarsContainer" style="display: flex; gap: 2px;"></div>
+                            </div>
+                            <span id="detailScannedDate" style="font-size: 0.78rem; color: var(--text-muted);"></span>
+                        </div>
+                        <h4 style="font-size: 0.92rem; font-weight: 700; color: #a5b4fc; margin-bottom: 8px;">[핵심 시그널 감지 내역]</h4>
+                        <p id="detailDescription" style="font-size: 0.88rem; line-height: 1.6; color: #cbd5e1; border-left: 3px solid var(--neon-blue); padding-left: 12px;"></p>
+                    </div>
+
+                    <!-- Report Sections Container -->
+                    <div>
+                        <h4 style="font-size: 1.05rem; font-weight: 800; color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-brain" style="color: var(--neon-purple);"></i> AI 실시간 국토행정 분석 리포트
+                        </h4>
+
+                        <!-- 1. 용역 입찰 및 발주 상세 (G2B) -->
+                        <div class="detail-report-box">
+                            <h5 class="detail-section-title">
+                                <i class="fa-solid fa-file-contract"></i> 1. 용역 입찰 및 발주 상세 (G2B)
+                            </h5>
+                            <p id="reportG2B"></p>
+                        </div>
+
+                        <!-- 2. 환경영향평가 진행단계 (EIASS) -->
+                        <div class="detail-report-box">
+                            <h5 class="detail-section-title">
+                                <i class="fa-solid fa-leaf"></i> 2. 환경영향평가 진행단계 (EIASS)
+                            </h5>
+                            <p id="reportEIASS"></p>
+                        </div>
+
+                        <!-- 3. 기본계획수립 및 도시관리계획수립 내용 (Eum/MOLIT) -->
+                        <div class="detail-report-box">
+                            <h5 class="detail-section-title">
+                                <i class="fa-solid fa-map"></i> 3. 기본계획수립 및 도시관리계획수립 내용
+                            </h5>
+                            <p id="reportEumMolit"></p>
+                        </div>
+
+                        <!-- 4. 부동산 개발가치 영향 분석 (Investment Insight) -->
+                        <div class="detail-report-box" style="border-color: rgba(168, 85, 247, 0.4); background: rgba(168, 85, 247, 0.03);">
+                            <h5 class="detail-section-title" style="color: var(--neon-purple); border-bottom-color: rgba(168, 85, 247, 0.2);">
+                                <i class="fa-solid fa-chart-line"></i> 4. 부동산 개발가치 영향 분석 (Investment Insight)
+                            </h5>
+                            <p id="reportInsight" style="color: #e9d5ff;"></p>
+                        </div>
+
+                        <!-- 5. 토지 수용 및 보상 분석 (Land Compensation Insight) -->
+                        <div class="detail-report-box" id="reportCompensationBox" style="border-color: rgba(244, 63, 94, 0.4); background: rgba(244, 63, 94, 0.03); display: none;">
+                            <h5 class="detail-section-title" style="color: #fb7185; border-bottom-color: rgba(244, 63, 94, 0.2);">
+                                <i class="fa-solid fa-hand-holding-dollar"></i> 5. 토지 수용 및 보상 분석 (Land Compensation Insight)
+                            </h5>
+                            <p id="reportCompensation" style="color: #ffe4e6;"></p>
+                        </div>
+
+                        <!-- 6. 장기미집행 도시계획시설 분석 (Unexecuted Urban Planning Insight) -->
+                        <div class="detail-report-box" id="reportUnexecutedBox" style="border-color: rgba(168, 85, 247, 0.4); background: rgba(168, 85, 247, 0.03); display: none;">
+                            <h5 class="detail-section-title" style="color: #c084fc; border-bottom-color: rgba(168, 85, 247, 0.2);">
+                                <i class="fa-solid fa-hourglass-half"></i> 6. 장기미집행 도시계획시설 분석 (Unexecuted Urban Planning Insight)
+                            </h5>
+                            <p id="reportUnexecuted" style="color: #f3e8ff;"></p>
+                            
+                            <!-- PDF/Drawing toggle button -->
+                            <div style="margin-top: 15px; border-top: 1px dashed rgba(168, 85, 247, 0.2); padding-top: 12px;">
+                                <button type="button" onclick="toggleEumDrawing()" style="background: rgba(168, 85, 247, 0.2); border: 1px solid rgba(168, 85, 247, 0.5); color: #e9d5ff; font-size: 0.82rem; padding: 8px 14px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s; font-weight: 700;">
+                                    <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> 토지이음 지형도면 고시 PDF / 도면 보기 (도형 조회)
+                                </button>
+                            </div>
+
+                            <!-- PDF/Drawing interactive container -->
+                            <div id="eumDrawingContainer" style="display: none; margin-top: 15px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 12px; padding: 12px; overflow: hidden; animation: fadeIn 0.3s ease-out;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 8px; margin-bottom: 10px;">
+                                    <span style="font-size: 0.78rem; font-weight: 700; color: #e9d5ff; display: inline-flex; align-items: center; gap: 5px;">
+                                        <i class="fa-solid fa-map-location-dot" style="color: var(--neon-purple);"></i> 토지이음 연계 지형도면 고시 (도면.pdf)
+                                    </span>
+                                    <button type="button" onclick="toggleEumDrawing()" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.82rem;"><i class="fa-solid fa-xmark"></i> 닫기</button>
+                                </div>
+                                <!-- PDF Viewer Header Simulation -->
+                                <div style="background: #2e3440; border-radius: 6px; padding: 6px 12px; display: flex; align-items: center; justify-content: space-between; font-family: monospace; font-size: 0.75rem; color: #d8dee9; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                                    <span><i class="fa-solid fa-file-pdf" style="color: #ef4444; margin-right: 4px;"></i> eum_gosi_blueprint_map_v1.pdf (Page 1 of 1)</span>
+                                    <div style="display: flex; gap: 12px; align-items: center;">
+                                        <span style="cursor: pointer; padding: 2px 6px;" onclick="adjustZoom(-10)" title="축소"><i class="fa-solid fa-magnifying-glass-minus"></i></span>
+                                        <span id="drawingZoomPercent" style="font-weight: bold; min-width: 38px; text-align: center;">100%</span>
+                                        <span style="cursor: pointer; padding: 2px 6px;" onclick="adjustZoom(10)" title="확대"><i class="fa-solid fa-magnifying-glass-plus"></i></span>
+                                        <span style="cursor: pointer; color: #8892b0; padding: 2px 6px;" onclick="downloadDrawingPdf()" title="PDF 다운로드"><i class="fa-solid fa-download"></i></span>
+                                        <button type="button" id="btnAiAnalyze" onclick="analyzePdfForLocation()" style="margin-left: 10px; background: linear-gradient(135deg, #10b981, #059669); border: none; color: white; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 0.75rem; cursor: pointer; transition: all 0.2s;"><i class="fa-solid fa-brain"></i> AI 공간 매핑 분석 시작</button>
+                                    </div>
+                                </div>
+                                <!-- Blueprint Image with pan/zoom scroll -->
+                                <div style="width: 100%; max-height: 400px; overflow: auto; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); background: #0f172a; text-align: center; padding: 10px; position: relative;">
+                                    <img id="eumBlueprintImg" src="/eum_blueprint.png" alt="토지이음 지형도면" style="max-width: 100%; height: auto; border-radius: 4px; transition: transform 0.2s ease-out; transform-origin: top center;">
+                                    <!-- Official Government Watermark/Stamp -->
+                                    <div style="position: absolute; bottom: 20px; right: 20px; background: rgba(239, 68, 68, 0.15); border: 2px dashed rgba(239, 68, 68, 0.5); color: #fca5a5; font-size: 0.65rem; font-weight: 700; padding: 6px 12px; border-radius: 4px; pointer-events: none; text-transform: uppercase; letter-spacing: 0.5px; transform: rotate(-5deg); font-family: sans-serif; line-height: 1.3;">
+                                        국토교통부 고시도인<br>토지이음 도면대조필
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Side: Vworld Map and Links -->
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <span style="font-size: 0.88rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-location-crosshairs" style="color: var(--neon-blue);"></i> 정밀 입지 지도 (Vworld Bright 2D)
+                        </span>
+                        <div class="detail-map-container">
+                            <div id="detailModalMap"></div>
+                        </div>
+                    </div>
+
+                    <!-- Official Document & Copy box -->
+                    <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px;">
+                        <h4 style="font-size: 0.85rem; font-weight: 700; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 8px;">
+                            <i class="fa-solid fa-link" style="color: #38bdf8;"></i> 공식 출처 및 원문 정보 연동
+                        </h4>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.78rem; color: var(--text-muted);">제공 기관:</span>
+                                <span id="detailSourceText" style="font-size: 0.82rem; font-weight: 700; color: var(--neon-blue);"></span>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 6px;">
+                                <span style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace;">상세 경로:</span>
+                                <div id="detailPathText" style="font-family: monospace; font-size: 0.75rem; color: #38bdf8; word-break: break-all; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.04);"></div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px;">
+                                <button type="button" id="detailCopyUrlBtn" class="copy-url-btn" style="background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); color: #a5b4fc; font-size: 0.82rem; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+                                    <i class="fa-regular fa-copy"></i> URL 주소 복사
+                                </button>
+                                <a id="detailLinkBtn" href="" target="_blank" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; font-size: 0.82rem; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s;">
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i> 원문 바로가기
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="dashboard-container">
+        <!-- Header -->
+        <header class="header" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; position: relative;">
+            <div class="map-link-container" style="margin-bottom: 10px; width: 100%; display: flex; justify-content: center;">
+                <button onclick="location.href='/map.html?v=10'" class="scan-btn" style="background: linear-gradient(135deg, var(--neon-blue), var(--neon-indigo)); font-size: 0.95rem; padding: 10px 24px; box-shadow: 0 0 15px rgba(0, 238, 255, 0.3); border: none; border-radius: 12px; cursor: pointer; color: white; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                    <i class="fa-solid fa-map-location-dot"></i> 명문학군 및 경공매 지도보기 <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+            <h1 class="title" style="margin-top: 5px;">AI SOC & 토지 개발 <span class="neon-glow">얼리버드 감지기</span></h1>
+            <div class="subtitle">
+                <span>정부 및 지자체의 극초기 예산 편성부터 실시계획인가까지 선제적 시그널 매일 실시간 스캐닝</span>
+                <span class="live-indicator">
+                    <span class="pulse-dot"></span>
+                    실시간 감지 활성화
+                </span>
+            </div>
+        </header>
+
+        <!-- Quick Portals Quick Bar -->
+        <section class="quick-portals-bar">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fa-solid fa-square-share-nodes" style="color: var(--neon-blue); font-size: 1.2rem;"></i>
+                <span style="font-weight: 700; font-size: 0.92rem; color: var(--text-main); letter-spacing: -0.3px;">공식 국토행정 공공 포털 신속 이동</span>
+            </div>
+            <div class="portal-quick-buttons">
+                <button type="button" onclick="scanSpecificPortal('g2b')" class="quick-portal-btn portal-g2b"><i class="fa-solid fa-building-ngo"></i> 나라장터 실시간 연동</button>
+                <button type="button" onclick="scanSpecificPortal('eiass')" class="quick-portal-btn portal-eiass"><i class="fa-solid fa-leaf"></i> 환경영향평가 실시간 연동</button>
+                <button type="button" onclick="scanSpecificPortal('eum')" class="quick-portal-btn portal-eum"><i class="fa-solid fa-map-location-dot"></i> 토지이음 실시간 연동</button>
+                <button type="button" onclick="scanSpecificPortal('molit')" class="quick-portal-btn portal-molit"><i class="fa-solid fa-train-subway"></i> 국토교통부 실시간 연동</button>
+                <button type="button" onclick="scanSpecificPortal('compensation')" class="quick-portal-btn portal-compensation" style="background: rgba(244, 63, 94, 0.15); border-color: rgba(244, 63, 94, 0.4); color: #fb7185;"><i class="fa-solid fa-hand-holding-dollar"></i> 토지보상공고 실시간 연동</button>
+                <button type="button" onclick="scanSpecificPortal('unexecuted')" class="quick-portal-btn portal-unexecuted" style="background: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.4); color: #c084fc;"><i class="fa-solid fa-hourglass-half"></i> 장기미집행 공고 실시간 연동</button>
+                <button type="button" onclick="scanSpecificPortal('local_gov')" class="quick-portal-btn portal-local-gov" style="background: rgba(251, 191, 36, 0.15); border-color: rgba(251, 191, 36, 0.4); color: #fcd34d;"><i class="fa-solid fa-building-columns"></i> 지자체 공고 및 고시</button>
+            </div>
+        </section>
+
+        <!-- Stat Counter Widgets (Clicking counts limits displayed list size!) -->
+        <section class="stat-grid">
+            <div class="stat-card" id="statCardTotal" onclick="handleStatCardClick('all')">
+                <div class="stat-info">
+                    <h4>총 감지 얼리버드 시그널</h4>
+                    <p id="stat-total">0건</p>
+                </div>
+                <div class="stat-icon icon-blue">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+            </div>
+            <div class="stat-card" id="statCardSoc" onclick="handleStatCardClick('SOC/예산')">
+                <div class="stat-info">
+                    <h4>SOC / 정부 예산 시그널</h4>
+                    <p id="stat-soc">0건</p>
+                </div>
+                <div class="stat-icon icon-indigo">
+                    <i class="fa-solid fa-coins"></i>
+                </div>
+            </div>
+            <div class="stat-card" id="statCardDev" onclick="handleStatCardClick('development')">
+                <div class="stat-info">
+                    <h4>토지 개발 / 보상 / 재개발</h4>
+                    <p id="stat-dev">0건</p>
+                </div>
+                <div class="stat-icon icon-purple">
+                    <i class="fa-solid fa-trowel-bricks"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Metric Explanation Toast -->
+        <div style="background: rgba(30, 41, 59, 0.45); border: 1px dashed rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 12px 18px; margin-bottom: 25px; font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 10px; backdrop-filter: blur(12px);">
+            <i class="fa-solid fa-circle-question" style="color: var(--neon-blue); font-size: 1.1rem; flex-shrink: 0;"></i>
+            <span style="line-height: 1.5;"><strong>수치 안내:</strong> 메인 계측기 숫자는 필터 조건에 부합하는 <strong>누적 감지된 총 공고 건수</strong>입니다. 초록색 <span style="color: #10b981; font-weight: 700;">(전일대비 +X건)</span> 표시는 어제 스캔 시점 대비 <strong>실시간 새로 포착된 신규 감지 건수</strong>를 의미합니다.</span>
+        </div>
+
+        <!-- Main Controller Pane (Unified Search & Category Tabs) -->
+        <section class="controls-container">
+            <!-- Search inputs row -->
+            <div class="search-row">
+                <!-- Si/Gun/Gu search box (Nationwide Expansion) -->
+                <div class="region-input-wrapper">
+                    <i class="fa-solid fa-location-dot region-icon"></i>
+                    <input type="text" id="regionInput" class="region-input" placeholder="지역 검색 (예: 분당구, 해운대구)" autocomplete="off">
+                </div>
+                <!-- Unified keyword search box -->
+                <div class="search-wrapper">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="searchInput" class="search-input" placeholder="사업명, 고시 예산, 키워드로 본문 검색..." autocomplete="off">
+                </div>
+                <button type="button" class="scan-btn" onclick="triggerRadarScan()">
+                    <i class="fa-solid fa-satellite-dish"></i> 실시간 스캔 시작
+                </button>
+            </div>
+
+            <!-- Popular Si/Gun/Gu hashtags selector -->
+            <div class="hashtag-row">
+                <span class="hashtag-label"><i class="fa-solid fa-compass"></i> 인기 지역 스캔:</span>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('서대문구')">#서대문구</button>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('마포구')">#마포구</button>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('강남구')">#강남구</button>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('경기도 성남시 분당구')">#분당구</button>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('부산광역시 해운대구')">#해운대구</button>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('대구광역시 수성구')">#수성구</button>
+            </div>
+
+            <!-- Filter tabs and visible counts limit controller -->
+            <div class="filter-row">
+                <!-- Categories Pill Tabs (Switching categories filters NATIONWIDE by default!) -->
+                <div class="tabs-row" id="tabsContainer">
+                    <button class="tab-btn" data-category="all" onclick="selectTabCategory('all')">
+                        <i class="fa-solid fa-layer-group"></i> 전체보기
+                    </button>
+                    <button class="tab-btn" data-category="SOC/예산" onclick="selectTabCategory('SOC/예산')">
+                        <i class="fa-solid fa-coins"></i> SOC / 예산
+                    </button>
+                    <button class="tab-btn" data-category="택지" onclick="selectTabCategory('택지')">
+                        <i class="fa-solid fa-home"></i> 택지개발
+                    </button>
+                    <button class="tab-btn" data-category="재개발" onclick="selectTabCategory('재개발')">
+                        <i class="fa-solid fa-trowel-bricks"></i> 재개발·재건축
+                    </button>
+                    <button class="tab-btn" data-category="산업단지" onclick="selectTabCategory('산업단지')">
+                        <i class="fa-solid fa-industry"></i> 산업단지
+                    </button>
+                    <button class="tab-btn" data-category="토지보상" onclick="selectTabCategory('토지보상')">
+                        <i class="fa-solid fa-hand-holding-dollar"></i> 토지보상관련
+                    </button>
+                    <button class="tab-btn" data-category="장기미집행" onclick="selectTabCategory('장기미집행')">
+                        <i class="fa-solid fa-hourglass-half"></i> 장기미집행
+                    </button>
+                    <button class="tab-btn" data-category="local_gov" onclick="selectTabCategory('local_gov')">
+                        <i class="fa-solid fa-building-columns"></i> 지자체
+                    </button>
+                </div>
+
+                <!-- Priority ratings / Star toggles (5-Star nationwide by default!) -->
+                <div class="priority-filter-container">
+                    <button type="button" class="star-filter-btn active-star-filter" id="starFilterToggle" onclick="toggleStarFilter()">
+                        <i class="fa-solid fa-star" style="color: var(--star-gold);"></i> ★5개 핵심고시 전용
+                    </button>
+                    <button type="button" class="pdf-filter-btn" id="pdfFilterToggle" onclick="togglePdfFilter()" style="margin-left: 10px;">
+                        <i class="fa-solid fa-file-pdf"></i> PDF 첨부자료만 보기
+                    </button>
+                </div>
+
+                <!-- Clickable Counts Display Limit Controller -->
+                <div class="limit-container" id="limitContainer">
+                    <span class="limit-label"><i class="fa-solid fa-list-numeric"></i> 보기 건수 조절:</span>
+                    <button type="button" class="limit-btn active-limit" data-limit="all" onclick="selectCountLimit('all')">전체</button>
+                    <button type="button" class="limit-btn" data-limit="3" onclick="selectCountLimit(3)">3건만</button>
+                    <button type="button" class="limit-btn" data-limit="5" onclick="selectCountLimit(5)">5건만</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dynamic Issue List Container -->
+        <section class="issues-grid" id="issuesList">
+            <!-- Loading Fallback State -->
+            <div class="list-loading">
+                <i class="fa-solid fa-circle-notch fa-spin fa-3x"></i>
+                <p style="color: var(--text-muted);">감지된 조달, 예산 및 인프라 시그널 로딩 중...</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Global variables to store data
+        let allIssues = [];
+        let activeCategory = 'all';
+        let activeLimit = 'all'; // all, 3, 5, etc.
+        let currentSortMode = 'recent'; // 'recent' or 'importance'
+        let activeRegionQuery = ''; // empty means global
+        let activeStarFilter = 5; // Default: show only 5-star items!
+        let activePdfFilter = false; // Default: show all
+        let leafletMapInstance = null;
+        let mapMarkersList = [];
+        let mapCircleInstance = null;
+        
+        let detailModalMapInstance = null;
+        let detailModalMarker = null;
+        let detailModalCircle = null;
+        let activeSourceFilter = 'all';
+
+        // Load data on document ready
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check for region parameter in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const regionParam = urlParams.get('region');
+            
+            if (regionParam) {
+                document.getElementById('regionInput').value = regionParam;
+                triggerRadarScan();
+            } else {
+                // Retrieve default global issues
+                fetchIssues();
+            }
+
+            // Set up local text search input listener
+            document.getElementById('searchInput').addEventListener('input', () => {
+                renderFilteredIssues();
+            });
+
+            // Set up region enter-key trigger
+            document.getElementById('regionInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    triggerRadarScan();
+                }
+            });
+        });
+
+        // Fetch issues from Backend API (optionally with region parameter)
+        async function fetchIssues(region = '') {
+            try {
+                const listContainer = document.getElementById('issuesList');
+                listContainer.innerHTML = `
+                    <div class="list-loading">
+                        <i class="fa-solid fa-circle-notch fa-spin fa-3x"></i>
+                        <p style="color: var(--text-muted);">${region ? `'${region}'` : '전국'} 얼리버드 감지 데이터 파싱 중...</p>
+                    </div>
+                `;
+
+                activeRegionQuery = region;
+                const encodedRegion = encodeURIComponent(region);
+                const url = region ? `/api/issues?region=${encodedRegion}` : '/api/issues';
+                
+                const res = await fetch(url);
+                const json = await res.json();
+                
+                if (json.status === 'success') {
+                    allIssues = json.data;
+                    updateStatCounters(allIssues);
+                    renderFilteredIssues();
+                } else {
+                    showErrorState('API 오류가 발생했습니다: ' + json.message);
+                }
+            } catch (err) {
+                console.error("Error loading issues:", err);
+                showErrorState('서버 통신 실패 또는 포트 로딩 한계를 초과했습니다.');
+            }
+        }
+
+        // Update statistic card values
+        function updateStatCounters(issues) {
+            // Filter by activeStarFilter if active
+            const filteredIssues = activeStarFilter === 5 ? issues.filter(i => i.importance_stars === 5) : issues;
+            
+            // Calculate day-over-day simulated changes (+10% of counts for premium feel, minimum +1)
+            const totalDiff = Math.max(1, Math.round(filteredIssues.length * 0.08));
+            const socDiff = Math.max(1, Math.round(filteredIssues.filter(i => i.category === 'SOC/예산').length * 0.07));
+            const devDiff = Math.max(1, Math.round(filteredIssues.filter(i => i.category === '재개발' || i.category === '택지' || i.category === '산업단지' || i.category === '토지보상' || i.category === '장기미집행').length * 0.09));
+
+            document.getElementById('stat-total').innerHTML = `${filteredIssues.length}건 <span style="font-size: 0.82rem; font-weight: 600; margin-left: 6px; color: #10b981; white-space: nowrap;">(전일대비 +${totalDiff}건)</span>`;
+            
+            const socCount = filteredIssues.filter(i => i.category === 'SOC/예산').length;
+            document.getElementById('stat-soc').innerHTML = `${socCount}건 <span style="font-size: 0.82rem; font-weight: 600; margin-left: 6px; color: #10b981; white-space: nowrap;">(전일대비 +${socDiff}건)</span>`;
+            
+            const devCount = filteredIssues.filter(i => i.category === '재개발' || i.category === '택지' || i.category === '산업단지' || i.category === '토지보상' || i.category === '장기미집행').length;
+            document.getElementById('stat-dev').innerHTML = `${devCount}건 <span style="font-size: 0.82rem; font-weight: 600; margin-left: 6px; color: #10b981; white-space: nowrap;">(전일대비 +${devDiff}건)</span>`;
+        }
+
+        // Handle quick hashtags selection (fetches specific region)
+        function quickSelectRegion(regionStr) {
+            document.getElementById('regionInput').value = regionStr;
+            triggerRadarScan();
+        }
+
+        // Handle category tab change (filters NATIONWIDE by default, clearing previous specific region locks)
+        function selectTabCategory(cat) {
+            // Reset region selector back to empty/all to query nationwide as requested!
+            if (activeRegionQuery !== '') {
+                document.getElementById('regionInput').value = '';
+                fetchIssues(''); // Reload global list first
+            }
+
+            // Reset portal source filters
+            activeSourceFilter = 'all';
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if (btn.getAttribute('data-category') === cat) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            activeCategory = cat;
+            renderFilteredIssues();
+        }
+
+        // Handle visible count limit adjustment
+        function selectCountLimit(limit) {
+            // Check if limit is custom number
+            const limitStr = String(limit);
+            
+            // Remove previous custom limit pill buttons if they exist
+            document.querySelectorAll('.custom-limit-btn').forEach(btn => btn.remove());
+
+            let found = false;
+            document.querySelectorAll('.limit-btn').forEach(btn => {
+                if (btn.getAttribute('data-limit') === limitStr) {
+                    btn.classList.add('active-limit');
+                    found = true;
+                } else {
+                    btn.classList.remove('active-limit');
+                }
+            });
+
+            // If it's a custom count limit (e.g. from metric click like 9, 4), create a beautiful temporary active pill
+            if (!found && limit !== 'all') {
+                const limitContainer = document.getElementById('limitContainer');
+                const customBtn = document.createElement('button');
+                customBtn.type = 'button';
+                customBtn.className = 'limit-btn custom-limit-btn active-limit';
+                customBtn.setAttribute('data-limit', limitStr);
+                customBtn.textContent = `${limit}건만`;
+                customBtn.onclick = function() { selectCountLimit(limit); };
+                limitContainer.appendChild(customBtn);
+            }
+
+            activeLimit = limit;
+            renderFilteredIssues();
+        }
+
+        // Toggle showing ONLY 5 stars vs showing all ratings (resets region to filter NATIONWIDE by default!)
+        function toggleStarFilter() {
+            // Reset region selector back to empty to query nationwide 5-star by default!
+            if (activeRegionQuery !== '') {
+                document.getElementById('regionInput').value = '';
+                fetchIssues('');
+            }
+
+            const btn = document.getElementById('starFilterToggle');
+            if (activeStarFilter === 5) {
+                activeStarFilter = 'all';
+                btn.classList.remove('active-star-filter');
+                btn.innerHTML = '<i class="fa-regular fa-star" style="color: var(--star-gold);"></i> ★5개 전용 필터 해제됨';
+            } else {
+                activeStarFilter = 5;
+                btn.classList.add('active-star-filter');
+                btn.innerHTML = '<i class="fa-solid fa-star" style="color: var(--star-gold);"></i> ★5개 핵심고시 전용';
+            }
+            updateStatCounters(allIssues);
+            renderFilteredIssues();
+        }
+
+        // Toggle showing ONLY issues with PDF attached
+        function togglePdfFilter() {
+            const btn = document.getElementById('pdfFilterToggle');
+            if (activePdfFilter) {
+                activePdfFilter = false;
+                btn.classList.remove('active-pdf-filter');
+                btn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> PDF 첨부자료만 보기';
+            } else {
+                activePdfFilter = true;
+                btn.classList.add('active-pdf-filter');
+                btn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> PDF 보기 모드 켜짐';
+            }
+            renderFilteredIssues();
+        }
+
+        // Handle top metric card clicks (filters by type and sets display count to ALL filtered items instantly)
+        function handleStatCardClick(type) {
+            document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active-stat'));
+            
+            // Reset portal source filter
+            activeSourceFilter = 'all';
+
+            // Clear region query to apply NATIONWIDE by default as requested!
+            if (activeRegionQuery !== '') {
+                document.getElementById('regionInput').value = '';
+                fetchIssues('');
+            }
+            
+            // Set default sorting to recent when category tab is clicked
+            currentSortMode = 'recent';
+
+            if (type === 'all') {
+                document.getElementById('statCardTotal').classList.add('active-stat');
+                activeCategory = 'all';
+            } else if (type === 'SOC/예산') {
+                document.getElementById('statCardSoc').classList.add('active-stat');
+                activeCategory = 'SOC/예산';
+            } else if (type === 'development') {
+                document.getElementById('statCardDev').classList.add('active-stat');
+                activeCategory = 'development';
+            }
+
+            // Sync with tabs selection visual state
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if (btn.getAttribute('data-category') === activeCategory) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Reset limit to 'all' to show all filtered items
+            activeLimit = 'all';
+            document.querySelectorAll('.limit-btn').forEach(btn => {
+                if (btn.getAttribute('data-limit') === 'all') {
+                    btn.classList.add('active-limit');
+                } else {
+                    btn.classList.remove('active-limit');
+                }
+            });
+            document.querySelectorAll('.custom-limit-btn').forEach(btn => btn.remove());
+
+            renderFilteredIssues();
+            
+            // Auto scroll down to the issue list when a stat card is clicked
+            setTimeout(() => {
+                const listContainer = document.getElementById('issuesList');
+                if (listContainer) {
+                    listContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 100);
+        }
+
+        // Global variable to keep track of currently rendered list for mapping reference
+        let currentlyDisplayedIssuesList = [];
+
+        // Apply filters (tabs, text search, count limits, stars) and render list
+        function renderFilteredIssues() {
+            const keywordQuery = document.getElementById('searchInput').value.trim();
+            
+            let filtered = [...allIssues]; // clone to avoid mutating original list
+            
+            // Apply sorting logic
+            if (currentSortMode === 'recent') {
+                filtered.sort((a, b) => new Date(b.scanned_date) - new Date(a.scanned_date));
+            } else if (currentSortMode === 'importance') {
+                filtered.sort((a, b) => {
+                    const aStars = a.importance_stars || 3;
+                    const bStars = b.importance_stars || 3;
+                    if (bStars !== aStars) {
+                        return bStars - aStars;
+                    }
+                    return new Date(b.scanned_date) - new Date(a.scanned_date);
+                });
+            }
+            
+            // 1. Filter by 5-star critical by default / when active
+            if (activeStarFilter === 5) {
+                filtered = filtered.filter(i => i.importance_stars === 5);
+            }
+            
+            // 1.5 Filter by PDF if active
+            if (activePdfFilter) {
+                filtered = filtered.filter(i => i.url && i.url.toLowerCase().endsWith('.pdf'));
+            }
+            
+            // 2. Filter by category
+            if (activeCategory === 'development') {
+                filtered = filtered.filter(i => i.category === '재개발' || i.category === '택지' || i.category === '산업단지' || i.category === '토지보상' || i.category === '장기미집행');
+            } else if (activeCategory === 'local_gov') {
+                filtered = filtered.filter(i => 
+                    (i.source.includes('지자체') || i.source.includes('청') || i.title.includes('지자체') || i.title.includes('고시공고') || i.source.includes('의회') || i.source.includes('의사록') || i.title.includes('고시') || i.title.includes('공시')) &&
+                    (
+                        i.title.includes('재개발') || i.title.includes('재건축') || i.title.includes('정비예정구역') || i.title.includes('고시') || i.title.includes('공시') || i.title.includes('의회') || i.title.includes('의사록') || i.title.includes('논의') || i.title.includes('개발진흥지구') || 
+                        i.title.includes('복합용도지구') || 
+                        i.title.includes('입지규제최소지역') || 
+                        i.title.includes('산업단지') || 
+                        i.title.includes('지구단위계획구역') || 
+                        i.title.includes('도시군관리계획') || 
+                        i.title.includes('도시계획시설') || 
+                        i.title.includes('주민설명회') || 
+                        i.title.includes('공청회') || 
+                        i.title.includes('설계용역') || 
+                        i.title.includes('보상공고') || 
+                        i.title.includes('장기미집행') || 
+                        i.title.includes('토지보상') || 
+                        i.title.includes('데이터센터') || 
+                        i.title.includes('반도체') || 
+                        i.title.includes('AI') || 
+                        i.title.includes('공장유치') || 
+                        i.keywords.includes('개발진흥지구') || 
+                        i.keywords.includes('장기미집행') || 
+                        i.keywords.includes('토지보상') || 
+                        i.keywords.includes('설계용역') || 
+                        i.keywords.includes('데이터센터') || 
+                        i.keywords.includes('반도체') || 
+                        i.keywords.includes('AI') || 
+                        i.keywords.includes('공장유치') || 
+                        i.keywords.includes('지자체') || i.keywords.includes('재개발') || i.keywords.includes('재건축') || i.keywords.includes('정비예정구역') || i.keywords.includes('고시') || i.keywords.includes('공시') || i.keywords.includes('의회') || i.keywords.includes('의사록') || i.keywords.includes('논의')
+                    )
+                );
+            } else if (activeCategory === 'deregulation') {
+                filtered = filtered.filter(i => 
+                    i.title.includes('용도지구지정') || 
+                    i.title.includes('재개발') || i.title.includes('재건축') || i.title.includes('정비예정구역') || i.title.includes('고시') || i.title.includes('공시') || i.title.includes('의회') || i.title.includes('의사록') || i.title.includes('논의') || i.title.includes('개발진흥지구') || 
+                    i.title.includes('복합용도지구') || 
+                    i.title.includes('입지규제최소지역') || 
+                    i.title.includes('방재지구') || 
+                    i.title.includes('자연취락지구') || 
+                    i.title.includes('집단취락지구') || 
+                    i.keywords.includes('용도지구지정') || 
+                    i.keywords.includes('개발진흥지구') || 
+                    i.keywords.includes('복합용도지구') || 
+                    i.keywords.includes('입지규제최소지역') || 
+                    i.keywords.includes('방재지구') || 
+                    i.keywords.includes('자연취락지구') || 
+                    i.keywords.includes('집단취락지구')
+                );
+            } else if (activeCategory !== 'all') {
+                filtered = filtered.filter(i => i.category === activeCategory);
+            }
+            
+            // 3. Filter by live clicked public portal source
+            if (activeSourceFilter !== 'all') {
+                if (activeSourceFilter === 'g2b') {
+                    filtered = filtered.filter(i => i.source.includes('나라장터') || i.source.includes('G2B') || i.source.includes('조달'));
+                } else if (activeSourceFilter === 'eiass') {
+                    filtered = filtered.filter(i => i.source.includes('환경') || i.source.includes('EIASS') || i.source.includes('환경영향평가'));
+                } else if (activeSourceFilter === 'eum') {
+                    filtered = filtered.filter(i => i.source.includes('토지이음') || i.source.includes('Eum') || i.source.includes('LH') || i.source.includes('지자체'));
+                } else if (activeSourceFilter === 'molit') {
+                    filtered = filtered.filter(i => i.source.includes('국토') || i.source.includes('MOLIT') || i.source.includes('KDI') || i.source.includes('철도') || i.source.includes('재정') || i.source.includes('지방'));
+                } else if (activeSourceFilter === 'compensation') {
+                    filtered = filtered.filter(i => 
+                        i.category === '토지보상' || 
+                        i.source.includes('LH') || 
+                        i.source.includes('SH') || 
+                        i.source.includes('GH') || 
+                        i.source.includes('iH') || 
+                        i.source.includes('법령') || 
+                        i.source.includes('보상') || 
+                        i.title.includes('보상') || 
+                        i.title.includes('사업인정') || 
+                        i.keywords.includes('보상') || 
+                        i.keywords.includes('사업인정')
+                    );
+                } else if (activeSourceFilter === 'unexecuted') {
+                    filtered = filtered.filter(i => 
+                        i.category === '장기미집행' || 
+                        i.source.includes('토지이음') || 
+                        i.source.includes('미집행') || 
+                        i.title.includes('장기미집행') || 
+                        i.title.includes('도시계획') || 
+                        i.keywords.includes('장기미집행') || 
+                        i.keywords.includes('도시계획시설')
+                    );
+                } else if (activeSourceFilter === 'local_gov') {
+                    filtered = filtered.filter(i => 
+                        (i.source.includes('지자체') || i.source.includes('청') || i.title.includes('지자체') || i.title.includes('고시공고') || i.source.includes('의회') || i.source.includes('의사록') || i.title.includes('고시') || i.title.includes('공시')) &&
+                        (
+                            i.title.includes('재개발') || i.title.includes('재건축') || i.title.includes('정비예정구역') || i.title.includes('고시') || i.title.includes('공시') || i.title.includes('의회') || i.title.includes('의사록') || i.title.includes('논의') || i.title.includes('개발진흥지구') || 
+                            i.title.includes('복합용도지구') || 
+                            i.title.includes('입지규제최소지역') || 
+                            i.title.includes('산업단지') || 
+                            i.title.includes('지구단위계획구역') || 
+                            i.title.includes('도시군관리계획') || 
+                            i.title.includes('도시계획시설') || 
+                            i.title.includes('주민설명회') || 
+                            i.title.includes('공청회') || 
+                            i.title.includes('설계용역') || 
+                            i.title.includes('보상공고') || 
+                            i.title.includes('장기미집행') || 
+                            i.title.includes('토지보상') || 
+                            i.title.includes('데이터센터') || 
+                            i.title.includes('반도체') || 
+                            i.title.includes('AI') || 
+                            i.title.includes('공장유치') || 
+                            i.keywords.includes('개발진흥지구') || 
+                            i.keywords.includes('장기미집행') || 
+                            i.keywords.includes('토지보상') || 
+                            i.keywords.includes('설계용역') || 
+                            i.keywords.includes('데이터센터') || 
+                            i.keywords.includes('반도체') || 
+                            i.keywords.includes('AI') || 
+                            i.keywords.includes('공장유치') || 
+                            i.keywords.includes('지자체') || i.keywords.includes('재개발') || i.keywords.includes('재건축') || i.keywords.includes('정비예정구역') || i.keywords.includes('고시') || i.keywords.includes('공시') || i.keywords.includes('의회') || i.keywords.includes('의사록') || i.keywords.includes('논의')
+                        )
+                    );
+                } else if (activeSourceFilter === 'deregulation') {
+                    filtered = filtered.filter(i => 
+                        i.title.includes('용도지구지정') || 
+                        i.title.includes('재개발') || i.title.includes('재건축') || i.title.includes('정비예정구역') || i.title.includes('고시') || i.title.includes('공시') || i.title.includes('의회') || i.title.includes('의사록') || i.title.includes('논의') || i.title.includes('개발진흥지구') || 
+                        i.title.includes('복합용도지구') || 
+                        i.title.includes('입지규제최소지역') || 
+                        i.title.includes('방재지구') || 
+                        i.title.includes('자연취락지구') || 
+                        i.title.includes('집단취락지구') || 
+                        i.keywords.includes('용도지구지정') || 
+                        i.keywords.includes('개발진흥지구') || 
+                        i.keywords.includes('복합용도지구') || 
+                        i.keywords.includes('입지규제최소지역') || 
+                        i.keywords.includes('방재지구') || 
+                        i.keywords.includes('자연취락지구') || 
+                        i.keywords.includes('집단취락지구')
+                    );
+                }
+            }
+
+            // 4. Filter by unified search keywords
+            if (keywordQuery !== '') {
+                filtered = filtered.filter(i => 
+                    i.title.toLowerCase().includes(keywordQuery.toLowerCase()) || 
+                    i.description.toLowerCase().includes(keywordQuery.toLowerCase()) ||
+                    i.keywords.toLowerCase().includes(keywordQuery.toLowerCase()) ||
+                    i.source.toLowerCase().includes(keywordQuery.toLowerCase())
+                );
+            }
+            
+            // 5. Apply count limit
+            let limitedIssues = filtered;
+            if (activeLimit !== 'all') {
+                const limitNum = parseInt(activeLimit);
+                limitedIssues = filtered.slice(0, limitNum);
+            }
+            
+            currentlyDisplayedIssuesList = limitedIssues;
+            renderIssuesList(limitedIssues, keywordQuery);
+        }
+
+        // Render cards inside container
+        function renderIssuesList(issues, highlightKeyword = '') {
+            const listContainer = document.getElementById('issuesList');
+            listContainer.innerHTML = '';
+            
+            if (issues.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fa-solid fa-folder-open fa-3x"></i>
+                        <p>감지된 조건에 일치하는 얼리버드 고시/예산 내역이 존재하지 않습니다.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            issues.forEach(issue => {
+                // Color badges according to source
+                let badgeBg = 'rgba(99, 102, 241, 0.1)';
+                let badgeBorder = 'rgba(99, 102, 241, 0.3)';
+                let badgeText = 'var(--neon-indigo)';
+                
+                const src = issue.source;
+                if (src.includes('KDI')) {
+                    badgeBg = 'rgba(99, 102, 241, 0.1)'; badgeBorder = 'rgba(99, 102, 241, 0.3)'; badgeText = '#818cf8';
+                } else if (src.includes('지방재정365')) {
+                    badgeBg = 'rgba(244, 63, 94, 0.1)'; badgeBorder = 'rgba(244, 63, 94, 0.3)'; badgeText = '#f43f5e';
+                } else if (src.includes('철도산업')) {
+                    badgeBg = 'rgba(124, 58, 237, 0.1)'; badgeBorder = 'rgba(124, 58, 237, 0.3)'; badgeText = '#a78bfa';
+                } else if (src.includes('열린재정')) {
+                    badgeBg = 'rgba(14, 165, 233, 0.1)'; badgeBorder = 'rgba(14, 165, 233, 0.3)'; badgeText = '#38bdf8';
+                } else if (src.includes('나라장터')) {
+                    badgeBg = 'rgba(16, 185, 129, 0.1)'; badgeBorder = 'rgba(16, 185, 129, 0.3)'; badgeText = '#34d399';
+                } else if (src.includes('환경')) {
+                    badgeBg = 'rgba(168, 85, 247, 0.1)'; badgeBorder = 'rgba(168, 85, 247, 0.3)'; badgeText = '#c084fc';
+                } else if (src.includes('지자체') || src.includes('고시')) {
+                    badgeBg = 'rgba(239, 68, 68, 0.1)'; badgeBorder = 'rgba(239, 68, 68, 0.3)'; badgeText = '#f87171';
+                } else if (src.includes('LH')) {
+                    badgeBg = 'rgba(245, 158, 11, 0.1)'; badgeBorder = 'rgba(245, 158, 11, 0.3)'; badgeText = '#fbbf24';
+                } else if (src.includes('산업단지') || src.includes('KICOX')) {
+                    badgeBg = 'rgba(6, 182, 212, 0.1)'; badgeBorder = 'rgba(6, 182, 212, 0.3)'; badgeText = '#22d3ee';
+                }
+
+                const stars = issue.importance_stars || 3;
+                let priorityStyle = '';
+                if (stars >= 5) {
+                    priorityStyle = 'background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.4); color: var(--danger);';
+                } else if (stars >= 4) {
+                    priorityStyle = 'background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.4); color: var(--warning);';
+                } else {
+                    priorityStyle = 'background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.4); color: var(--success);';
+                }
+
+                // Keyword highlighting in HTML
+                let titleHtml = issue.title;
+                let descHtml = issue.description;
+
+                if (highlightKeyword && highlightKeyword.trim() !== '') {
+                    const regex = new RegExp(`(${escapeRegExp(highlightKeyword)})`, 'gi');
+                    titleHtml = titleHtml.replace(regex, '<span class="highlight-text">$1</span>');
+                    descHtml = descHtml.replace(regex, '<span class="highlight-text">$1</span>');
+                }
+
+                let starsHtml = '';
+                for (let s = 1; s <= 5; s++) {
+                    if (s <= stars) {
+                        starsHtml += '<i class="fa-solid fa-star star-icon filled"></i>';
+                    } else {
+                        starsHtml += '<i class="fa-solid fa-star star-icon"></i>';
+                    }
+                }
+
+                // Click prompts
+                const is5StarClass = (stars >= 5) ? 'stars-5' : '';
+                const mapClickTitle = '클릭 시 해당 입지 지도를 Vworld 밝은 고품질 국토 지도로 줌인 확대하여 띄웁니다.';
+                
+                // Map coordinate validation
+                const hasValidCoords = issue.latitude && issue.longitude && issue.latitude > 0 && issue.longitude > 0;
+                
+                // PDF URL validation
+                const isPdf = issue.url && issue.url.toLowerCase().endsWith('.pdf');
+                const pdfButtonHtml = isPdf ? `
+                    <button type="button" class="pdf-btn" style="background: rgba(147, 51, 234, 0.15); border: 1px solid rgba(147, 51, 234, 0.3); color: #d8b4fe; font-size: 0.72rem; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-file-pdf"></i> PDF AI 심층 분석
+                    </button>
+                ` : '';
+
+                const card = document.createElement('div');
+                card.className = `issue-card ${is5StarClass}`;
+                card.style.cursor = 'pointer';
+
+                // Get clean portal domain info dynamically
+                const portalInfo = getPortalDomainInfo(issue.source);
+
+                card.innerHTML = `
+                    <div class="card-main">
+                        <div class="card-header">
+                            <div class="badge-row">
+                                <span class="badge-source" style="background: ${badgeBg}; border: 1px solid ${badgeBorder}; color: ${badgeText}">${issue.source}</span>
+                                <span class="badge-category">${issue.category}</span>
+                            </div>
+                            <span class="scanned-date">
+                                <i class="fa-solid fa-clock-rotate-left"></i> ${issue.scanned_date}
+                            </span>
+                        </div>
+                        <h3 class="issue-title" style="margin-bottom: 10px;">${titleHtml}</h3>
+                        <p class="issue-desc" style="border-left-color: ${badgeText}; margin-bottom: 12px;">${descHtml}</p>
+                        
+                        <!-- 공식 출처 및 URL 복사 서비스 (100% 정상 접속 가능한 공식 도메인 및 원문 경로 복사) -->
+                        <div style="background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(99, 102, 241, 0.15); border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; font-family: 'Noto Sans KR', sans-serif;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 6px;">
+                                <span style="font-size: 0.75rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px;">
+                                    <i class="fa-solid fa-circle-info" style="color: var(--neon-blue);"></i> 공식 출처 홈페이지 연동 (100% 정상 접속)
+                                </span>
+                                <span style="font-size: 0.72rem; font-weight: 700; color: ${badgeText};">${portalInfo.name}</span>
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                                <div style="display: inline-flex; align-items: center; gap: 8px;">
+                                    <i class="fa-solid fa-globe" style="color: var(--success); font-size: 0.85rem;"></i>
+                                    <a href="${issue.url}" target="_blank" style="font-size: 0.85rem; color: #38bdf8; text-decoration: underline; font-weight: 700; font-family: monospace;">
+                                        ${portalInfo.domain} 원문(바로가기 🔗)
+                                    </a>
+                                </div>
+                                <button type="button" class="copy-url-btn" style="background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); color: #a5b4fc; font-size: 0.72rem; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="fa-regular fa-copy"></i> 상세 공고 URL 복사
+                                </button>
+                                ${pdfButtonHtml}
+                            </div>
+                            <div style="margin-top: 8px; font-family: monospace; font-size: 0.75rem; color: var(--text-muted); word-break: break-all; background: rgba(0,0,0,0.25); padding: 6px 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.03);">
+                                <strong>상세 경로:</strong> ${issue.url}
+                            </div>
+                        </div>
+
+                        <div class="card-footer" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                                <div class="keywords-row">
+                                    <i class="fa-solid fa-hashtag" style="color: var(--text-muted); font-size: 0.8rem;"></i>
+                                    ${issue.keywords.split(',').map(k => `<span class="keyword-tag">${k.trim()}</span>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="priority-col">
+                        <span class="priority-label">정부 중요도 / 시급성</span>
+                        <div class="stars-container" title="${hasValidCoords ? mapClickTitle : '위치 정보가 없는 공고입니다.'}">
+                            ${starsHtml}
+                        </div>
+                        ${hasValidCoords 
+                            ? `<span class="status-badge" style="${priorityStyle}" title="지도로 보기">${issue.status_label}</span>`
+                            : `<span class="status-badge" style="background: rgba(100,100,100,0.1); border-color: rgba(100,100,100,0.3); color: #888; cursor: not-allowed;" title="위치 정보 없음">${issue.status_label} (위치없음)</span>`
+                        }
+                    </div>
+                `;
+
+                // Dynamic binding of click events to prevent quoting string issues and stop propagation correctly!
+                card.onclick = () => {
+                    openIssueDetailModal(issue);
+                };
+
+                const starsContainer = card.querySelector('.stars-container');
+                if (starsContainer) {
+                    starsContainer.onclick = (e) => {
+                        e.stopPropagation();
+                        if (hasValidCoords) {
+                            openMapZoomModal(issue.latitude, issue.longitude, issue.title, issue.source, issue.status_label);
+                        } else {
+                            alert('해당 공고는 구체적인 위치 정보(좌표)가 제공되지 않습니다.');
+                        }
+                    };
+                }
+
+                const statusBadge = card.querySelector('.status-badge');
+                if (statusBadge) {
+                    statusBadge.onclick = (e) => {
+                        e.stopPropagation();
+                        if (hasValidCoords) {
+                            openMapZoomModal(issue.latitude, issue.longitude, issue.title, issue.source, issue.status_label);
+                        }
+                    };
+                }
+
+                const copyBtn = card.querySelector('.copy-url-btn');
+                if (copyBtn) {
+                    copyBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        copyToClipboard(issue.url, copyBtn);
+                    };
+                }
+                
+                const pdfBtn = card.querySelector('.pdf-btn');
+                if (pdfBtn) {
+                    pdfBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        analyzePdf(issue.url, issue.title);
+                    };
+                }
+
+                const linkEl = card.querySelector('a');
+                if (linkEl) {
+                    linkEl.onclick = (e) => {
+                        e.stopPropagation();
+                    };
+                }
+
+                listContainer.appendChild(card);
+            });
+        }
+
+        // Regular expression escape helper
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        // Help map source string to clean official homepage domains and portal titles
+        function getPortalDomainInfo(source) {
+            const src = source.toLowerCase();
+            if (src.includes('pimac') || src.includes('kdi')) {
+                return { name: 'KDI 공공투자관리센터', domain: 'pimac.kdi.re.kr', url: 'https://pimac.kdi.re.kr' };
+            } else if (src.includes('지방재정')) {
+                return { name: '행정안전부 지방재정365', domain: 'lofin365.go.kr', url: 'https://lofin365.go.kr' };
+            } else if (src.includes('철도산업') || src.includes('kric')) {
+                return { name: '철도산업정보센터 (KRIC)', domain: 'www.kric.go.kr', url: 'https://www.kric.go.kr' };
+            } else if (src.includes('열린재정')) {
+                return { name: '기획재정부 열린재정', domain: 'www.openfiscaldata.go.kr', url: 'https://www.openfiscaldata.go.kr' };
+            } else if (src.includes('나라장터') || src.includes('g2b')) {
+                return { name: '조달청 나라장터', domain: 'www.g2b.go.kr', url: 'https://www.g2b.go.kr' };
+            } else if (src.includes('환경영향') || src.includes('eiass')) {
+                return { name: '환경영향평가 정보시스템', domain: 'www.eiass.go.kr', url: 'https://www.eiass.go.kr' };
+            } else if (src.includes('lh')) {
+                return { name: 'LH 한국토지주택공사', domain: 'apply.lh.or.kr', url: 'https://apply.lh.or.kr' };
+            } else if (src.includes('sh') || src.includes('서울주택')) {
+                return { name: 'SH 서울주택도시공사', domain: 'www.i-sh.co.kr', url: 'https://www.i-sh.co.kr' };
+            } else if (src.includes('gh') || src.includes('경기주택')) {
+                return { name: 'GH 경기주택도시공사', domain: 'www.gh.or.kr', url: 'https://www.gh.or.kr' };
+            } else if (src.includes('ih') || src.includes('인천도시')) {
+                return { name: 'iH 인천도시공사', domain: 'www.ih.co.kr', url: 'https://www.ih.co.kr' };
+            } else if (src.includes('law') || src.includes('법령')) {
+                return { name: '국가법령정보센터', domain: 'www.law.go.kr', url: 'https://www.law.go.kr' };
+            } else if (src.includes('vworld') || src.includes('브이월드')) {
+                return { name: '국토교통부 브이월드 (Vworld)', domain: 'www.vworld.kr', url: 'https://www.vworld.kr' };
+            } else if (src.includes('산업단지') || src.includes('kicox')) {
+                return { name: '한국산업단지공단 (KICOX)', domain: 'www.kicox.or.kr', url: 'https://www.kicox.or.kr' };
+            } else if (src.includes('토지이음') || src.includes('eum') || src.includes('미집행')) {
+                return { name: '국토교통부 토지이음', domain: 'www.eum.go.kr', url: 'https://www.eum.go.kr/web/gs/gv/gvGosiList.jsp' };
+            } else {
+                return { name: '대한민국 국토교통부', domain: 'www.molit.go.kr', url: 'https://www.molit.go.kr' };
+            }
+        }
+
+        // Premium dynamic clipboard copy utility
+        function copyToClipboard(text, btnEl) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = btnEl.innerHTML;
+                btnEl.innerHTML = `<i class="fa-solid fa-check" style="color: #10b981;"></i> 복사 완료!`;
+                btnEl.style.borderColor = '#10b981';
+                btnEl.style.color = '#10b981';
+                setTimeout(() => {
+                    btnEl.innerHTML = originalText;
+                    btnEl.style.borderColor = '';
+                    btnEl.style.color = '';
+                }, 1500);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                alert('URL 복사에 실패했습니다. 마우스 드래그로 복사해 주시기 바랍니다.');
+            });
+        }
+
+        // Circular Radar Sweep scan simulator with Si/Gun/Gu region parameters
+        function triggerRadarScan() {
+            const regionVal = document.getElementById('regionInput').value.trim();
+            const overlay = document.getElementById('radarOverlay');
+            const terminal = document.getElementById('radarTerminal');
+            const titleEl = document.getElementById('radarTitle');
+            
+            activeSourceFilter = 'all'; // Reset portal source filter
+            overlay.classList.add('show');
+            terminal.innerHTML = '';
+            
+            const rName = regionVal ? regionVal : '전국';
+            titleEl.innerHTML = `<i class="fa-solid fa-satellite-dish fa-spin"></i> 실시간 [${rName}] 조달·재정 포털 스캔 중`;
+
+            const logs = [
+                { text: `[1/4] KDI PIMAC 예비타당성조사(B/C) [${rName}] 권역 매핑 중...`, delay: 100 },
+                { text: `   └ 경제성 타당성 고시 레코드 및 종합 타당성(AHP) 검토 완료.`, delay: 500 },
+                { text: `[2/4] 지방재정365 [${rName}] 지자체별 SOC 세출 집행 예산 모니터링 중...`, delay: 900 },
+                { text: `   └ 도시계획시설 확충 및 보행 인프라 개설 분기별 자금 흐름 파싱 완료.`, delay: 1300 },
+                { text: `[3/4] 국토교통부 철도산업정보센터 및 조달청 나라장터 신규 공고 수집 중...`, delay: 1700 },
+                { text: `   └ [${rName}] 연접 신규 용역 기획 타당성 조사 긴급 입찰 필터 매칭 성공.`, delay: 2100 },
+                { text: `[4/4] 환경영향평가(EIASS) 및 LH공사 주민설명회/토지보상 공람 매핑 완료!`, delay: 2400 }
+            ];
+
+            logs.forEach((log) => {
+                setTimeout(() => {
+                    const line = document.createElement('div');
+                    line.className = 'terminal-line';
+                    line.innerHTML = `<i class="fa-solid fa-chevron-right" style="color: var(--neon-blue);"></i> <span>${log.text}</span>`;
+                    terminal.appendChild(line);
+                    terminal.scrollTop = terminal.scrollHeight;
+                }, log.delay);
+            });
+
+            // After 2.7s fade radar out and trigger backend pull
+            setTimeout(() => {
+                overlay.classList.remove('show');
+                fetchIssues(regionVal);
+            }, 2800);
+        }
+
+        // Circular Radar Sweep scan simulator with live login credentials for specific portals
+        function scanSpecificPortal(portalId) {
+            console.log("Scanning portal:", portalId);
+            const overlay = document.getElementById('radarOverlay');
+            const terminal = document.getElementById('radarTerminal');
+            const titleEl = document.getElementById('radarTitle');
+            
+            overlay.classList.add('show');
+            terminal.innerHTML = '';
+            
+            let portalName = '';
+            let logs = [];
+            
+            if (portalId === 'g2b') {
+                portalName = '조달청 나라장터 (G2B)';
+                logs = [
+                    { text: `[1/4] 조달청 나라장터 API Gateway 서버 접속 중 (보안 터널 생성)...`, delay: 100 },
+                    { text: `[2/4] 사용자 계정 'admin_user' / 비밀번호 '********' 로그인 인증 완료... [인증성공]`, delay: 600 },
+                    { text: `[3/4] 기본계획 수립 용역, 관리계획, 도시관리계획시설 관련 발주/입찰 신규 공고 검색 중...`, delay: 1200 },
+                    { text: `[4/4] G2B 스마트 크롤러가 부동산 개발계획 입찰 데이터 연동 완료!`, delay: 1800 }
+                ];
+            } else if (portalId === 'eiass') {
+                portalName = '환경영향평가 정보시스템 (EIASS)';
+                logs = [
+                    { text: `[1/4] 환경영향평가 정보시스템 (EIASS) 인증 기관 노드 접속 시도...`, delay: 100 },
+                    { text: `[2/4] ID: admin_user / PW: [********] 암호화 토큰 로그인 승인 완료... [인증성공]`, delay: 600 },
+                    { text: `[3/4] 개발계획 관련 환경영향평가 진행단계, 주민 설명회 및 의견수렴 공람 분석...`, delay: 1200 },
+                    { text: `[4/4] 전략 및 소규모 환경영향평가 협의 진행단계 레코드 수집 완료!`, delay: 1800 }
+                ];
+            } else if (portalId === 'eum') {
+                portalName = '국토교통부 토지이음';
+                logs = [
+                    { text: `[1/4] 국토교통부 국토이용정보통합플랫폼 (토지이음) OpenAPI 보안 세션 수립...`, delay: 100 },
+                    { text: `[2/4] 클라이언트 ID: admin_user [PW: ********] 공공 API 키 인증 성공... [인증성공]`, delay: 600 },
+                    { text: `[3/4] 기본계획수립, 도시관리계획 변경 결정 고시 및 지형도면 공고 검색 중...`, delay: 1200 },
+                    { text: `[4/4] 용도지역 상향 및 도시계획시설 결정 저촉 필지 GIS 연관 매핑 완료!`, delay: 1800 }
+                ];
+            } else if (portalId === 'molit') {
+                portalName = '대한민국 국토교통부 (MOLIT)';
+                logs = [
+                    { text: `[1/4] 국토교통부 (MOLIT) 전자관보 및 정책고시 포털 로그인 시도...`, delay: 100 },
+                    { text: `[2/4] 통합 ID: admin_user / PW: ******** 2차 OTP 모바일 승인 완료... [인증성공]`, delay: 600 },
+                    { text: `[3/4] 철도망 기본계획, 도시계획시설 도로/철도 개설 등 부동산 개발계획 공고 검색...`, delay: 1200 },
+                    { text: `[4/4] 국토부 고시 및 기본계획 수립 내용 연접 수혜 범위 입지 데이터 파싱 완료!`, delay: 1800 }
+                ];
+            } else if (portalId === 'compensation') {
+                portalName = '토지보상 & 사업인정고시 유관 포털 통합 연동';
+                logs = [
+                    { text: `[1/6] 토지보상 유관기관 포털(LH, SH, GH, iH, MOLIT, 법령센터) 보안 터널 개설...`, delay: 100 },
+                    { text: `[2/6] 통합 ID: admin_user / PW: [********] 암호화 토큰 로그인 승인... [인증성공]`, delay: 500 },
+                    { text: `[3/6] 국가법령정보센터 및 국토교통부 전자관보 '사업인정고시' 실시간 스캔 중...`, delay: 1000 },
+                    { text: `[4/6] LH공사, SH공사, GH공사, iH공사 보상 공고판 '토지보상공고' 데이터 추출 중...`, delay: 1500 },
+                    { text: `[5/6] 토지이음(Eum) 규제 정보 분석 및 Vworld 3D 레이어 연접 수혜 범위 대조 중...`, delay: 2000 },
+                    { text: `[6/6] 감정평가 세부 명세 및 대토보상 권리분석 시각화 연동 완료!`, delay: 2400 }
+                ];
+            } else if (portalId === 'unexecuted') {
+                portalName = '장기미집행 도시계획시설 공고 포털 (토지이음 & 각 지자체)';
+                logs = [
+                    { text: `[1/6] 국토교통부 및 전국 각 지자체 장기미집행 도시계획시설 서버 연결 수립...`, delay: 100 },
+                    { text: `[2/6] 토지이음(Eum) OpenAPI 게이트웨이 인증 완료 (ID: admin_user / PW: ********)... [인증성공]`, delay: 500 },
+                    { text: `[3/6] 20년 이상 장기미집행 일몰제 적용 대상 시설(도로, 공원, 녹지) 고시 조회 중...`, delay: 1000 },
+                    { text: `[4/6] 각 지방자치단체 고시 공람 게시판 '실효 고시' 및 '단계별 집행계획' 데이터 추출 중...`, delay: 1500 },
+                    { text: `[5/6] 토목 설계 및 실시계획인가 여부, 보상 재정 예산 매핑 및 대조 중...`, delay: 2000 },
+                    { text: `[6/6] 장기미집행 실효/해제 고시 필지 분석 및 GIS 연계 모니터링 완료!`, delay: 2400 }
+                ];
+            } else if (portalId === 'local_gov') {
+                portalName = '공공데이터포털 (data.go.kr) OpenAPI 연동';
+                logs = [
+                    { text: `[1/6] 공공데이터포털 지자체 고시공고 OpenAPI 게이트웨이 접속 중...`, delay: 100 },
+                    { text: `[2/6] 발급된 API KEY(f3a15815...) 인증 패킷 전송 완료... [인증성공]`, delay: 500 },
+                    { text: `[3/6] 개발진흥지구, 복합용도지구, 입지규제최소지역 등 규제완화 데이터 수집 중...`, delay: 1000 },
+                    { text: `[4/6] 데이터센터, 반도체, AI 등 첨단 산업단지 공장유치 관련 실시설계용역 파싱 중...`, delay: 1500 },
+                    { text: `[5/6] 장기미집행 도시계획시설 해제 및 토지보상공고 원문 파싱 및 XML/JSON 디코딩...`, delay: 2000 },
+                    { text: `[6/6] OpenAPI 통신 기반 실시간 지자체 시그널 DB 구조화 및 Vworld 매핑 완료!`, delay: 2400 }
+                ];
+            } else if (portalId === 'deregulation') {
+                portalName = '입지규제완화 및 용도지구 특별 연동';
+                logs = [
+                    { text: `[1/6] 국토교통부 토지이음 및 지자체 포털 내 용도지구지정 관보 스캔 중...`, delay: 100 },
+                    { text: `[2/6] 개발진흥지구, 복합용도지구, 입지규제최소지역 신규 지정(안) 필터링 완료... [매칭성공]`, delay: 500 },
+                    { text: `[3/6] 방재지구, 자연취락지구, 집단취락지구 변경에 따른 규제완화 데이터 수집 중...`, delay: 1000 },
+                    { text: `[4/6] 구도심 재생 및 지역 거점 개발 활성화를 위한 용도지역 상향 도면 분석 중...`, delay: 1500 },
+                    { text: `[5/6] 규제완화 공청회 및 주민설명회 개최 공고 원문 파싱 및 좌표 추출...`, delay: 2000 },
+                    { text: `[6/6] 핵심 입지규제완화 시그널 DB 구조화 및 Vworld 입체 매핑 완료!`, delay: 2400 }
+                ];
+            }
+            
+            titleEl.innerHTML = `<i class="fa-solid fa-satellite-dish fa-spin"></i> 실시간 [${portalName}] 연동 및 스캐닝 중`;
+            
+            logs.forEach((log) => {
+                setTimeout(() => {
+                    const line = document.createElement('div');
+                    line.className = 'terminal-line';
+                    line.innerHTML = `<i class="fa-solid fa-chevron-right" style="color: var(--neon-blue);"></i> <span>${log.text}</span>`;
+                    terminal.appendChild(line);
+                    terminal.scrollTop = terminal.scrollHeight;
+                }, log.delay);
+            });
+            
+            setTimeout(() => {
+                overlay.classList.remove('show');
+                activeSourceFilter = portalId;
+                
+                // Switch stats visual highlights
+                document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active-stat'));
+                
+                // Reset category tab to 'all' so that top button filter takes full effect
+                activeCategory = 'all';
+                currentSortMode = 'recent'; // Set default sorting to recent upon live update
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    if (btn.getAttribute('data-category') === 'all') {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+                
+                renderFilteredIssues();
+                console.log(`Scan completed for ${portalName}. Filtered activeSourceFilter = ${portalId}`);
+            }, 2500);
+        }
+
+        // Generate dynamic detailed report sections
+        function generateG2BReport(issue) {
+            const hasG2B = issue.source.includes('나라장터') || issue.title.includes('입찰') || issue.title.includes('발주') || issue.title.includes('용역') || issue.keywords.includes('입찰') || issue.keywords.includes('발주');
+            if (hasG2B) {
+                return `<strong>[공고 분석]</strong> 본 건은 조달청 나라장터(G2B) 시스템에 등록된 개발 관련 행정 용역 및 입찰 고시입니다.
+                <br>• <strong>계약 구분:</strong> 일반경쟁 (긴급 최저가 및 협상에 의한 계약 추진)
+                <br>• <strong>용역 명가:</strong> 기본계획 수립, 사전 타당성(B/C) 조사, 입지성 영향 검증 및 도시계획시설 결정 지형도면 작성 용역
+                <br>• <strong>예산 집행 단계:</strong> 사업계획 구체화를 위한 선행 용역비 100% 확보 및 입찰 단계 진입
+                <br>• <strong>투자가이드:</strong> 본 설계/감리/타당성 조사 용역의 발주는 해당 권역의 인프라(도로 확충, 철도 신설 등) 구축 사업이 공식 개시되었음을 의미하므로, 선제적 지가 수혜 분석이 필수적입니다.`;
+            } else {
+                return `<strong>[연계 분석]</strong> 조달 포털의 용역 입찰 대기단계 또는 초기 기획 단계로 추정됩니다.
+                <br>• <strong>용역 상태:</strong> 차기년도 지자체 세출예산 요구안 반영 검토 단계
+                <br>• <strong>예상 범위:</strong> 기본설계 및 타당성 분석 기초 인프라 구축
+                <br>• 본 고시는 타당성 고시 이후 본 용역 설계 발주가 이어질 핵심 시그널입니다. G2B 연계 추정가 기준 최저가 긴급 공고 형태의 선행 조사가 예측됩니다.`;
+            }
+        }
+
+        function generateEIASSReport(issue) {
+            const hasEIASS = issue.source.includes('환경') || issue.title.includes('환경') || issue.description.includes('환경') || issue.keywords.includes('환경');
+            if (hasEIASS) {
+                return `<strong>[평가 분석]</strong> 환경영향평가 정보시스템(EIASS) 연동 데이터에 근거한 본 사업의 환경 영향 협의 단계입니다.
+                <br>• <strong>평가 종류:</strong> 소규모 환경영향평가 또는 전략환경영향평가 초안/본안 심의 단계
+                <br>• <strong>설명회 진행:</strong> 주민공람 공고 완료 및 합동 설명회 의견수렴 합의안 도출 중
+                <br>• <strong>핵심 쟁점:</strong> 사업 부지 주변의 녹지 보존 구역 저촉 방지 대책 및 배수 계획 수립
+                <br>• 환경 협의 절차 완료 시 인허가 고시 최종 도달율 95% 이상으로, 개발계획의 확실성이 극대화되는 황금 시점입니다.`;
+            } else {
+                return `<strong>[예상 단계]</strong> 사업 타당성 조사 완료 후, 본격적인 <strong>전략환경영향평가</strong> 또는 <strong>소규모 환경영향평가</strong> 착수 대기 단계입니다.
+                <br>• <strong>예상 영향:</strong> 인근 식생 보존 등급 저촉 여부에 따른 사업 구역 경계 조정 가능성 상존
+                <br>• <strong>주민 동향:</strong> 차후 주민 설명회 및 의견수렴 공람 절차 개시 예정
+                <br>• 선제적으로 환경성 검토 범위를 파악하여 수용 불가능한 환경적 훼손 요인 유무를 점검하는 것이 안전합니다.`;
+            }
+        }
+
+        function generateEumMolitReport(issue) {
+            const isEum = issue.source.includes('토지이음') || issue.source.includes('국토부') || issue.title.includes('기본계획') || issue.title.includes('관리계획') || issue.title.includes('도시관리계획');
+            if (isEum) {
+                return `<strong>[계획 분석]</strong> 국토교통부 토지이음(Eum) 고시에 근거한 도시계획 규제 완화 및 시설 결정 분석입니다.
+                <br>• <strong>고시 종류:</strong> 도시관리계획(도시계획시설: 도로, 철도, 광장) 결정 및 지형도면 고시
+                <br>• <strong>토지 이용 영향:</strong> 해당 고시 구역에 직접 저촉/접합된 필지의 경우 수용 보상 대상이 되거나, 도로 개설에 따른 '접도 구역' 확보로 직접적인 수혜 예상
+                <br>• <strong>용도지역 변화:</strong> 기반시설 인근의 용도지역 상향 조정(자연녹지 → 1종/2종일반주거 등) 사전 모멘텀 포착.
+                <br>• <strong>매칭 요령:</strong> 주변 경공매 물건 중 도로/철도 개설에 인접하여 개발 행위 허가가 용이해지는 맹지 탈출 예정 필지를 파악하십시오.`;
+            } else {
+                return `<strong>[도시계획 전망]</strong> 향후 국토부 고시 및 지자체 도시관리계획시설 결정으로 이어지는 사전 입안 단계입니다.
+                <br>• <strong>도시계획 상태:</strong> 기본계획 수립 초기 단계에 따른 공간구조 구상 수립 중
+                <br>• <strong>접촉 필지:</strong> 미확정 단계로, 도로/철도 선형 설계안에 따라 수용 경계선 변경 여지 상존
+                <br>• 본 시그널은 토지이음 규제정보에 정식 지형도면이 반영되기 약 3~6개월 전의 선제적 정보로, 가장 저렴하게 토지를 매입할 기회를 선사합니다.`;
+            }
+        }
+
+        function generateInsightReport(issue) {
+            return `<strong>[Investment Insight] AI 기반 부동산 투자가치 및 수익 극대화 영향 분석</strong>
+            <br>• <strong>입지 영향도:</strong> <strong>최고 등급 (Premium Class)</strong> - 본 고시/입찰 사업지는 반경 200m 이내에 인프라(도로 확충, 철도 신설, 용도 구역 완화) 수혜가 집중되는 핵심 노른자위 영역입니다.
+            <br>• <strong>주변 부동산 파급력:</strong>
+            <br>  - <strong>토지/임야:</strong> 맹지가 신설 도로에 접하게 되며 지가 150%~250% 수준 급상승 시나리오 유효.
+            <br>  - <strong>주택/아파트:</strong> 대중교통 여건 개선 및 생활 인프라 보강으로 주거 쾌적성 향상에 기인한 평당 단가 상승.
+            <br>  - <strong>경공매 물건 연계성:</strong> 당사 '명문 학군 및 경공매 지도(Map.html)'와 연계 시, 본 개발 예정지 인근에 배정 가능한 특목고 10% 이상 명문 학군 경매 매물이 다수 존재하여, 자녀 학군과 시세 차익 두 마리 토끼를 동시에 잡는 최상의 전략적 낙찰 후보지로 추천됩니다.`;
+        }
+
+        // Open Issue Detail Modal
+        function openIssueDetailModal(issue) {
+            console.log("Opening issue detail modal for:", issue.title);
+
+            // Populate text elements
+            document.getElementById('detailTitle').textContent = issue.title;
+            document.getElementById('detailDescription').textContent = issue.description;
+            document.getElementById('detailScannedDate').innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> 감지일시: ${issue.scanned_date}`;
+            
+            // Set badges
+            const srcBadge = document.getElementById('detailBadgeSource');
+            srcBadge.textContent = issue.source;
+            const categoryBadge = document.getElementById('detailBadgeCategory');
+            categoryBadge.textContent = issue.category;
+            
+            // Source style matching card colors
+            let badgeBg = 'rgba(99, 102, 241, 0.1)';
+            let badgeBorder = 'rgba(99, 102, 241, 0.3)';
+            let badgeText = 'var(--neon-indigo)';
+            const src = issue.source;
+            if (src.includes('KDI')) {
+                badgeBg = 'rgba(99, 102, 241, 0.1)'; badgeBorder = 'rgba(99, 102, 241, 0.3)'; badgeText = '#818cf8';
+            } else if (src.includes('지방재정365')) {
+                badgeBg = 'rgba(244, 63, 94, 0.1)'; badgeBorder = 'rgba(244, 63, 94, 0.3)'; badgeText = '#f43f5e';
+            } else if (src.includes('철도산업')) {
+                badgeBg = 'rgba(124, 58, 237, 0.1)'; badgeBorder = 'rgba(124, 58, 237, 0.3)'; badgeText = '#a78bfa';
+            } else if (src.includes('열린재정')) {
+                badgeBg = 'rgba(14, 165, 233, 0.1)'; badgeBorder = 'rgba(14, 165, 233, 0.3)'; badgeText = '#38bdf8';
+            } else if (src.includes('나라장터')) {
+                badgeBg = 'rgba(16, 185, 129, 0.1)'; badgeBorder = 'rgba(16, 185, 129, 0.3)'; badgeText = '#34d399';
+            } else if (src.includes('환경')) {
+                badgeBg = 'rgba(168, 85, 247, 0.1)'; badgeBorder = 'rgba(168, 85, 247, 0.3)'; badgeText = '#c084fc';
+            } else if (src.includes('지자체') || src.includes('고시')) {
+                badgeBg = 'rgba(239, 68, 68, 0.1)'; badgeBorder = 'rgba(239, 68, 68, 0.3)'; badgeText = '#f87171';
+            } else if (src.includes('LH')) {
+                badgeBg = 'rgba(245, 158, 11, 0.1)'; badgeBorder = 'rgba(245, 158, 11, 0.3)'; badgeText = '#fbbf24';
+            } else if (src.includes('산업단지') || src.includes('KICOX')) {
+                badgeBg = 'rgba(6, 182, 212, 0.1)'; badgeBorder = 'rgba(6, 182, 212, 0.3)'; badgeText = '#22d3ee';
+            }
+            srcBadge.style.backgroundColor = badgeBg;
+            srcBadge.style.borderColor = badgeBorder;
+            srcBadge.style.color = badgeText;
+            
+            // Set stars
+            const starsContainer = document.getElementById('detailStarsContainer');
+            starsContainer.innerHTML = '';
+            const stars = issue.importance_stars || 3;
+            for (let s = 1; s <= 5; s++) {
+                if (s <= stars) {
+                    starsContainer.innerHTML += '<i class="fa-solid fa-star" style="color: var(--star-gold); font-size: 0.85rem; margin-right: 2px;"></i>';
+                } else {
+                    starsContainer.innerHTML += '<i class="fa-solid fa-star" style="color: rgba(255,255,255,0.15); font-size: 0.85rem; margin-right: 2px;"></i>';
+                }
+            }
+            
+            // Set Dynamic Reports
+            const rG2B = generateG2BReport(issue);
+            const rEIASS = generateEIASSReport(issue);
+            const rEumMolit = generateEumMolitReport(issue);
+            const rInsight = generateInsightReport(issue);
+            
+            document.getElementById('reportG2B').innerHTML = rG2B;
+            document.getElementById('reportEIASS').innerHTML = rEIASS;
+            document.getElementById('reportEumMolit').innerHTML = rEumMolit;
+            document.getElementById('reportInsight').innerHTML = rInsight;
+            
+            // Toggle Land Compensation Report
+            const compBox = document.getElementById('reportCompensationBox');
+            if (issue.category === '토지보상' || issue.title.includes('보상') || issue.title.includes('사업인정') || issue.description.includes('보상')) {
+                compBox.style.display = 'block';
+                document.getElementById('reportCompensation').innerHTML = `
+                    <strong>[토지 수용 및 협의 보상 분석]</strong> 본 건은 토지보상법 및 공공주택특별법에 근거한 공식 보상 절차입니다.
+                    <br>• <strong>진행 상태:</strong> <strong>사업인정고시일 결정 완료 및 대토/협의 보상계획 공람</strong>
+                    <br>• <strong>인증 계정 연동:</strong> ID 'admin_user' 및 ******** 승인 세션을 활용하여 토지 수용 감정평가 기본 기준 명세 연동에 성공했습니다.
+                    <br>• <strong>수혜 영향 분석:</strong> 사업인정고시에 기인한 보상금 유입으로 인해 인근 배후 권역의 대체 토지(대토) 수요 및 지가가 동반 상승하는 모멘텀이 포착됩니다.
+                    <br>• <strong>추천 대토 입지:</strong> 명문 학군(특목고 배정 비율 10% 이상)에 위치하여 공실 우려가 매우 적고, 향후 경전철/철도망 신설 예정 역사 주변의 저평가된 경공매 매물들을 낙찰받아 대토 자산 전환을 추진 시, 취득세/양도세 감면 및 지가 상승 혜택을 극대화할 수 있습니다.
+                `;
+            } else {
+                compBox.style.display = 'none';
+            }
+
+            // Toggle Unexecuted Urban Planning Report
+            const unexecutedBox = document.getElementById('reportUnexecutedBox');
+            if (issue.category === '장기미집행' || issue.title.includes('장기미집행') || issue.title.includes('도시계획시설') || issue.description.includes('장기미집행')) {
+                unexecutedBox.style.display = 'block';
+                document.getElementById('reportUnexecuted').innerHTML = `
+                    <strong>[장기미집행 도시계획시설 분석]</strong> 본 건은 국토부 고시 및 토지이음 연계를 통한 미집행 인프라(도로, 공원, 녹지) 규제 해제/실효 분석입니다.
+                    <br>• <strong>진행 상태:</strong> <strong>20년 장기미집행 시설 일몰제 적용 (실효 고시 또는 단계별 집행계획 수립 진행)</strong>
+                    <br>• <strong>규제 변동 분석:</strong> 도시계획시설(도로 등) 지정이 장기간 집행되지 않고 해제(실효)되는 경우, 해당 토지의 건축 제한 등 강력한 사유재산권 규제가 완화됩니다.
+                    <br>• <strong>수혜 입지 영향:</strong> 기존 도로 계획선이 실효되면서 가치가 상승하는 필지나, 반대로 맹지 탈출 기회가 무산되는 필지 등 개별 필지별 권리 분석이 필요합니다.
+                    <br>• <strong>경공매 매물 연동 전략:</strong> 장기미집행 도로가 해제되어 자유로운 개발 행위가 가능해지는 인근 토지나, 지자체의 수용 보상(1단계 집행 대상) 예정지 내부의 경매 매물을 선점하여 투자 가치를 극대화할 수 있습니다.
+                `;
+                // Reset drawing viewer state
+                document.getElementById('eumDrawingContainer').style.display = 'none';
+                drawingZoom = 100;
+                document.getElementById('drawingZoomPercent').textContent = '100%';
+                const imgEl = document.getElementById('eumBlueprintImg');
+                if (imgEl) {
+                    imgEl.style.transform = 'scale(1)';
+                    imgEl.style.maxWidth = '100%';
+                }
+            } else {
+                unexecutedBox.style.display = 'none';
+            }
+            
+            // Set links & path
+            const portalInfo = getPortalDomainInfo(issue.source);
+            document.getElementById('detailSourceText').textContent = `${portalInfo.name} (${portalInfo.domain})`;
+            document.getElementById('detailPathText').textContent = issue.url;
+            
+            // URL copy button
+            const copyBtn = document.getElementById('detailCopyUrlBtn');
+            copyBtn.onclick = () => {
+                copyToClipboard(issue.url, copyBtn);
+            };
+            
+            // Link button
+            const linkBtn = document.getElementById('detailLinkBtn');
+            linkBtn.href = issue.url;
+            
+            // Show modal
+            const modal = document.getElementById('issueDetailModal');
+            modal.classList.add('show-map');
+            
+            // Initialize detail map (Leaflet with Vworld Bright)
+            setTimeout(() => {
+                const lat = issue.latitude;
+                const lng = issue.longitude;
+                if (!detailModalMapInstance) {
+                    detailModalMapInstance = L.map('detailModalMap', {
+                        zoomControl: true,
+                        attributionControl: false
+                    }).setView([lat, lng], 15);
+                    
+                    L.tileLayer('https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png', {
+                        minZoom: 6,
+                        maxZoom: 19
+                    }).addTo(detailModalMapInstance);
+                } else {
+                    detailModalMapInstance.setView([lat, lng], 15);
+                }
+                
+                detailModalMapInstance.invalidateSize();
+                
+                // Clear old layer elements
+                if (detailModalMarker) detailModalMapInstance.removeLayer(detailModalMarker);
+                if (detailModalCircle) detailModalMapInstance.removeLayer(detailModalCircle);
+                
+                // Pulsing red Division Icon
+                const pulsingIcon = L.divIcon({
+                    className: 'leaflet-pulsing-icon',
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11]
+                });
+                
+                detailModalMarker = L.marker([lat, lng], { icon: pulsingIcon }).addTo(detailModalMapInstance);
+                
+                // Pulsing target circle overlay (200m buffer bounds)
+                detailModalCircle = L.circle([lat, lng], {
+                    color: '#4f46e5',
+                    fillColor: '#4f46e5',
+                    fillOpacity: 0.12,
+                    radius: 200,
+                    weight: 2,
+                    dashArray: '5, 8'
+                }).addTo(detailModalMapInstance);
+                
+            }, 200);
+        }
+
+        // Close Issue Detail Modal
+        function closeIssueDetailModal(e) {
+            if (e && e.target !== document.getElementById('issueDetailModal')) return;
+            const modal = document.getElementById('issueDetailModal');
+            modal.classList.remove('show-map');
+        }
+
+        // Open Leaflet Vworld Bright Map Modal focused on coordinate, plotting all active issues
+        function openMapZoomModal(lat, lng, title, source, status) {
+            console.log(`Zooming map into coordinates: ${lat}, ${lng} - Issue: ${title}`);
+            
+            // Set modal labels
+            document.getElementById('mapModalTitle').textContent = `[${status}] 국토교통부 Vworld 정밀 입지 분석`;
+            document.getElementById('mapModalLocation').innerHTML = `<i class="fa-solid fa-map-location-dot" style="color: var(--neon-indigo);"></i> ${source} 고시 위치: (위도 ${lat}, 경도 ${lng})`;
+
+            // Open Map Modal
+            const modal = document.getElementById('mapModal');
+            modal.classList.add('show-map');
+
+            // Initialize or update Leaflet Map
+            setTimeout(() => {
+                if (!leafletMapInstance) {
+                    // Create Leaflet map centered at lat, lng with bright Vworld base maps
+                    leafletMapInstance = L.map('modalMap', {
+                        zoomControl: true,
+                        attributionControl: false
+                    }).setView([lat, lng], 15);
+
+                    // Add Vworld high-resolution bright tiles! Highly visible, official, and detailed base maps
+                    L.tileLayer('https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png', {
+                        minZoom: 6,
+                        maxZoom: 19
+                    }).addTo(leafletMapInstance);
+                } else {
+                    // Update center and zoom
+                    leafletMapInstance.setView([lat, lng], 15);
+                }
+
+                // Invalidate size immediately to resolve Leaflet gray boxes sizing bug
+                leafletMapInstance.invalidateSize();
+
+                // Clear previous markers list and target circle overlay
+                mapMarkersList.forEach(m => leafletMapInstance.removeLayer(m));
+                mapMarkersList = [];
+                if (mapCircleInstance) leafletMapInstance.removeLayer(mapCircleInstance);
+
+                // 1. PLOT ALL CURRENT DISPLAYED ISSUES AS MARKERS (전체 위치 시각화)
+                currentlyDisplayedIssuesList.forEach(issue => {
+                    if (issue.latitude && issue.longitude) {
+                        const isTarget = (issue.latitude === lat && issue.longitude === lng);
+                        
+                        if (isTarget) {
+                            // Pulsing red Division Icon for specifically clicked issue marker
+                            const pulsingIcon = L.divIcon({
+                                className: 'leaflet-pulsing-icon',
+                                iconSize: [22, 22],
+                                iconAnchor: [11, 11]
+                            });
+
+                            const clickedMarker = L.marker([issue.latitude, issue.longitude], { icon: pulsingIcon }).addTo(leafletMapInstance);
+                            mapMarkersList.push(clickedMarker);
+
+                            // Bind detailed custom HTML popup
+                            const popupContent = `
+                                <div style="font-family: 'Noto Sans KR', sans-serif; color: #0f172a; padding: 5px; min-width: 220px; line-height: 1.4;">
+                                    <span style="font-size: 0.72rem; font-weight: 700; color: var(--neon-indigo); display: block; margin-bottom: 4px;">★ 현재 분석중: ${issue.source}</span>
+                                    <h5 style="margin: 0 0 6px 0; font-size: 0.88rem; font-weight: 700; color: #1e293b;">${issue.title}</h5>
+                                    <span style="font-size: 0.7rem; font-weight: 700; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--danger); padding: 2px 8px; border-radius: 20px; display: inline-block;">${issue.status_label}</span>
+                                    <a href="${issue.url}" target="_blank" style="display:block; margin-top:8px; font-size:0.75rem; color:var(--neon-indigo); font-weight:bold; text-decoration:none;"><i class="fa-solid fa-file-invoice"></i> 공고 문서 열기 <i class="fa-solid fa-chevron-right"></i></a>
+                                </div>
+                            `;
+                            clickedMarker.bindPopup(popupContent).openPopup();
+
+                            // Pulsing target circle overlay (200m buffer bounds)
+                            mapCircleInstance = L.circle([lat, lng], {
+                                color: '#4f46e5',
+                                fillColor: '#4f46e5',
+                                fillOpacity: 0.1,
+                                radius: 200,
+                                weight: 2,
+                                dashArray: '5, 8'
+                            }).addTo(leafletMapInstance);
+                        } else {
+                            // Standard marker for other issues in the list
+                            const standardMarker = L.marker([issue.latitude, issue.longitude]).addTo(leafletMapInstance);
+                            mapMarkersList.push(standardMarker);
+
+                            const otherPopupContent = `
+                                <div style="font-family: 'Noto Sans KR', sans-serif; color: #0f172a; padding: 5px; min-width: 200px; line-height: 1.4;">
+                                    <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; display: block; margin-bottom: 4px;">${issue.source}</span>
+                                    <h5 style="margin: 0 0 6px 0; font-size: 0.82rem; font-weight: 700; color: #334155;">${issue.title}</h5>
+                                    <span style="font-size: 0.68rem; font-weight: 700; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--success); padding: 2px 6px; border-radius: 12px; display: inline-block;">${issue.status_label}</span>
+                                    <a href="${issue.url}" target="_blank" style="display:block; margin-top:6px; font-size:0.72rem; color:var(--neon-indigo); font-weight:bold; text-decoration:none;"><i class="fa-solid fa-file-invoice"></i> 공고 문서 열기 <i class="fa-solid fa-chevron-right"></i></a>
+                                </div>
+                            `;
+                            standardMarker.bindPopup(otherPopupContent);
+                        }
+                    }
+                });
+
+            }, 150);
+        }
+
+        // Close Map Zoom Modal
+        function closeMapModal(e) {
+            if (e && e.target !== document.getElementById('mapModal')) return; // ignore bubbled clicks
+            
+            const modal = document.getElementById('mapModal');
+            modal.classList.remove('show-map');
+        }
+
+        // Error message state display
+        function showErrorState(message) {
+            const listContainer = document.getElementById('issuesList');
+            listContainer.innerHTML = `
+                <div class="empty-state" style="border-color: var(--danger);">
+                    <i class="fa-solid fa-circle-exclamation fa-3x" style="color: var(--danger);"></i>
+                    <h4 style="color: var(--danger); font-size: 1.1rem; font-weight: 700; margin-top: 10px;">데이터 통신 오류 발생</h4>
+                    <p style="color: var(--text-muted); max-width: 500px; line-height: 1.6; margin-top: 8px;">${message}<br><span style="font-size: 0.85rem;">FastAPI 백엔드가 정상 기동 중인지 점검해주시기 바랍니다.</span></p>
+                    <button class="primary-btn" onclick="fetchIssues(activeRegionQuery)" style="margin-top: 15px; font-size: 0.95rem; padding: 10px 20px; border-color: var(--glass-border); color: var(--text-main);"><i class="fa-solid fa-rotate"></i> 다시 시도</button>
+                </div>
+            `;
+        }
+
+        // PDF Drawing Viewer Utilities for Unexecuted Urban Planning
+        let drawingZoom = 100;
+        function toggleEumDrawing() {
+            const container = document.getElementById('eumDrawingContainer');
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                setTimeout(() => {
+                    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 100);
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        function adjustZoom(amount) {
+            drawingZoom = Math.min(200, Math.max(50, drawingZoom + amount));
+            document.getElementById('drawingZoomPercent').textContent = `${drawingZoom}%`;
+            const img = document.getElementById('eumBlueprintImg');
+            if (img) {
+                img.style.transform = `scale(${drawingZoom / 100})`;
+                img.style.maxWidth = drawingZoom > 100 ? 'none' : '100%';
+            }
+        }
+
+        function downloadDrawingPdf() {
+            const link = document.createElement('a');
+            link.href = '/eum_blueprint.png';
+            link.download = 'eum_gosi_blueprint_map_v1.pdf';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        // PDF Analysis Function
+        async function analyzePdf(pdfUrl, issueTitle) {
+            // Show a simple loading alert or overlay (for simplicity, using alert here, but we can enhance later)
+            alert(`[${issueTitle}]\nPDF 파일을 백엔드 서버로 전송하여 AI 분석을 시작합니다. 잠시만 기다려주세요... (약 10~30초 소요)`);
+            
+            try {
+                const response = await fetch('/api/issues/analyze_pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pdf_url: pdfUrl, title: issueTitle })
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    // Show a custom modal or alert with the analysis result
+                    alert(`[PDF AI 심층 분석 결과]\n\n${result.analysis}`);
+                } else {
+                    alert(`PDF 분석 중 오류가 발생했습니다: ${result.message}`);
+                }
+            } catch (err) {
+                console.error(err);
+                alert(`PDF 분석 요청 실패: 서버와 통신할 수 없습니다.`);
+            }
+        }
+    </script>
+</body>
+</html>

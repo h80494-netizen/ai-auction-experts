@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Auction Experts - PREMIUM HIGHLIGHTER REPORT</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Marked JS for parsing markdown reports -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #07090f;
+            --bg-card: rgba(18, 24, 40, 0.75);
+            --bg-card-hover: rgba(25, 34, 56, 0.9);
+            --border-color: rgba(99, 102, 241, 0.15);
+            --border-hover: rgba(168, 85, 247, 0.35);
+            --primary-purple: #a855f7;
+            --primary-indigo: #6366f1;
+            --primary-pink: #ec4899;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --text-highlight: #c084fc;
+            --neon-shadow: 0 0 15px rgba(168, 85, 247, 0.15);
+            --neon-shadow-strong: 0 0 25px rgba(168, 85, 247, 0.35);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Outfit', 'Inter', 'Noto Sans KR', sans-serif;
+            background: radial-gradient(circle at 50% 0%, #17153b 0%, var(--bg-dark) 80%);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 25px 15px;
+            line-height: 1.5;
+            font-size: 0.85rem;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        /* Header Style */
+        header {
+            text-align: center;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        header h1 {
+            font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-indigo) 50%, var(--primary-pink) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 2px;
+            letter-spacing: -0.5px;
+        }
+        header p {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 400;
+        }
+        /* Stat Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: var(--glass-shadow);
+            backdrop-filter: blur(12px);
+        }
+        .stat-card i {
+            font-size: 1.8rem;
+            color: var(--primary-purple);
+        }
+        .stat-content h3 {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+        .stat-content .value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+        }
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #fff;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-left: 4px solid var(--primary-purple);
+            padding-left: 10px;
+        }
+        .section-title span {
+            color: var(--primary-purple);
+            font-weight: 800;
+        }
+        /* Best Grid */
+        .best-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 20px;
+        }
+        .best-card {
+            background: var(--bg-card);
+            border: 1.5px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: var(--glass-shadow);
+            backdrop-filter: blur(12px);
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .best-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-hover);
+            box-shadow: 0 10px 25px rgba(168, 85, 247, 0.15);
+        }
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 20px;
+            width: fit-content;
+            text-transform: uppercase;
+        }
+        .rank-1 {
+            background: rgba(234, 179, 8, 0.15);
+            color: #facc15;
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+        .rank-2 {
+            background: rgba(168, 85, 247, 0.15);
+            color: #c084fc;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+        .rank-3 {
+            background: rgba(6, 182, 212, 0.15);
+            color: #22d3ee;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+        .card-header {
+            margin-top: 10px;
+        }
+        .case-number {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+        }
+        .property-type-badge {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        .address {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* Price Section */
+        .price-section {
+            margin-top: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+        }
+        .price-row:not(:last-child) {
+            margin-bottom: 5px;
+        }
+        .price-lbl {
+            color: var(--text-muted);
+        }
+        .price-val {
+            font-weight: 600;
+            color: #fff;
+        }
+        .price-val.min-price {
+            color: var(--primary-pink);
+            font-weight: 700;
+        }
+        /* Overlap Indicator */
+        .overlap-indicator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 15px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .overlap-count-circle {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-indigo));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: #fff;
+            font-size: 0.85rem;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+            font-family: 'Outfit', sans-serif;
+            flex-shrink: 0;
+        }
+        .overlap-text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .overlap-text div {
+            font-size: 0.8rem;
+            color: #fff;
+        }
+        /* Matched Badges */
+        .matched-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 12px;
+        }
+        .matched-badge {
+            font-size: 0.65rem;
+            font-weight: 500;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            color: #818cf8;
+        }
+        /* Analysis Section */
+        .analysis-section {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-top: 1px dashed rgba(255, 255, 255, 0.1);
+            padding-top: 12px;
+        }
+        .analysis-item {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .analysis-title {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text-highlight);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .analysis-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+            text-align: justify;
+            word-break: keep-all;
+        }
+        /* Lists and Tables */
+        .list-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--glass-shadow);
+            backdrop-filter: blur(12px);
+            overflow-x: auto;
+        }
+        .analysis-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.8rem;
+            min-width: 1000px;
+        }
+        .analysis-table th {
+            background: rgba(99, 102, 241, 0.08);
+            border-bottom: 1.5px solid rgba(99, 102, 241, 0.25);
+            padding: 12px 10px;
+            font-weight: 600;
+            color: #fff;
+        }
+        .analysis-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+        .analysis-table tr:hover td {
+            background: rgba(255, 255, 255, 0.015);
+        }
+        .case-cell {
+            font-weight: 700;
+            color: var(--text-highlight);
+            font-family: 'Outfit', sans-serif;
+        }
+        .price-cell {
+            text-align: right;
+            font-family: 'Outfit', sans-serif;
+        }
+        .price-cell.min {
+            color: var(--primary-pink);
+            font-weight: 700;
+        }
+        .no-data {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        /* Markdown Styling in Report Box */
+        .markdown-body {
+            line-height: 1.6;
+            font-size: 0.88rem;
+            color: var(--text-main);
+        }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+            margin-top: 15px;
+            margin-bottom: 10px;
+            color: #fff;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 5px;
+        }
+        .markdown-body h3 {
+            font-size: 1.05rem;
+            color: var(--primary-purple);
+        }
+        .markdown-body p {
+            margin-bottom: 12px;
+            font-size: 0.85rem;
+            text-align: justify;
+        }
+        .markdown-body ul, .markdown-body ol {
+            margin-bottom: 12px;
+            padding-left: 20px;
+        }
+        .markdown-body li {
+            margin-bottom: 4px;
+            font-size: 0.82rem;
+            color: var(--text-main);
+        }
+        .markdown-body li strong {
+            color: var(--text-highlight);
+        }
+        .markdown-body strong {
+            color: #fff;
+            font-weight: 700;
+        }
+        /* Print button styling */
+        .print-btn {
+            background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-indigo) 100%);
+            border: none;
+            color: #fff;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.25);
+            transition: all 0.2s ease;
+        }
+        .print-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(168, 85, 247, 0.4);
+        }
+        /* Print Styles */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background: #ffffff !important;
+                color: #000000 !important;
+                font-size: 11pt !important;
+                padding: 0 !important;
+            }
+            .container {
+                max-width: 100% !important;
+                width: 100% !important;
+                margin: 0 !important;
+                gap: 15px !important;
+            }
+            header h1 {
+                background: none !important;
+                -webkit-text-fill-color: initial !important;
+                color: #000000 !important;
+                border-bottom: 2px solid #000000;
+                padding-bottom: 5px;
+            }
+            header p {
+                color: #555555 !important;
+            }
+            .stat-card, .best-card, .list-section {
+                background: #ffffff !important;
+                border: 1px solid #cccccc !important;
+                color: #000000 !important;
+                box-shadow: none !important;
+                backdrop-filter: none !important;
+                page-break-inside: avoid;
+            }
+            .stat-card i, .best-card i {
+                color: #333333 !important;
+            }
+            .stat-content .value, .case-number, .price-val, .overlap-count-circle, .analysis-title {
+                color: #000000 !important;
+            }
+            .overlap-count-circle {
+                background: #f0f0f0 !important;
+                border: 1px solid #cccccc !important;
+                box-shadow: none !important;
+                color: #000000 !important;
+            }
+            .rank-badge {
+                background: #f0f0f0 !important;
+                color: #000000 !important;
+                border: 1px solid #cccccc !important;
+            }
+            .matched-badge {
+                background: #f5f5f5 !important;
+                border: 1px solid #cccccc !important;
+                color: #333333 !important;
+            }
+            .analysis-table th {
+                background: #f0f0f0 !important;
+                color: #000000 !important;
+                border-bottom: 2px solid #000000 !important;
+            }
+            .analysis-table td {
+                color: #000000 !important;
+                border-bottom: 1px solid #dddddd !important;
+            }
+            .analysis-table tr:hover td {
+                background: none !important;
+            }
+            .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+                color: #000000 !important;
+                border-bottom: 1px solid #dddddd !important;
+            }
+            .markdown-body p, .markdown-body li {
+                color: #222222 !important;
+            }
+            .markdown-body li strong, .markdown-body strong {
+                color: #000000 !important;
+            }
+            .demographics-container {
+                display: block !important;
+                border-top: 1px dashed #cccccc !important;
+                background: #fcfcfc !important;
+                padding: 10px !important;
+                margin-top: 10px !important;
+            }
+            .demographics-container div,
+            .demographics-container span,
+            .demographics-container strong {
+                color: #000000 !important;
+                background: none !important;
+                border-color: #dddddd !important;
+            }
+            .demographics-container i {
+                color: #333333 !important;
+            }
+            .price-section {
+                background: #fcfcfc !important;
+                border: 1px solid #dddddd !important;
+            }
+            .price-val.min-price {
+                color: #d0104c !important;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header style="position: relative;">
+        <div class="no-print" style="position: absolute; top: 10px; right: 10px;">
+            <button onclick="window.print()" class="print-btn">
+                <i class="fa-solid fa-print"></i> PDF 저장 및 인쇄
+            </button>
+        </div>
+        <h1>PREMIUM HIGHLIGHTER REPORT</h1>
+        <p>필터 중첩 분석 기반 추천 경매 분석 및 가치 평가 결과</p>
+    </header>
+    <!-- Stats summary bar -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <i class="fa-solid fa-list-check"></i>
+            <div class="stat-content">
+                <h3>분석 대상 물건</h3>
+                <div class="value" id="stat-total">0</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <i class="fa-solid fa-layer-group"></i>
+            <div class="stat-content">
+                <h3>최대 중첩 수</h3>
+                <div class="value" id="stat-max-overlap">0</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <i class="fa-solid fa-award"></i>
+            <div class="stat-content">
+                <h3>추천 BEST 물건</h3>
+                <div class="value" id="stat-best">3</div>
+            </div>
+        </div>
+    </div>
+    <!-- BEST 3 Cards -->
+    <h2 class="section-title"><i class="fa-solid fa-ranking-star"></i> AI 선정 입지 및 권리분석 <span>BEST 3</span></h2>
+    <div class="best-grid" id="best-cards-container">
+        <!-- Rendered dynamically -->
+    </div>
+    <!-- Complete list of matched auctions -->
+    <h2 class="section-title" style="margin-top: 25px;"><i class="fa-solid fa-table-list"></i> 전체 중첩 물건 리스트</h2>
+    <div class="list-section">
+        <table class="analysis-table" id="auctions-table">
+            <thead>
+                <tr>
+                    <th style="width: 120px;">사건번호</th>
+                    <th style="width: 70px;">구분</th>
+                    <th>소재지</th>
+                    <th style="width: 170px;">매칭된 필터</th>
+                    <th style="width: 70px; text-align: center;">중첩 수</th>
+                    <th style="width: 110px; text-align: center;">추천 등급</th>
+                    <th style="width: 90px; text-align: center;">매각기일</th>
+                    <th style="text-align: center; width: 80px;">최저가율</th>
+                    <th style="text-align: center; width: 100px;">인수감안 수익률</th>
+                    <th style="text-align: right; width: 110px;">감정평가액</th>
+                    <th style="text-align: right; width: 110px;">최저입찰가</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <!-- Rendered dynamically -->
+            </tbody>
+        </table>
+        <div class="no-data" id="no-data-msg" style="display: none;">
+            중첩 분석 데이터가 존재하지 않습니다.
+        </div>
+    </div>
+</div>
+<script>
+    // 법정동(동, 리, 가)까지만 주소 자르기 헬퍼 함수
+    function truncateAddressToDong(address) {
+        if (!address) return '-';
+        const addr = address.trim();
+        const match = addr.match(/^.*?[동리가](\s|$)/);
+        if (match) {
+            return match[0].trim();
+        }
+        const parts = addr.split(/\s+/);
+        return parts.slice(0, 3).join(' ');
+    }
+    // Property type display formatter helper
+    function formatPropertyType(type) {
+        if (type === '집합') return '상가(집합)';
+        if (type === '일반') return '상가(일반)';
+        if (type === '지산') return '공장창고(집합)';
+        if (type === '공장') return '공장창고(일반)';
+        return type;
+    }
+    // Formatter helpers
+    function formatPrice(num) {
+        if (!num) return '-';
+        if (typeof num === 'string') {
+            num = parseInt(num.replace(/[^0-9]/g, ''), 10);
+        }
+        if (isNaN(num)) return '-';
+        return Math.floor(num / 10000).toLocaleString() + '만원';
+    }
+    // Helper to calculate estimated takeover amount based on special notes
+    function calculateEstimatedTakeover(item) {
+        const appraisal = parseFloat(item.appraisal_price || item.appraised_value || 0);
+        const notes = String(item.special_notes || "").toLowerCase();
+        let takeoverAmount = 0;
+        if (notes.includes('선순위') || notes.includes('대항력') || notes.includes('임차')) {
+            takeoverAmount += appraisal * 0.7;
+        }
+        if (notes.includes('hug') || notes.includes('인수조건')) {
+            takeoverAmount += appraisal * 0.8;
+        }
+        if (notes.includes('유치권')) {
+            takeoverAmount += appraisal * 0.2;
+        }
+        if (notes.includes('지상권')) {
+            takeoverAmount += appraisal * 0.15;
+        }
+        if (notes.includes('위반')) {
+            takeoverAmount += appraisal * 0.05;
+        }
+        return Math.round(takeoverAmount);
+    }
+    // Helper to calculate yield rate considering takeover amount
+    function calculateYieldRate(item) {
+        const appraisal = parseFloat(item.appraisal_price || item.appraised_value || 0);
+        const minPrice = parseFloat(item.min_price || item.minimum_value || 0);
+        const takeover = calculateEstimatedTakeover(item);
+        const totalCost = minPrice + takeover;
+        if (totalCost <= 0) return 0;
+        const profit = appraisal - totalCost;
+        return (profit / totalCost) * 100;
+    }
+    // Comprehensive AI Recommendation Score helper
+    function calculateRecommendationScore(item) {
+        // 1. Yield Score (max 50 points)
+        const appraisal = parseFloat(item.appraisal_price || 0);
+        const minPrice = parseFloat(item.min_price || 0);
+        const takeover = calculateEstimatedTakeover(item);
+        let discountRate = 0.0;
+        if (appraisal > 0) {
+            // Margin rate considering estimated takeover amount
+            discountRate = Math.max(0.0, (appraisal - (minPrice + takeover)) / appraisal);
+        }
+        const yieldScore = discountRate * 50.0;
+        // 2. Value-Up Score (max 30 points)
+        const overlapCount = parseInt(item.overlap_count || 0, 10);
+        const matchedLayers = item.matched_layers || [];
+        let devLayerCount = 0;
+        matchedLayers.forEach(l => {
+            if (['개발', '택지', '계획', '도로', '구역', '지하철', '역세권'].some(k => l.includes(k))) {
+                devLayerCount++;
+            }
+        });
+        const valueUpScore = Math.min(30.0, (overlapCount * 3.0) + (devLayerCount * 5.0));
+        // 3. Safety Score (max 20 points)
+        let safetyScore = 20.0;
+        const specialNotes = String(item.special_notes || "").toLowerCase();
+        if (['선순위', '대항력', '임차'].some(k => specialNotes.includes(k))) {
+            safetyScore -= 8.0;
+        }
+        if (['유치권', '지상권'].some(k => specialNotes.includes(k))) {
+            safetyScore -= 7.0;
+        }
+        if (specialNotes.includes('위반')) {
+            safetyScore -= 5.0;
+        }
+        const propType = String(item.property_type || "");
+        if (['공장', '창고', '상가', '오피스', '근린'].some(k => propType.includes(k))) {
+            safetyScore -= 3.0;
+        }
+        item.yieldScore = Math.round(yieldScore);
+        item.valueUpScore = Math.round(valueUpScore);
+        item.safetyScore = Math.max(0, Math.round(safetyScore));
+        return Math.round(yieldScore + valueUpScore + safetyScore);
+    }
+    // Star rendering helper based on Score
+    function renderStars(score) {
+        const maxStars = 5;
+        let rating = 1;
+        if (score >= 80) rating = 5;
+        else if (score >= 70) rating = 4;
+        else if (score >= 60) rating = 3;
+        else if (score >= 50) rating = 2;
+        else rating = 1;
+        let html = '';
+        for (let i = 1; i <= maxStars; i++) {
+            if (i <= rating) {
+                html += '<i class="fa-solid fa-star" style="color: #fbbf24; margin-right: 2px;"></i>';
+            } else {
+                html += '<i class="fa-regular fa-star" style="color: rgba(0,0,0,0.15); margin-right: 2px;"></i>';
+            }
+        }
+        return html;
+    }
+    function openCaseInDashboard(caseNo) {
+        const targetUrl = `/?case=${encodeURIComponent(caseNo)}`;
+        if (window.opener && !window.opener.closed) {
+            try {
+                window.opener.location.href = targetUrl;
+                window.opener.focus();
+                return;
+            } catch (e) {
+                console.warn("Cross-origin opener or other error:", e);
+            }
+        }
+        window.open(targetUrl, '_blank');
+    }
+    const rawData = localStorage.getItem('highlighted_auctions');
+    console.log("Highlighter rawData:", rawData);
+    let auctions = [];
+    try { if (rawData) auctions = JSON.parse(rawData); } catch (e) { console.error(e); }
+    console.log("Highlighter auctions parsed:", auctions);
+    if (auctions.length > 0) {
+        // Calculate recommendation score for each item
+        auctions.forEach(item => {
+            item.score = calculateRecommendationScore(item);
+        });
+        // Sort by score DESC
+        auctions.sort((a, b) => b.score - a.score);
+        // 비동기 배후수요 데이터 로더
+        async function loadDemographicsForCard(item, index) {
+            if (!item.lat || !item.lng) {
+                console.warn(`Item ${item.case_no} has no lat/lng coordinates`);
+                return;
+            }
+            try {
+                let url = `/api/map/demographics?lat=${item.lat}&lng=${item.lng}`;
+                if (item.case_no) url += `&case_no=${encodeURIComponent(item.case_no)}`;
+                if (item.address) url += `&address=${encodeURIComponent(item.address)}`;
+                if (item.property_type) url += `&property_type=${encodeURIComponent(item.property_type)}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('API failed');
+                const json = await res.json();
+                if (json.status !== 'success') return;
+                const container = document.getElementById(`demo-container-${index}`);
+                if (!container) return;
+                container.style.display = 'block';
+                const demo = json.demographics;
+                const sub = json.subway_proximity;
+                const popEl = document.getElementById(`demo-pop-${index}`);
+                if (popEl) popEl.innerText = `${Number(demo.residential_population).toLocaleString()}명 (${Number(demo.households).toLocaleString()}세대)`;
+                const workEl = document.getElementById(`demo-work-${index}`);
+                if (workEl) workEl.innerText = `${Number(demo.workplace_population).toLocaleString()}명 (${Number(demo.companies).toLocaleString()}개)`;
+                const subwayEl = document.getElementById(`demo-subway-${index}`);
+                if (subwayEl) {
+                    let subwayText = `대중교통: <span style="font-weight:700; color:var(--text-highlight);">${sub.grade}</span>`;
+                    if (sub.all_stations_in_1km && sub.all_stations_in_1km.length > 0) {
+                        const closest = sub.all_stations_in_1km[0];
+                        subwayText += ` (${closest.name}역 ${closest.distance}m)`;
+                    }
+                    subwayEl.innerHTML = subwayText;
+                }
+                const scoreBreakdownEl = document.getElementById(`demo-age-dist-${index}`);
+                if (scoreBreakdownEl) {
+                    scoreBreakdownEl.innerHTML = `
+                        <div style="font-weight: 600; color: var(--text-highlight); margin-bottom: 4px;">AI선정지수 세부항목</div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <span>수익성 (50점 만점)</span>
+                                <span style="font-weight: bold; color: #fff;">${item.yieldScore || 0}점</span>
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <span>가치상승 (30점 만점)</span>
+                                <span style="font-weight: bold; color: #fff;">${item.valueUpScore || 0}점</span>
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <span>안전성 (20점 만점)</span>
+                                <span style="font-weight: bold; color: #fff;">${item.safetyScore || 0}점</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error("Failed to load demographics for card:", e);
+            }
+        }
+        // Core rendering function
+        function renderBestCardsAndTable(itemsList) {
+            document.getElementById('stat-total').innerText = itemsList.length;
+            const maxOverlap = Math.max(...itemsList.map(a => a.overlap_count || 0), 0);
+            document.getElementById('stat-max-overlap').innerText = maxOverlap;
+            const uniqueAddresses = new Set();
+            const best3 = [];
+            for (const item of itemsList) {
+                const addr = (item.address || '').trim();
+                if (!uniqueAddresses.has(addr)) {
+                    uniqueAddresses.add(addr);
+                    best3.push(item);
+                    if (best3.length >= 3) break;
+                }
+            }
+            document.getElementById('stat-best').innerText = best3.length;
+            const bestContainer = document.getElementById('best-cards-container');
+            bestContainer.innerHTML = '';
+            best3.forEach((item, index) => { try {
+                const appraisalPrice = item.appraisal_price || item.appraised_value || 0;
+                const minBidPrice = item.min_price || item.minimum_value || 0;
+                const minBidRate = appraisalPrice > 0 ? (minBidPrice / appraisalPrice * 100) : 0;
+                const takeover = calculateEstimatedTakeover(item);
+                const yieldRate = calculateYieldRate(item);
+                const matchedLayers = item.matched_layers || [];
+                const matchedLayersStr = matchedLayers.join(', ');
+                // 1. Differentiated Value/Development analysis
+                let valueAnalysis = "";
+                const subwayDist = item.subway_dist !== undefined ? Math.round(item.subway_dist) : null;
+                const subwayStr = (subwayDist !== null && subwayDist !== 0) ? `지하철역과의 거리가 약 ${subwayDist}m로 매우 인접한 역세권 수혜를 받으며` : "대중교통 접근성이 우수하고 양호한 보행권 내에 위치하며";
+                let devDetails = [];
+                if (matchedLayers.some(l => l.includes('재개발') || l.includes('재건축') || l.includes('정비'))) {
+                    devDetails.push("정비사업지구 추진 호재와 직결되어 인근 노후 지역의 정비 및 현대화에 따른 프리미엄 지가 상승 여력이 대단히 강력합니다.");
+                }
+                if (matchedLayers.some(l => l.includes('택지'))) {
+                    devDetails.push("택지개발지구에 정밀 연접하여 대규모 공공 주거지 조성에 따른 도로 확장, 신축 배후 단지 등 신흥 주거 벨트 형성의 가치 상승 혜택을 선점합니다.");
+                }
+                if (matchedLayers.some(l => l.includes('개발행위') || l.includes('제한지역'))) {
+                    devDetails.push("개발행위허가제한지역 내에 위치하여 향후 본격적인 개발 계획의 수립 및 구역 지정에 따른 프리미엄 지가 상승 여력이 강력하게 존재합니다.");
+                }
+                if (matchedLayers.some(l => l.includes('도로') || l.includes('노선') || l.includes('계획선'))) {
+                    devDetails.push("도시계획도로 신설 및 진입로 연결 호재선에 걸쳐 차량 및 보행자 접근성이 획기적으로 향상되는 지가 상승 트리거를 갖춰습니다.");
+                }
+                
+                if (devDetails.length > 0) {
+                    valueAnalysis = `본 물건은 <strong>${matchedLayersStr}</strong> 권역 내에 위치하고 있습니다. ${subwayStr}, ${devDetails.join(' ')}`;
+                } else {
+                    valueAnalysis = `본 물건은 ${subwayStr}, 기본 배후 임대수요 및 정주 생활권 인프라가 견고하게 유지되는 지점입니다. 하방 경직성이 강력하여 시세 하락 리스크가 매우 낮고 중장기 지가 안정이 확실시됩니다.`;
+                }
+                // 1.5. Profitability Analysis
+                let profitAnalysis = "";
+                if (yieldRate >= 10) {
+                    profitAnalysis = `감정가 대비 <strong>${(100 - minBidRate).toFixed(1)}% 할인</strong>된 가격(${formatPrice(minBidPrice)})으로 접근 가능하여, 보수적 산정 시에도 <strong>${yieldRate.toFixed(1)}%의 우수한 예상 마진율</strong>이 기대됩니다. 가격 방어력이 높아 수익성 확보가 매우 용이합니다.`;
+                } else if (yieldRate >= 0) {
+                    profitAnalysis = `현재 최저가는 감정가 대비 <strong>${(100 - minBidRate).toFixed(1)}% 할인</strong>되어 있으며, 예상 마진율은 <strong>${yieldRate.toFixed(1)}%</strong> 수준입니다. 단기 차익보다는 실거주 및 중장기적 가치 투자 관점에서의 접근을 권장합니다.`;
+                } else {
+                    profitAnalysis = `현재 최저가는 감정가 대비 <strong>${(100 - minBidRate).toFixed(1)}% 할인</strong>되어 있으나, 인수 금액 등 추가 비용 부담으로 실질 마진율이 <strong>${yieldRate.toFixed(1)}%</strong>로 산출됩니다. 유찰을 더 기다리거나 매우 보수적인 투찰가 산정이 필수적입니다.`;
+                }
+
+                // 2. Differentiated Claims/Takeover Risk analysis (선순위 인수금액 정밀 분석)
+                let claimsAnalysis = "";
+                const notes = (item.special_notes || "").toLowerCase();
+                if (notes.includes('선순위임차') || notes.includes('대항력') || notes.includes('임차')) {
+                    claimsAnalysis = `<strong>[주의: 선순위 임차 리스크]</strong> 특별권리사항에 대항력 있는 선순위 임차인이 포착되었습니다. 대항력 보증금 중 미배당금은 낙찰자가 전액 부담해야 하므로, 보증금 액수 및 확정일자/배당요구를 면밀히 확인해야 하며 최종 인수예상금액의 차감이 필수적입니다.`;
+                } else if (notes.includes('유치권')) {
+                    claimsAnalysis = `<strong>[주의: 유치권 접수 필지]</strong> 유치권 신고서가 제출되어 실질 점유 유무 및 피담보채권 성립 여부에 따른 사후 인도명령 거부, 소송 해결 비용 등의 추가 비용 리스크 인수가 발생할 우려가 높은 특수 물건입니다.`;
+                } else if (notes.includes('지상권')) {
+                    claimsAnalysis = `<strong>[주의: 법정지상권 우려]</strong> 건물 단독 매각 또는 제시외 건물 등으로 인해 토지 임료(지료) 징수 분쟁이나 토지 인도 소송 등의 사후 출구 전략 비용 인수 부담이 우려되는 필지입니다.`;
+                } else if (notes.includes('위반')) {
+                    claimsAnalysis = `<strong>[행정처분: 위반건축물]</strong> 건축물대장상 위반 명세에 따른 연간 이행강제금 납부의 승계 또는 위반부위 원상복구 공사비 인수가 수반되므로, 해당 감안액을 투찰 마진에서 차감 설계해야 합니다.`;
+                } else {
+                    claimsAnalysis = `<strong>[인수 리스크 없음: 깨끗한 권리]</strong> 특별권리사항에 선순위 임차인, 유치권, 전세권 등 낙찰 이외에 매수인이 추가로 변제하거나 안아야 할 선순위 인수금액 부담이 일체 존재하지 않는 안전한 물건입니다. 추가 인수금액은 <strong>0원</strong>입니다.`;
+                }
+                // 3. Differentiated Uncertainty analysis
+                let uncertaintyAnalysis = "";
+                if (notes.includes('유치권') || notes.includes('지상권') || notes.includes('임차')) {
+                    uncertaintyAnalysis = `특수 권리 및 점유 상황에 따른 권리 관계의 복잡성으로 인해 통상적인 인도 절차보다 명도 난이도가 높으며, 인도명령 집행 또는 합의에 최소 3~6개월의 시일이 예상되므로 적정 금융비용을 입찰가에 미리 선반영해야 합니다.`;
+                } else {
+                    uncertaintyAnalysis = `잔금 납부와 동시에 등기부본상 하자가 일체 말소되는 완전 소멸주의 물건입니다. 점유자는 대항력 없는 인도명령 대상자로만 구성되어 통상적인 이사 조율이나 신속한 인도결정을 통해 최단기 명도 완료가 보장됩니다.`;
+                }
+                const card = document.createElement('div');
+                card.className = 'best-card';
+                card.style.cursor = 'pointer';
+                card.onclick = () => openCaseInDashboard(item.case_no);
+
+                card.innerHTML = `
+                    <div>
+                        <span class="rank-badge rank-${index + 1}">
+                            <i class="fa-solid fa-crown"></i> BEST ${index + 1}
+                        </span>
+                        <div class="card-header" style="margin-top: 10px;">
+                            <div class="case-number">${item.case_no}</div>
+                            <span class="property-type-badge">${formatPropertyType(item.property_type)}</span>
+                            <div class="address" title="${item.address}">${item.address}</div>
+                        </div>
+                        <div class="price-section">
+                            <div class="price-row">
+                                <span class="price-lbl">감정가</span>
+                                <span class="price-val">${formatPrice(appraisalPrice)}</span>
+                            </div>
+                            <div class="price-row">
+                                <span class="price-lbl">최저가</span>
+                                <span class="price-val min-price">${formatPrice(minBidPrice)} (최저가율: ${minBidRate.toFixed(1)}%)</span>
+                            </div>
+                            <div class="price-row" style="margin-top: 4px; border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 4px;">
+                                <span class="price-lbl">예상 인수금액</span>
+                                <span class="price-val" style="color: var(--text-highlight); font-weight: 600;">${formatPrice(takeover)}</span>
+                            </div>
+                            <div class="price-row">
+                                <span class="price-lbl">인수감안 수익률</span>
+                                <span class="price-val" style="color: ${yieldRate >= 0 ? '#10b981' : '#f43f5e'}; font-weight: 800; font-size: 0.9rem;">${yieldRate >= 0 ? '+' : ''}${yieldRate.toFixed(1)}%</span>
+                            </div>
+                            ${item.min_price_per_pyeong ? `
+                            <div class="price-row" style="margin-top: 4px; font-size: 0.72rem; color: var(--text-muted);">
+                                <span>평당 최저가</span>
+                                <span>${Math.floor(item.min_price_per_pyeong / 10000).toLocaleString()}만원/평</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        <div class="overlap-indicator">
+                            <div class="overlap-count-circle">${item.score}점</div>
+                            <div class="overlap-text">
+                                <div>추천 지수: <strong>${item.score}점</strong> (중첩 ${item.overlap_count}개)</div>
+                                <div style="font-size: 0.68rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+                                    등급: ${renderStars(item.score)}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="matched-badges">
+                            ${(item.matched_layers || []).map(layer => `<span class="matched-badge">${layer}</span>`).join('')}
+                        </div>
+                        <!-- Demographics Panel (Dynamic) -->
+                        <div class="demographics-container" id="demo-container-${index}" style="margin-top: 15px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.15); display: none;">
+                            <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-highlight); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-chart-pie"></i> 입지 배후수요 및 인구 분석
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                                <div style="background: rgba(0,0,0,0.25); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                                    <div style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 2px;">거주인구 (세대수)</div>
+                                    <div style="font-size: 0.8rem; font-weight: bold; color: #fff;" id="demo-pop-${index}">-명 (-세대)</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.25); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                                    <div style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 2px;">직장인구 (업체수)</div>
+                                    <div style="font-size: 0.8rem; font-weight: bold; color: #fff;" id="demo-work-${index}">-명 (-개)</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 8px;" id="demo-subway-${index}">
+                                대중교통: -
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 3px; font-size: 0.7rem; background: rgba(0,0,0,0.15); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03);" id="demo-age-dist-${index}">
+                                <!-- Age distribution bars -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="analysis-section">
+                        <div class="analysis-item">
+                            <div class="analysis-title" style="color: #ec4899; font-weight: bold;">
+                                <i class="fa-solid fa-coins"></i> 1. 수익성 분석 (Profitability)
+                            </div>
+                            <div class="analysis-desc">${profitAnalysis}</div>
+                        </div>
+                        <div class="analysis-item">
+                            <div class="analysis-title" style="color: #3b82f6; font-weight: bold;">
+                                <i class="fa-solid fa-arrow-up-right-dots"></i> 2. 성장성 분석 (Growth Potential)
+                            </div>
+                            <div class="analysis-desc">${valueAnalysis}</div>
+                        </div>
+                        <div class="analysis-item">
+                            <div class="analysis-title" style="color: #10b981; font-weight: bold;">
+                                <i class="fa-solid fa-shield-halved"></i> 3. 안전성 분석 (Safety)
+                            </div>
+                            <div class="analysis-desc">${claimsAnalysis}<br><br>${uncertaintyAnalysis}</div>
+                        </div>
+                    </div>
+                `;
+                bestContainer.appendChild(card);
+                // 비동기로 배후수요 로드 실행
+                loadDemographicsForCard(item, index);
+} catch(err) { bestContainer.innerHTML += `<div style='color:red'>${err.message}</div>`; console.error(err); }
+            });
+            // Render entire table
+            const tableBody = document.getElementById('table-body');
+            tableBody.innerHTML = '';
+            itemsList.forEach(item => { try {
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                tr.onclick = () => openCaseInDashboard(item.case_no);
+                const appraisalPrice = item.appraisal_price || item.appraised_value || 0;
+                const minBidPrice = item.min_price || item.minimum_value || 0;
+                const minBidRate = appraisalPrice > 0 ? (minBidPrice / appraisalPrice * 100) : 0;
+                const yieldRate = calculateYieldRate(item);
+                const matchedLayersList = item.matched_layers || [];
+                tr.innerHTML = `
+                    <td class="case-cell">${item.case_no}</td>
+                    <td><span class="property-type-badge" style="margin-bottom:0;">${formatPropertyType(item.property_type)}</span></td>
+                    <td style="font-size: 0.78rem; font-weight: 500;" title="${item.address}">${truncateAddressToDong(item.address)}</td>
+                    <td class="badges-cell">
+                        <div style="display:flex; flex-wrap:wrap; gap:3px;">
+                            ${matchedLayersList.map(layer => `<span class="matched-badge" style="font-size:0.65rem; padding: 1px 4px; border-radius:4px;">${layer}</span>`).join('')}
+                        </div>
+                    </td>
+                    <td style="text-align: center; font-weight: 800; font-family:'Outfit',sans-serif; color:var(--text-highlight); font-size: 0.95rem;">${item.overlap_count}개</td>
+                    <td style="text-align: center; font-size: 0.8rem;">
+                        ${renderStars(item.score)}
+                        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">${item.score}점</div>
+                    </td>
+                    <td style="text-align: center; font-family:'Outfit',sans-serif; font-size: 0.82rem; font-weight: 500; color: #cbd5e1;">${item.sale_date || '-'}</td>
+                    <td style="text-align: center; font-family:'Outfit',sans-serif; font-size: 0.82rem; font-weight: 600; color: var(--text-main);">${minBidRate.toFixed(1)}%</td>
+                    <td style="text-align: center; font-family:'Outfit',sans-serif; font-size: 0.82rem; font-weight: 800; color: ${yieldRate >= 0 ? '#10b981' : '#f43f5e'};">${yieldRate >= 0 ? '+' : ''}${yieldRate.toFixed(1)}%</td>
+                    <td class="price-cell">${formatPrice(appraisalPrice)}</td>
+                    <td class="price-cell min">${formatPrice(minBidPrice)}</td>
+                `;
+                tableBody.appendChild(tr);
+} catch(err) { tableBody.innerHTML += `<tr><td colspan='10' style='color:red'>${err.message}</td></tr>`; console.error(err); }
+            });
+        }
+        // Run initial render with localStorage local data
+        renderBestCardsAndTable(auctions);
+        // Build payload data for backend
+        const caseNos = auctions.map(a => a.case_no);
+        const scores = {};
+        const overlapCounts = {};
+        const matchedLayers = {};
+        auctions.forEach(item => {
+            scores[item.case_no] = item.score;
+            overlapCounts[item.case_no] = item.overlap_count;
+            matchedLayers[item.case_no] = item.matched_layers;
+        });
+    } else {
+        // No data
+        document.getElementById('auctions-table').style.display = 'none';
+        document.getElementById('no-data-msg').style.display = 'block';
+        // Reset stats to 0
+        document.getElementById('stat-total').innerText = '0';
+        document.getElementById('stat-max-overlap').innerText = '0';
+        document.getElementById('stat-best').innerText = '0';
+    }
+</script>
+</body>
+</html>

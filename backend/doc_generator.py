@@ -141,11 +141,12 @@ def generate_analysis_doc(data, output_dir=DEFAULT_DOWNLOADS_DIR):
         
         # 투자 판정 배지 추출
         decision = "분석 불가"
-        badge_match = re.search(r'투자\s*(?:판정|여부|판단)\s*[:\-]?\s*\[?\s*(GO|Neutral|Danger|Stop)', sec10, re.IGNORECASE)
+        badge_match = re.search(r'투자\s*(?:판정|여부|판단)\s*[:\-]?\s*\[?\s*([^\]\n\r]+)\]?', sec10, re.IGNORECASE)
         if badge_match:
-            decision = badge_match.group(1).upper()
-            if decision == 'NEUTRAL': decision = 'Neutral'
-            elif decision == 'DANGER': decision = 'Danger'
+            decision = badge_match.group(1).strip()
+            if decision.upper() == 'NEUTRAL': decision = 'Neutral'
+            elif decision.upper() == 'DANGER': decision = 'Danger'
+            elif decision.upper() == 'GO': decision = 'GO'
             
         # 1. 핵심요점 & 배지
         doc.add_heading('핵심요점', level=1)
@@ -154,9 +155,9 @@ def generate_analysis_doc(data, output_dir=DEFAULT_DOWNLOADS_DIR):
         run_badge = p_badge.add_run(decision)
         run_badge.bold = True
         run_badge.font.size = Pt(14)
-        if decision == 'GO':
+        if decision == 'GO' or '낙찰' in decision:
             run_badge.font.color.rgb = RGBColor(46, 160, 67) # Green
-        elif decision == 'Neutral':
+        elif decision == 'Neutral' or '변경' in decision or '대기' in decision:
             run_badge.font.color.rgb = RGBColor(210, 153, 34) # Yellow/Orange
         else:
             run_badge.font.color.rgb = RGBColor(248, 81, 73) # Red
@@ -431,11 +432,12 @@ def generate_analysis_doc_from_markdown(case_number, markdown_text, output_dir=D
         
         # 투자 판정 배지 추출
         decision = "분석 불가"
-        badge_match = re.search(r'투자\s*(?:판정|여부|판단)\s*[:\-]?\s*\[?\s*(GO|Neutral|Danger|Stop)', sec10, re.IGNORECASE)
+        badge_match = re.search(r'투자\s*(?:판정|여부|판단)\s*[:\-]?\s*\[?\s*([^\]\n\r]+)\]?', sec10, re.IGNORECASE)
         if badge_match:
-            decision = badge_match.group(1).upper()
-            if decision == 'NEUTRAL': decision = 'Neutral'
-            elif decision == 'DANGER': decision = 'Danger'
+            decision = badge_match.group(1).strip()
+            if decision.upper() == 'NEUTRAL': decision = 'Neutral'
+            elif decision.upper() == 'DANGER': decision = 'Danger'
+            elif decision.upper() == 'GO': decision = 'GO'
             
         # 1. 핵심요점 & 배지
         doc.add_heading('핵심요점', level=1)
@@ -444,9 +446,9 @@ def generate_analysis_doc_from_markdown(case_number, markdown_text, output_dir=D
         run_badge = p_badge.add_run(decision)
         run_badge.bold = True
         run_badge.font.size = Pt(14)
-        if decision == 'GO':
+        if decision == 'GO' or '낙찰' in decision:
             run_badge.font.color.rgb = RGBColor(46, 160, 67) # Green
-        elif decision == 'Neutral':
+        elif decision == 'Neutral' or '변경' in decision or '대기' in decision:
             run_badge.font.color.rgb = RGBColor(210, 153, 34) # Yellow/Orange
         else:
             run_badge.font.color.rgb = RGBColor(248, 81, 73) # Red

@@ -1,0 +1,91 @@
+Created At: 2026-06-06T00:16:34Z
+Completed At: 2026-06-06T00:16:34Z
+File Path: `file:///c:/Users/llll/Documents/%EB%91%90%EC%9D%B8%EA%B2%BD%EB%A7%A4/%EB%B0%94%EC%9D%B4%EB%B8%8C%EC%BD%94%EB%94%A9/public/analysis.html`
+Total Lines: 838
+Total Bytes: 31783
+Showing lines 39 to 838
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+39: 
+40:         body {
+41:             font-family: 'Outfit', 'Inter', 'Noto Sans KR', sans-serif;
+42:             background: radial-gradient(circle at 50% 0%, #17153b 0%, var(--bg-dark) 80%);
+43:             color: var(--text-main);
+44:             min-height: 100vh;
+45:             padding: 15px;
+46:             line-height: 1.5;
+47:             font-size: 0.85rem;
+48:             overflow-x: hidden;
+49:         }
+50: 
+51:         .container {
+52:             max-width: 1200px;
+53:             margin: 0 auto;
+54:         }
+55: 
+56:         /* Header Style */
+57:         header {
+58:             text-align: center;
+59:             margin-bottom: 15px;
+60:             position: relative;
+61:         }
+62: 
+63:         header h1 {
+64:             font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+65:             font-size: 1.8rem;
+66:             font-weight: 800;
+67:             background: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #ec4899 100%);
+68:             -webkit-background-clip: text;
+69:             -webkit-text-fill-color: transparent;
+70:             margin-bottom: 2px;
+71:             letter-spacing: -0.5px;
+72:         }
+73: 
+74:         header p {
+75:             color: var(--text-muted);
+76:             font-size: 0.8rem;
+77:             font-weight: 400;
+78:         }
+79: 
+80:         /* Stat Grid */
+81:         .stats-grid {
+82:             display: grid;
+83:             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+84:
+<truncated 30797 bytes>
+_no);
+804:         fetch('/api/map/overlap_analyze', {
+805:             method: 'POST',
+806:             headers: {
+807:                 'Content-Type': 'application/json'
+808:             },
+809:             body: JSON.stringify({ case_nos: caseNos })
+810:         })
+811:         .then(res => res.json())
+812:         .then(data => {
+813:             const reportContentEl = document.getElementById('ai-report-content');
+814:             if (data.status === 'success') {
+815:                 if (window.marked && typeof window.marked.parse === 'function') {
+816:                     reportContentEl.innerHTML = window.marked.parse(data.report);
+817:                 } else {
+818:                     reportContentEl.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; color: var(--text-main); font-size: 0.85rem;">${data.report}</pre>`;
+819:                 }
+820:             } else {
+821:                 reportContentEl.innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 호출 실패: ${data.message}</div>`;
+822:             }
+823:         })
+824:         .catch(err => {
+825:             console.error(err);
+826:             document.getElementById('ai-report-content').innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 요청 중 오류가 발생했습니다.</div>`;
+827:         });
+828: 
+829:     } else {
+830:         // No data
+831:         document.getElementById('auctions-table').style.display = 'none';
+832:         document.getElementById('no-data-msg').style.display = 'block';
+833:         document.getElementById('ai-report-content').innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">중첩 분석 데이터가 존재하지 않습니다.</div>`;
+834:     }
+835: </script>
+836: </body>
+837: </html>
+838: 
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

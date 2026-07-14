@@ -26,7 +26,6 @@ def get_latest_excel_path():
 
 EXCEL_PATH = get_latest_excel_path()
 
-
 def import_auctions():
     print("Connecting to DB...")
     conn = sqlite3.connect(DB_PATH)

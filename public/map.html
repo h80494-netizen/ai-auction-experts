@@ -16,6 +16,10 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <!-- Leaflet MarkerCluster -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
 
     <style>
@@ -64,10 +68,37 @@
             color: var(--text-dark);
         }
 
+        .realprice-tooltip-custom {
+            background: rgba(15, 23, 42, 0.95) !important;
+            border: 1px solid #334155 !important;
+            border-radius: 6px !important;
+            color: #ffffff !important;
+            padding: 8px 12px !important;
+            font-size: 0.85rem !important;
+            font-weight: 500 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1) !important;
+            border-left: 4px solid #3b82f6 !important;
+            pointer-events: none !important;
+        }
+        .realprice-tooltip-custom::before {
+            border-right-color: rgba(15, 23, 42, 0.95) !important;
+        }
+
+        .realprice-grid-label {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: #0f172a !important;
+            font-size: 0.72rem !important;
+            font-weight: 800 !important;
+            text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff !important;
+            pointer-events: none !important;
+        }
+
         body {
             margin: 0;
             padding: 0;
-            font-family: 'Noto Sans KR', sans-serif;
+            font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
             background-color: var(--bg-light);
             color: var(--text-dark);
             height: 100vh;
@@ -489,6 +520,38 @@
             font-size: 20px;
         }
 
+        /* Responsive Layout for Medium Screens (Desktop/Notebook) */
+        @media (max-width: 1450px) {
+            .top-bar {
+                padding: 0 10px !important;
+            }
+            .top-center {
+                margin: 0 10px !important;
+                gap: 8px !important;
+            }
+            #center-address-box {
+                min-width: 160px !important;
+                margin: 0 5px !important;
+                padding: 6px 8px !important;
+                font-size: 0.8rem !important;
+            }
+            .search-place-box {
+                width: 160px !important;
+                margin: 0 5px !important;
+                padding: 6px 8px !important;
+            }
+            .search-place-box input {
+                font-size: 0.8rem !important;
+            }
+            .top-brand {
+                font-size: 1.1rem !important;
+                gap: 5px !important;
+            }
+            .top-actions {
+                gap: 6px !important;
+            }
+        }
+
         /* Mobile Layout */
         @media (max-width: 768px) {
             body {
@@ -697,6 +760,15 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
 
+        .transparent-tooltip {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: inherit !important;
+            font-size: var(--apt-label-size, 0.8rem) !important;
+            transition: font-size 0.2s ease-out;
+        }
+
         .demand-stat-label {
             font-size: 0.7rem;
             color: var(--text-muted);
@@ -872,28 +944,28 @@
     <div id="road-flow-legend" style="display: none; position: absolute; top: 90px; right: 20px; z-index: 1000; background: white; padding: 12px 15px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); border: 1px solid var(--border-color); font-family: 'Noto Sans KR', sans-serif; min-width: 160px; pointer-events: auto; user-select: none;">
         <div id="road-flow-legend-header" style="font-weight: bold; font-size: 0.9rem; margin-bottom: 10px; color: #1e293b; text-align: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; cursor: move; display: flex; align-items: center; justify-content: center; gap: 6px;">
             <i class="fa-solid fa-grip-vertical" style="color: #94a3b8; font-size: 0.8rem;"></i>
-            <span>유동 강도 범례</span>
+            <span>유동 강도 범례 <span style="font-size:0.65rem; color:#64748b; font-weight:normal;">(해당 3시간 누적통행량)</span></span>
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; transition: opacity 0.2s;" id="legend-item-5">
                 <div style="width: 25px; height: 5px; background: #7f1d1d; border-radius: 2px;"></div>
-                <span style="font-weight: 500; color: #334155;">4,000명 이상</span>
+                <span style="font-weight: 500; color: #334155;">3,000명 이상</span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; transition: opacity 0.2s;" id="legend-item-4">
                 <div style="width: 25px; height: 4px; background: #ef4444; border-radius: 2px;"></div>
-                <span style="font-weight: 500; color: #334155;">3,000명 이상</span>
+                <span style="font-weight: 500; color: #334155;">2,000명 이상</span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; transition: opacity 0.2s;" id="legend-item-3">
                 <div style="width: 25px; height: 3px; background: #f97316; border-radius: 2px;"></div>
-                <span style="font-weight: 500; color: #334155;">2,000명 이상</span>
+                <span style="font-weight: 500; color: #334155;">1,000명 이상</span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; transition: opacity 0.2s;" id="legend-item-2">
                 <div style="width: 25px; height: 2px; background: #22c55e; border-radius: 2px;"></div>
-                <span style="font-weight: 500; color: #334155;">1,000명 이상</span>
+                <span style="font-weight: 500; color: #334155;">500명 이상</span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; transition: opacity 0.2s;" id="legend-item-1">
                 <div style="width: 25px; height: 1.5px; background: #a3e635; border-radius: 2px;"></div>
-                <span style="font-weight: 500; color: #334155;">1,000명 미만</span>
+                <span style="font-weight: 500; color: #334155;">500명 미만</span>
             </div>
         </div>
         <!-- Slidable Intensity Filter -->
@@ -905,10 +977,10 @@
             <input type="range" min="1" max="5" value="1" id="legend-flow-filter" oninput="filterRoadFlowsByLegend(this.value)" style="width: 100%; height: 6px; cursor: pointer; accent-color: var(--primary-blue);">
             <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); margin-top: 2px; font-family: monospace;">
                 <span>전체</span>
+                <span>500+</span>
                 <span>1천+</span>
                 <span>2천+</span>
                 <span>3천+</span>
-                <span>4천+</span>
             </div>
         </div>
     </div>
@@ -920,6 +992,9 @@
     <div class="top-bar">
         <div class="top-brand" style="cursor:pointer;" onclick="window.location.href='/'" title="메인 대시보드로 돌아가기">
             <i class="fa-solid fa-house"></i> 메인 대시보드
+        </div>
+        <div class="top-brand" style="cursor:pointer; margin-left: 10px; color: var(--neon-purple);" onclick="window.open('/issues.html', '_blank')" title="전국 이슈 스캐너 보기">
+            <i class="fa-solid fa-newspaper"></i> 이슈보기
         </div>
 
         <div class="top-center">
@@ -963,16 +1038,34 @@
             </div>
             
             <div class="icon-btn" id="btn-highlighter" title="형광펜 켜기/끄기 (필터와 중첩된 물건 강조)" style="color: #94a3b8;"><i class="fa-solid fa-highlighter"></i></div>
+            
             <div class="icon-btn" title="경공매 필터 설정" onclick="toggleRightPanel()"><i class="fa-solid fa-filter" style="color: var(--primary-blue);"></i></div>
         </div>
     </div>
 
 <!-- Left Panel: Layer List -->
     <div class="floating-panel" id="left-panel">
-        <div class="panel-header">
+        <div class="panel-header" id="left-panel-header" style="cursor: move;">
             <span><i class="fa-solid fa-layer-group"></i> 레이어 목록</span>
         </div>
         <div class="panel-content">
+        
+            <div class="layer-group-title" style="margin-top: 5px;">네이버 부동산 (서울 전용)</div>
+            <div class="toggle-row" style="flex-direction: column; align-items: stretch; gap: 5px; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="toggle-label"><i class="fa-solid fa-building-circle-check" style="color: #00c73c;"></i> 매물 포함 표시</div>
+                    <label class="switch"><input type="checkbox" id="toggle-naver" onchange="toggleNaverRealEstate()"><span class="slider"></span></label>
+                </div>
+                <div id="naver-type-selector" style="display: none; margin-top: 10px;">
+                    <select id="naver-type" onchange="fetchNaverRealEstate()" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
+                        <option value="아파트">아파트</option>
+                        <option value="오피스텔">오피스텔</option>
+                        <option value="다세대/빌라">다세대/빌라</option>
+                        <option value="단독주택">단독주택</option>
+                        <option value="상가">상가</option>
+                    </select>
+                </div>
+            </div>
 
             <div class="layer-group-title">기본 인프라</div>
             <div class="toggle-row"
@@ -1046,7 +1139,7 @@
                 </div>
                 <div
                     style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
-                    버퍼: <input type="number" id="buffer-middles" value="500"
+                    버퍼: <input type="number" id="buffer-middles" value="200"
                         style="width: 50px; padding: 2px; border: 1px solid var(--border-color); border-radius: 4px;"
                         onchange="fetchInfraData()"> m
                 </div>
@@ -1084,6 +1177,11 @@
                     <div class="toggle-label">
                         <div>
                             <i class="fa-solid fa-house-user" style="color: #ea580c;"></i> 격자형 주거인구 히트맵
+                            <select id="res-heatmap-percent" onchange="if(document.getElementById('toggle-residential-heatmap').checked) { fetchResidentialHeatmap(); } else { document.getElementById('toggle-residential-heatmap').click(); }" style="margin-left:5px; font-size:0.7rem; padding:2px; border:1px solid #ccc; border-radius:4px; outline:none;">
+                                <option value="10" selected>상위 10%</option>
+                                <option value="30">상위 30%</option>
+                            </select>
+                            <br>
                             <span class="toggle-desc" style="color: #c2410c;">지역별 격자 단위 거주 밀도 (노란/오렌지)</span>
                         </div>
                     </div>
@@ -1106,11 +1204,28 @@
                 </div>
             </div>
 
+            
+            <!-- 아파트 단지 정보 -->
+            <div class="toggle-row" style="background: #e0f2fe; padding: 10px; border-radius: 8px; margin-top: 5px;">
+                <div class="toggle-label">
+                    <div>
+                        <i class="fa-solid fa-building" style="color: #0284c7;"></i> 아파트 단지 정보
+                        <span class="toggle-desc" style="color: #0369a1;">주거인구 히트맵 기반 상세 단지 정보</span>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="toggle-apt-info" onchange="toggleAptInfo()"><span class="slider"></span></label>
+            </div>
+
             <div class="toggle-row" style="background: #f5f3ff; padding: 10px; border-radius: 8px; margin-top: 5px; flex-direction: column; align-items: stretch;">
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                     <div class="toggle-label">
                         <div>
                             <i class="fa-solid fa-briefcase" style="color: #6366f1;"></i> 격자형 직장인구 히트맵
+                            <select id="work-heatmap-percent" onchange="if(document.getElementById('toggle-workplace-heatmap').checked) { fetchWorkplaceHeatmap(); } else { document.getElementById('toggle-workplace-heatmap').click(); }" style="margin-left:5px; font-size:0.7rem; padding:2px; border:1px solid #ccc; border-radius:4px; outline:none;">
+                                <option value="10" selected>상위 10%</option>
+                                <option value="30">상위 30%</option>
+                            </select>
+                            <br>
                             <span class="toggle-desc" style="color: #4f46e5;">상업 및 업무지구 종사자 밀집도 (보라/네온)</span>
                         </div>
                     </div>
@@ -1164,12 +1279,12 @@
                         <!-- Time of Day selection -->
                         <div style="display: flex; gap: 12px; align-items: center;">
                             <span style="font-size: 0.72rem; font-weight: bold; color: var(--text-dark); min-width: 55px;">시간대:</span>
-                            <div style="display: flex; background: #f1f5f9; border-radius: 6px; padding: 2px; gap: 2px;">
-                                <label style="display: flex; align-items: center; justify-content: center; width: 50px; height: 24px; font-size: 0.75rem; cursor: pointer; border-radius: 4px; transition: all 0.2s;" class="road-flow-pill">
-                                    <input type="radio" name="road-flow-time" class="road-flow-filter-radio" value="day" checked onchange="updateRoadFlowFilters()" style="display: none;"> 낮
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                    <input type="radio" name="road-flow-time" class="road-flow-filter-radio" value="day" checked onchange="updateRoadFlowFilters()"> 낮 <span style="font-size:0.65rem; color:#94a3b8;">(11~14시)</span>
                                 </label>
-                                <label style="display: flex; align-items: center; justify-content: center; width: 50px; height: 24px; font-size: 0.75rem; cursor: pointer; border-radius: 4px; transition: all 0.2s;" class="road-flow-pill">
-                                    <input type="radio" name="road-flow-time" class="road-flow-filter-radio" value="night" onchange="updateRoadFlowFilters()" style="display: none;"> 밤
+                                <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                    <input type="radio" name="road-flow-time" class="road-flow-filter-radio" value="night" onchange="updateRoadFlowFilters()"> 밤 <span style="font-size:0.65rem; color:#94a3b8;">(18~21시)</span>
                                 </label>
                             </div>
                         </div>
@@ -1209,10 +1324,34 @@
                 </div>
             </div>
 
-            <!-- 지구단위계획구역 -->
-            <div class="toggle-row">
-                <div class="toggle-label"><i class="fa-solid fa-map" style="color: #10b981;"></i> 지구단위계획구역</div>
-                <label class="switch"><input type="checkbox" id="toggle-dev2"><span class="slider"></span></label>
+            
+
+            <!-- 규제완화지구 -->
+            <div class="toggle-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div class="toggle-label"><i class="fa-solid fa-map" style="color: #ec4899;"></i> 규제완화지구</div>
+                    <label class="switch"><input type="checkbox" id="toggle-dev4"><span class="slider"></span></label>
+                </div>
+                <div id="dev4-sub-container" style="display: none; padding-left: 20px; margin-top: 4px;">
+                    <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>세부 지구 선택 (중복 가능)</span>
+                        <span style="font-size: 0.7rem; color: var(--primary-blue); cursor: pointer; font-weight: 500;" onclick="toggleAllCheckboxes('dev4-type-check', true)">전체선택</span>
+                    </div>
+                    <div id="dev4-types-list" style="border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 10px; background: #fff; display: flex; flex-direction: column; gap: 6px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="dev4-type-check" value="개발행위허가제한지역"> 개발행위허가제한지역</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="dev4-type-check" value="개발진흥지구"> 개발진흥지구</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="dev4-type-check" value="복합용도지구"> 복합용도지구</label>
+                        <div style="display: flex; flex-direction: column;">
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="dev4-type-check" value="도시혁신구역"> 도시혁신구역</label>
+                            <div style="font-size: 0.7rem; color: #64748b; padding-left: 20px; line-height: 1.3; margin-top: 2px;">
+                                기존 입지규제최소구역에서 개편된 이 제도는 도시혁신구역, 복합용도구역, 도시·군계획시설 입체복합구역 등 세 가지 유형으로 나뉘어 각 지역 특성에 맞게 복합 개발됩니다. (주요 지점 반경 200m 표시)
+                            </div>
+                        </div>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="dev4-type-check" value="방재지구"> 방재지구</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="dev4-type-check" value="취락지구"> 취락지구</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="dev4-type-check" value="특별계획구역" checked> 특별계획구역</label>
+                    </div>
+                </div>
             </div>
 
             <!-- 단계별 재개발/재건축구역 -->
@@ -1230,6 +1369,7 @@
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="dev3-stage-check" value="초기" checked> 초기 단계 (조합설립 등)</label>
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="dev3-stage-check" value="중기" checked> 중기 단계 (사업시행 등)</label>
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="dev3-stage-check" value="후기" checked> 후기 단계 (관리처분 등)</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="dev3-stage-check" value="완료" checked> 완료 단계 (준공/해제 등)</label>
                     </div>
                 </div>
             </div>
@@ -1288,30 +1428,92 @@
                 </div>
             </div>
 
+            
+            <!-- 예정도로 (100m 버퍼) -->
+            <div class="toggle-row" style="flex-direction: column; align-items: stretch; gap: 8px; background: #fff5f5; padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px dashed rgba(239, 68, 68, 0.4);">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div class="toggle-label"><i class="fa-solid fa-road-circle-exclamation" style="color: #ef4444;"></i> 예정도로 (100m 버퍼)</div>
+                    <label class="switch"><input type="checkbox" id="toggle-planned-road-100m" onchange="togglePlannedRoads100m()"><span class="slider"></span></label>
+                </div>
+            </div>
+
+            <!-- 실거래 가격지표 레이어 -->
+            <div class="layer-group-title" style="margin-top: 15px;">실거래 가격지표</div>
+            <div class="toggle-row" style="flex-direction: column; align-items: stretch; gap: 8px; background: #eff6ff; padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(59, 130, 246, 0.2);">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div class="toggle-label" style="font-weight: 700; color: var(--primary-blue);">
+                        <i class="fa-solid fa-chart-line"></i> 실거래 격자 오버레이
+                    </div>
+                    <label class="switch"><input type="checkbox" id="toggle-realprice-grids"><span class="slider"></span></label>
+                </div>
+                <div id="realprice-sub-container" style="display: none; margin-top: 6px; flex-direction: column; gap: 8px;">
+                    <!-- 부동산 종류 선택 -->
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <span style="font-size: 0.72rem; font-weight: bold; color: var(--text-dark);">부동산 종류</span>
+                        <select id="realprice-prop-type" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.8rem; outline: none; background: #fff;" onchange="updateRealpriceGrids()">
+                            <option value="아파트">아파트</option>
+                            <option value="다세대">연립다세대</option>
+                            <option value="오피스텔">오피스텔</option>
+                            <option value="단독">단독다가구</option>
+                            <option value="토지">토지</option>
+                            <option value="상업업무용">상업업무용</option>
+                            <option value="공장창고등">공장창고등</option>
+                            <option value="분양권">분양권</option>
+                        </select>
+                    </div>
+                    <!-- 지표 종류 선택 -->
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <span style="font-size: 0.72rem; font-weight: bold; color: var(--text-dark);">가격 지표 선택</span>
+                        <select id="realprice-indicator" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.8rem; outline: none; background: #fff;" onchange="updateRealpriceGrids()">
+                            <option value="avg_price_per_pyeong">평당 매매가 (중앙값)</option>
+                            <option value="avg_deposit_per_pyeong">평당 전세가 (중앙값)</option>
+                            <option value="jeonse_ratio">전세가율 (%)</option>
+                            <option value="transaction_count">거래량 (최근 1년)</option>
+                            <option value="main_pyeong_type">주거래평수대</option>
+                            <option value="age_premium_ratio">연식 프리미엄 격차</option>
+                            <option value="floor_sensitivity">층별 가격 민감도</option>
+                        </select>
+                    </div>
+                    <!-- 격자 크기 선택 -->
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <span style="font-size: 0.72rem; font-weight: bold; color: var(--text-dark);">격자 크기 설정</span>
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <input type="number" id="realprice-grid-size" value="1000" min="100" max="5000" step="50" style="flex: 1; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.8rem; outline: none; background: #fff;" onchange="updateRealpriceGrids()">
+                            <span style="font-size: 0.8rem; color: var(--text-dark); font-weight: bold;">m</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
     <!-- Right Panel: Filters -->
     <div class="floating-panel" id="right-panel">
-        <div class="panel-header">
+        <div class="panel-header" id="right-panel-header" style="cursor: move;">
             <span><i class="fa-solid fa-filter"></i> 경공매 표시 설정</span>
             <i class="fa-solid fa-xmark" style="cursor: pointer; color: var(--text-muted);"
                 onclick="toggleRightPanel()"></i>
         </div>
         <div class="panel-content">
 
+            <div class="toggle-row" style="margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+                <div class="toggle-label" style="font-weight: 800;"><i class="fa-solid fa-road-barrier" style="color: #ef4444;"></i> 보상예정(장기미집행)</div>
+                <label class="switch"><input type="checkbox" id="toggle-unexecuted-auctions" onchange="loadAuctions()"><span class="slider"></span></label>
+            </div>
+
             <div class="layer-group-title">부동산 종류 다중 선택</div>
             <div class="checkbox-grid" id="property-type-grid">
-                <label class="checkbox-item"><input type="checkbox" value="토지"> 토지</label>
-                <label class="checkbox-item"><input type="checkbox" value="지산"> 지산</label>
-                <label class="checkbox-item"><input type="checkbox" value="집합"> 집합</label>
-                <label class="checkbox-item"><input type="checkbox" value="일반"> 일반</label>
+                <label class="checkbox-item"><input type="checkbox" value="아파트" checked> 아파트</label>
                 <label class="checkbox-item"><input type="checkbox" value="오피스텔"> 오피스텔</label>
                 <label class="checkbox-item"><input type="checkbox" value="다세대"> 다세대</label>
-                <label class="checkbox-item"><input type="checkbox" value="아파트" checked> 아파트</label>
                 <label class="checkbox-item"><input type="checkbox" value="단독"> 단독</label>
+                <label class="checkbox-item"><input type="checkbox" value="상가(집합)"> 상가(집합)</label>
+                <label class="checkbox-item"><input type="checkbox" value="상가(일반)"> 상가(일반)</label>
+                <label class="checkbox-item"><input type="checkbox" value="공장창고(집합)"> 공장창고(집합)</label>
+                <label class="checkbox-item"><input type="checkbox" value="공장창고(일반)"> 공장창고(일반)</label>
+                <label class="checkbox-item"><input type="checkbox" value="토지"> 토지</label>
                 <label class="checkbox-item"><input type="checkbox" value="기타"> 기타</label>
-                <label class="checkbox-item"><input type="checkbox" value="공장"> 공장</label>
             </div>
 
             <div class="layer-group-title" style="margin-top: 15px;">특수물건 다중 선택 (AND/OR 조건)</div>
@@ -1325,7 +1527,7 @@
                 <label class="checkbox-item"><input type="checkbox" value="별도등기"> 별도등기</label>
                 <label class="checkbox-item"><input type="checkbox" value="HUG"> HUG인수조건변경</label>
                 <label class="checkbox-item"><input type="checkbox" value="농지취득자격증명"> 농지취득자격증명</label>
-                <label class="checkbox-item"><input type="checkbox" value="기타"> 기타</label>
+                <label class="checkbox-item"><input type="checkbox" value="수의계약"> 수의계약</label>
             </div>
 
             <div class="layer-group-title" style="margin-top: 15px;">시가표준액(공시지가) 설정</div>
@@ -1362,8 +1564,9 @@
                     <input type="checkbox" id="req-elite-school"> 명문학군 포함 (주택 전체)
                 </label>
                 <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
+                    <input type="checkbox" id="use-min-households">
                     <span>세대수</span>
-                    <input type="number" id="min-households" placeholder="ex) 300"
+                    <input type="number" id="min-households" value="1000" placeholder="ex) 1000"
                         style="width: 80px; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px;">
                     <span style="color: var(--text-muted);">(아파트 전용)</span>
                 </div>
@@ -1402,9 +1605,108 @@
     </div>
 
         <!-- Leaflet JS -->
-    <script>
+        <script>
+        // Property type display formatter helper
+        function formatPropertyType(type) {
+            if (type === '집합') return '상가(집합)';
+            if (type === '일반') return '상가(일반)';
+            if (type === '지산') return '공장창고(집합)';
+            if (type === '공장') return '공장창고(일반)';
+            return type;
+        }
+
         // 1. Initialize Standard Light Map (Kakao Map Style)
         const map = L.map('map', { zoomControl: false, preferCanvas: true }).setView([37.4979, 127.0276], 13);
+
+        // Update apt label size on zoom
+        // --- Custom APT Hit Detection using Turf.js ---
+        let aptHoverTooltip = null;
+        let lastHoveredApt = null;
+
+        function checkAptHit(latlng) {
+            if (!aptGeoDataCache || !aptGeoDataCache.features) return null;
+            const pt = turf.point([latlng.lng, latlng.lat]);
+            const useMinHouseholds = document.getElementById('use-min-households') ? document.getElementById('use-min-households').checked : false;
+            const minH = useMinHouseholds ? (parseInt(document.getElementById('min-households').value, 10) || 500) : 0;
+            for (let feature of aptGeoDataCache.features) {
+                if ((feature.properties.households || 0) < minH) continue;
+                try {
+                    if (feature.geometry && (feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon')) {
+                        if (turf.booleanPointInPolygon(pt, feature)) {
+                            return feature;
+                        }
+                    }
+                } catch(e) {}
+            }
+            return null;
+        }
+
+        map.on('mousemove', function(e) {
+            const toggleEl = document.getElementById('toggle-apt-info');
+            if (!toggleEl || !toggleEl.checked) {
+                if (aptHoverTooltip && map.hasLayer(aptHoverTooltip)) {
+                    map.removeLayer(aptHoverTooltip);
+                    lastHoveredApt = null;
+                }
+                return;
+            }
+            
+            const hitFeature = checkAptHit(e.latlng);
+            if (hitFeature) {
+                const props = hitFeature.properties;
+                if (lastHoveredApt !== props.name) {
+                    lastHoveredApt = props.name;
+                    if (!aptHoverTooltip) {
+                        aptHoverTooltip = L.tooltip({ direction: 'top', sticky: false, opacity: 1.0 });
+                    }
+                    const content = `<div style="text-align:center; line-height:1.2; padding:5px; background:white; border:1px solid #ccc; border-radius:5px; pointer-events:none;">
+                        <span style="font-weight:bold; color:#0369a1; font-size:14px;">${props.name}</span><br>
+                        <span style="font-size:12px; font-weight:bold; color:#ef4444;">${props.households}세대 / 주차 ${props.parking_ratio}</span>
+                    </div>`;
+                    aptHoverTooltip.setContent(content);
+                    aptHoverTooltip.setLatLng(e.latlng).addTo(map);
+                } else if (aptHoverTooltip) {
+                    aptHoverTooltip.setLatLng(e.latlng);
+                }
+            } else {
+                if (aptHoverTooltip && map.hasLayer(aptHoverTooltip)) {
+                    map.removeLayer(aptHoverTooltip);
+                }
+                lastHoveredApt = null;
+            }
+        });
+
+        map.on('click', function(e) {
+            const toggleEl = document.getElementById('toggle-apt-info');
+            if (!toggleEl || !toggleEl.checked) return;
+            
+            const hitFeature = checkAptHit(e.latlng);
+            if (hitFeature) {
+                const props = hitFeature.properties;
+                let popupContent = `<div style="font-family:'Noto Sans KR'; min-width:180px;">`;
+                popupContent += `<h4 style="margin:0 0 5px 0; color:#0284c7; font-size:15px;">${props.name}</h4>`;
+                popupContent += `<p style="margin:0 0 5px 0; font-size:12px; color:#64748b;">${props.address || ''}</p>`;
+                popupContent += `<hr style="margin:5px 0; border-top:1px solid #e2e8f0;">`;
+                popupContent += `<div style="font-size:13px; font-weight:bold;">세대수: ${props.households} (<span style="color:#ef4444;">${props.parking_ratio}</span>)</div>`;
+                popupContent += `<div style="font-size:13px;">건축년도: ${props.build_year}년</div>`;
+                popupContent += `</div>`;
+                
+                L.popup().setLatLng(e.latlng).setContent(popupContent).openOn(map);
+            }
+        });
+
+        // Update apt label size on zoom
+        map.on('zoomend', function() {
+            const z = map.getZoom();
+            // Base size at zoom 13 is 0.8rem. It grows proportionally.
+            // Using a moderate growth factor (e.g. 1.25 per zoom level)
+            const baseSize = 0.8;
+            const factor = Math.pow(1.25, z - 13);
+            let newSize = baseSize * factor;
+            if (newSize > 3) newSize = 3; // cap maximum size
+            if (newSize < 0.4) newSize = 0.4; // cap minimum size
+            document.documentElement.style.setProperty('--apt-label-size', newSize + 'rem');
+        });
         L.control.zoom({ position: 'bottomright' }).addTo(map);
         
         // Define min zoom required for loading demographic grids and other features
@@ -1434,14 +1736,33 @@
                 document.addEventListener('touchend', onMouseUp);
             };
 
+            var currentX = 0;
+            var currentY = 0;
+            // Get initial transform if any
+            if(popupWrapper.style.transform && popupWrapper.style.transform.includes('translate(')) {
+                var match = popupWrapper.style.transform.match(/translate\(([^p]+)px,\s*([^p]+)px\)/);
+                if(match) {
+                    currentX = parseFloat(match[1]);
+                    currentY = parseFloat(match[2]);
+                }
+            }
+            
             var onMouseMove = function(event) {
                 if(event.type.startsWith('touch') && event.cancelable) event.preventDefault();
                 var evt = event.type.startsWith('touch') ? event.touches[0] : event;
                 var dx = evt.clientX - pos.x;
                 var dy = evt.clientY - pos.y;
                 
-                popupWrapper.style.marginLeft = (dragStartPos.left + dx) + 'px';
-                popupWrapper.style.marginTop = (dragStartPos.top + dy) + 'px';
+                currentX += dx;
+                currentY += dy;
+                pos.x = evt.clientX;
+                pos.y = evt.clientY;
+                
+                // Add translate on top of any existing leaflet 3d transform or override it
+                // Leaflet uses translate3d on the popup wrapper. We will just add our own offset.
+                popupWrapper.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+                // We should also ensure margin isn't restricting movement
+                popupWrapper.style.margin = '0';
             };
 
             var onMouseUp = function() {
@@ -1471,6 +1792,12 @@
         // 2. Map Layers Initialization
         map.createPane('auctionPane');
         map.getPane('auctionPane').style.zIndex = 650;
+        
+        map.createPane('naverPane');
+        map.getPane('naverPane').style.zIndex = 700; // Put Naver above auction
+        
+        map.getPane('tooltipPane').style.zIndex = 750; // Ensure tooltips are above Naver markers
+        map.getPane('popupPane').style.zIndex = 750; // Ensure popups are above Naver markers
 
         // --- Smart Caching Bounds and Data ---
         let cachedPoisData = null;
@@ -1481,8 +1808,7 @@
         let cachedDistrictUnitsData = null;
         let cachedDistrictUnitsBounds = null;
         let cachedDistrictUnitsZoom = null;
-
-        let cachedRedevelopmentZonesData = null;
+let cachedRedevelopmentZonesData = null;
         let cachedRedevelopmentZonesBounds = null;
         let cachedRedevelopmentZonesZoom = null;
 
@@ -1522,6 +1848,7 @@
             dev1: L.layerGroup(),
             dev2: L.layerGroup(),
             dev3: L.layerGroup(),
+            dev4: L.layerGroup(),
             zoning: L.layerGroup(),
             planningRoad: L.layerGroup(),
             popHeatmap: L.layerGroup(),
@@ -1530,6 +1857,7 @@
             oldBuildings: L.layerGroup(),
             roadFlows: L.layerGroup(),
             eliteSchools: L.layerGroup(),
+            realpriceGrid: L.layerGroup(),
             auction: L.layerGroup().addTo(map)
         };
 
@@ -1550,7 +1878,7 @@
             '9호선': '#BDB092', '경의중앙선': '#77C4A3', '수인분당선': '#FABE00', '경춘선': '#0C8E72',
             '신분당선': '#D4003B', '우이신설': '#B0CE18', '경강선': '#003499', 
             '김포골드': '#A17E46', '서해선': '#8FC31F', '공항철도': '#0090D2', '인천2호선': '#ED8B00',
-            '인천1호선': '#7CA8D5', '용인에버': '#56C343', '신림선': '#6789CA'
+            '인천1호선': '#7CA8D5', '용인에버': '#56C343', '신림선': '#6789CA', '위례과천선': '#8B4513'
         };
 
         function getGlobalLineColor(lineName) {
@@ -1711,11 +2039,13 @@
             if (!btnHighlighter || !btnHighlighter.classList.contains('active')) {
                 layers.auction.eachLayer(marker => {
                     marker.setStyle({
-                        radius: 6, color: '#fff', weight: 2, fillColor: marker.typeColor, fillOpacity: 1
+                        radius: marker.defaultRadius || 6, color: '#fff', weight: 2, fillColor: marker.typeColor, fillOpacity: 1
                     });
                 });
                 if (countEl) countEl.style.display = 'none';
                 if (modeContainer) modeContainer.style.display = 'none';
+                const btnAnalysis = document.getElementById('btn-show-analysis');
+                if (btnAnalysis) btnAnalysis.style.display = 'none';
                 return;
             }
 
@@ -1730,12 +2060,16 @@
                 { id: 'toggle-commercial', layer: layers.commercial, isLine: false },
                 { id: 'toggle-hagwons', layer: layers.hagwon, isLine: false },
                 { id: 'toggle-dev1', layer: layers.dev1, isLine: false },
-                { id: 'toggle-dev2', layer: layers.dev2, isLine: false },
                 { id: 'toggle-dev3', layer: layers.dev3, isLine: false },
+                { id: 'toggle-dev4', layer: layers.dev4, isLine: false },
                 { id: 'toggle-zoning', layer: layers.zoning, isLine: false },
                 { id: 'toggle-planning-road', layer: layers.planningRoad, isLine: true },
                 { id: 'toggle-road-flows', layer: layers.roadFlows, isLine: true },
-                { id: 'toggle-old-buildings', layer: layers.oldBuildings, isLine: false }
+                { id: 'toggle-old-buildings', layer: layers.oldBuildings, isLine: false },
+                { id: 'req-elite-school', layer: layers.eliteSchools, isLine: false },
+                { id: 'toggle-apt-info', layer: aptInfoLayer, isLine: false },
+                { id: 'toggle-residential-heatmap', layer: layers.resHeatmap, isLine: false },
+                { id: 'toggle-workplace-heatmap', layer: layers.workHeatmap, isLine: false }
             ];
             
             const activeLayers = [];
@@ -1753,7 +2087,7 @@
             if (activeLayers.length === 0) {
                 layers.auction.eachLayer(marker => {
                     marker.setStyle({
-                        radius: 6, color: '#fff', weight: 2, fillColor: marker.typeColor, fillOpacity: 1
+                        radius: marker.defaultRadius || 6, color: '#fff', weight: 2, fillColor: marker.typeColor, fillOpacity: 1
                     });
                 });
                 if (countEl) countEl.style.display = 'none';
@@ -1790,14 +2124,16 @@
                 }
 
                 if (isInside) {
+                    let hlRadius = (marker.defaultRadius >= 12) ? 16 : 10;
                     marker.setStyle({
-                        radius: 10, color: '#c026d3', weight: 4, fillColor: marker.typeColor, fillOpacity: 1
+                        radius: hlRadius, color: '#c026d3', weight: 4, fillColor: marker.typeColor, fillOpacity: 1
                     });
                     if (marker.bringToFront) marker.bringToFront();
                     highlightedCaseNos.push(marker.auctionData.case_no);
                 } else {
+                    let dimRadius = (marker.defaultRadius >= 12) ? 6 : 4;
                     marker.setStyle({
-                        radius: 4, color: '#94a3b8', weight: 1, fillColor: marker.typeColor, fillOpacity: 0.3
+                        radius: dimRadius, color: '#94a3b8', weight: 1, fillColor: marker.typeColor, fillOpacity: 0.3
                     });
                 }
             });
@@ -1839,12 +2175,16 @@
                 { id: 'toggle-commercial', layer: layers.commercial, name: '상권', isLine: false },
                 { id: 'toggle-hagwons', layer: layers.hagwon, name: '학원가', isLine: false },
                 { id: 'toggle-dev1', layer: layers.dev1, name: '택지지구', isLine: false },
-                { id: 'toggle-dev2', layer: layers.dev2, name: '지구단위계획', isLine: false },
                 { id: 'toggle-dev3', layer: layers.dev3, name: '재개발/재건축', isLine: false },
+                { id: 'toggle-dev4', layer: layers.dev4, name: '규제완화지구', isLine: false },
                 { id: 'toggle-zoning', layer: layers.zoning, name: '용도지역', isLine: false },
                 { id: 'toggle-planning-road', layer: layers.planningRoad, name: '도시계획도로', isLine: true },
                 { id: 'toggle-road-flows', layer: layers.roadFlows, name: '유동동선', isLine: true },
-                { id: 'toggle-old-buildings', layer: layers.oldBuildings, name: '노후지', isLine: false }
+                { id: 'toggle-old-buildings', layer: layers.oldBuildings, name: '노후지', isLine: false },
+                { id: 'req-elite-school', layer: layers.eliteSchools, name: '명문학군', isLine: false },
+                { id: 'toggle-apt-info', layer: aptInfoLayer, name: '아파트단지정보', isLine: false },
+                { id: 'toggle-residential-heatmap', layer: layers.resHeatmap, name: '주거인구격자', isLine: false },
+                { id: 'toggle-workplace-heatmap', layer: layers.workHeatmap, name: '직장인구격자', isLine: false }
             ];
 
             const activeLayers = [];
@@ -1901,7 +2241,9 @@
                         min_price: marker.auctionData.min_price || 0,
                         overlap_count: matchedLayersList.length,
                         matched_layers: matchedLayersList,
-                        special_notes: marker.auctionData.special_notes || ''
+                        special_notes: marker.auctionData.special_notes || '',
+                        lat: latlng.lat,
+                        lng: latlng.lng
                     });
                 }
             });
@@ -1943,8 +2285,8 @@
                 const latDiff = northEast.lat - southWest.lat;
                 const lngDiff = northEast.lng - southWest.lng;
                 
-                const padLat = latDiff * 0.25;
-                const padLng = lngDiff * 0.25;
+                const padLat = 0;
+                const padLng = 0;
                 
                 const paddedBounds = L.latLngBounds(
                     L.latLng(southWest.lat - padLat, southWest.lng - padLng),
@@ -1979,8 +2321,13 @@
                     data.subways.forEach(s => {
                         let radius = parseInt(document.getElementById('buffer-subways').value) || 500;
                         let color = getGlobalLineColor(s.line);
-                        L.circle([s.lat, s.lng], { color: color, fillColor: color, fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.subway);
-                        createDotMarker(s.lat, s.lng, color, `<b>${s.name}</b><br>${s.line}`).addTo(layers.subway);
+                        let isPlanned = s.status && s.status.includes('예정');
+                        let dashArray = isPlanned ? '5, 10' : '4, 4';
+                        L.circle([s.lat, s.lng], { color: color, fillColor: color, fillOpacity: 0.1, radius: radius, weight: 1, dashArray: dashArray }).addTo(layers.subway);
+                        let marker = createDotMarker(s.lat, s.lng, color, `<b>${s.name}</b><br>${s.line}`).addTo(layers.subway);
+                        if (isPlanned) {
+                            marker.bindTooltip(s.name + '역', { permanent: true, direction: 'top', className: 'realprice-grid-label', offset: [0, -5] });
+                        }
                     });
                 }
 
@@ -2014,9 +2361,9 @@
                         if (m.special_hs_rate >= 10) {
                             color = '#f43f5e';
                             markerRadius = 6;
-                            let radius = parseInt(document.getElementById('buffer-middles').value) || 500;
-                            L.circle([m.lat, m.lng], { color: '#f43f5e', fillColor: '#f43f5e', fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.middle);
                         }
+                        let radius = parseInt(document.getElementById('buffer-middles').value) || 200;
+                        L.circle([m.lat, m.lng], { color: color, fillColor: color, fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.middle);
                         createDotMarker(m.lat, m.lng, color, `<b>${m.name}</b><br>${label}`, markerRadius).addTo(layers.middle);
                     });
                 }
@@ -2077,6 +2424,21 @@
                                 const pop = popData[name] || 0;
                                 let popStr = pop > 0 ? (pop / 10000).toFixed(0) + '만 명' : '데이터 없음';
                                 layer.bindTooltip(`<b>${name}</b><br>상권<br>유동인구: ${popStr}`, { sticky: true, className: 'custom-tooltip' });
+                                
+                                const stage = feature.properties.stage;
+                                let color = 'gray';
+                                if (stage === '초기') color = 'blue';
+                                if (stage === '중기') color = 'orange';
+                                if (stage === '후기') color = 'red';
+                                if (stage === '완료') color = 'gray';
+
+                                return {
+                                    color: color,
+                                    weight: 2,
+                                    opacity: 0.8,
+                                    fillColor: color,
+                                    fillOpacity: 0.15
+                                };
                             }
                         });
                         geoJsonLayer.addTo(layers.commercial);
@@ -2101,7 +2463,8 @@
                     json.data.forEach(line => {
                         let coords = JSON.parse(line.coordinates_json);
                         let color = getGlobalLineColor(line.line);
-                        L.polyline(coords, { color: color, weight: 4, opacity: 0.8 })
+                        let dashArray = (line.status && line.status.includes('예정')) ? '10, 10' : null;
+                        L.polyline(coords, { color: color, weight: 4, opacity: 0.8, dashArray: dashArray })
                             .bindPopup(`<b>${line.line}</b>`).addTo(layers.subwayLine);
                         // Start/End points
                         if (coords.length > 0) {
@@ -2175,7 +2538,209 @@
             } catch (err) { console.error(err); } finally { triggerHighlighter(); }
         }
 
-                async function fetchDistrictUnits() {
+                async function fetchDeregulationZones() {
+            if (map.getZoom() < minZoomRequired) return;
+            if (!document.getElementById('toggle-dev4').checked) return;
+            
+            layers.dev4.clearLayers();
+            const bounds = map.getBounds();
+            const southWest = bounds.getSouthWest();
+            const northEast = bounds.getNorthEast();
+            const geomFilter = `BOX(${southWest.lng},${southWest.lat},${northEast.lng},${northEast.lat})`;
+            
+            const checkedTypes = Array.from(document.querySelectorAll('.dev4-type-check:checked')).map(cb => cb.value);
+            if (checkedTypes.length === 0) return;
+
+            const typeMap = {
+                // '개발행위허가제한지역': 'LT_C_UD801', // Handled locally
+                // '개발진흥지구': 'LT_C_UD080', // Handled locally
+                '복합용도지구': 'LT_C_UD110',
+                '도시혁신구역': 'LT_C_UD061',
+                '방재지구': 'LT_C_UD090'
+                // '취락지구': 'LT_C_UQ111' // Handled locally
+            };
+
+            for (const typeName of checkedTypes) {
+                if (typeName === '도시혁신구역') {
+                    const innovationZones = [
+                        { name: "서울 양재역 (광역교통거점)", lat: 37.4842, lng: 127.0343 },
+                        { name: "서울 김포공항역 (광역교통거점)", lat: 37.5624, lng: 126.8013 },
+                        { name: "서울 청량리역 (광역교통거점)", lat: 37.5802, lng: 127.0482 },
+                        { name: "서울 독산동 공군부대 (도시확장/군부대이전)", lat: 37.4660, lng: 126.8970 },
+                        { name: "인천 인천역 (원도심/노후공업지역)", lat: 37.4764, lng: 126.6170 },
+                        { name: "부산 영도구 청학동 (원도심/노후공업지역)", lat: 35.0880, lng: 129.0550 },
+                        { name: "청주 교직원공제회 부지 (원도심/노후공업지역)", lat: 36.6350, lng: 127.4850 }
+                    ];
+                    
+                    innovationZones.forEach(zone => {
+                        L.circle([zone.lat, zone.lng], {
+                            color: '#ec4899',
+                            fillColor: '#ec4899',
+                            fillOpacity: 0.3,
+                            radius: 200,
+                            weight: 2
+                        }).bindPopup(`<b>도시혁신구역</b><br>${zone.name}`).addTo(layers.dev4);
+                    });
+                }
+
+                if (typeName === '개발행위허가제한지역') {
+                    if (!window.devRestrictionLayer) {
+                        try {
+                            const res = await fetch('/dev_restriction.geojson');
+                            const data = await res.json();
+                            window.devRestrictionLayer = L.geoJSON(data, {
+                                style: {
+                                    color: '#f97316', // 주황색
+                                    fillColor: '#f97316',
+                                    fillOpacity: 0.2,
+                                    weight: 2,
+                                    dashArray: '5, 5'
+                                },
+                                onEachFeature: function(feature, layer) {
+                                    layer.bindPopup(`<b>${typeName}</b>`);
+                                    layer.layerName = typeName;
+                                }
+                            });
+                        } catch (err) {
+                            console.error(`Failed to load ${typeName}:`, err);
+                        }
+                    }
+                    if (window.devRestrictionLayer) {
+                        window.devRestrictionLayer.addTo(layers.dev4);
+                    }
+                    continue;
+                }
+
+                if (typeName === '개발진흥지구') {
+                    if (!window.devPromotionLayer) {
+                        try {
+                            const res = await fetch('/dev_promotion.geojson');
+                            const data = await res.json();
+                            window.devPromotionLayer = L.geoJSON(data, {
+                                style: {
+                                    color: '#ec4899',
+                                    fillColor: '#ec4899',
+                                    fillOpacity: 0.2,
+                                    weight: 2,
+                                    dashArray: '5, 5'
+                                },
+                                onEachFeature: function(feature, layer) {
+                                    layer.bindPopup(`<b>${typeName}</b>`);
+                                    layer.layerName = typeName;
+                                }
+                            });
+                        } catch (err) {
+                            console.error('Failed to load 개발진흥지구:', err);
+                        }
+                    }
+                    if (window.devPromotionLayer) {
+                        window.devPromotionLayer.addTo(layers.dev4);
+                    }
+                    continue;
+                }
+
+                if (typeName === '취락지구') {
+                    if (!window.settlementLayer) {
+                        try {
+                            const res = await fetch('/settlement.geojson');
+                            const data = await res.json();
+                            window.settlementLayer = L.geoJSON(data, {
+                                style: {
+                                    color: '#0ea5e9',
+                                    fillColor: '#0ea5e9',
+                                    fillOpacity: 0.2,
+                                    weight: 2,
+                                    dashArray: '5, 5'
+                                },
+                                onEachFeature: function(feature, layer) {
+                                    layer.bindPopup(`<b>${typeName}</b>`);
+                                    layer.layerName = typeName;
+                                }
+                            });
+                        } catch (err) {
+                            console.error('Failed to load 취락지구:', err);
+                        }
+                    }
+                    if (window.settlementLayer) {
+                        window.settlementLayer.addTo(layers.dev4);
+                    }
+                    continue;
+                }
+
+                if (typeName === '특별계획구역') {
+                    try {
+                        const res = await fetch(`/api/map/deregulation_zones?min_lat=${southWest.lat}&max_lat=${northEast.lat}&min_lng=${southWest.lng}&max_lng=${northEast.lng}`);
+                        const json = await res.json();
+                        if (json && json.status === 'success' && json.data) {
+                            json.data.forEach(item => {
+                                try {
+                                    const geom = JSON.parse(item.geojson);
+                                    let detailsHtml = '';
+                                    if (item.details) {
+                                        try {
+                                            const details = JSON.parse(item.details);
+                                            for (const [k, v] of Object.entries(details)) {
+                                                if (v && v !== 'null' && v !== 'None' && k !== 'geometry') {
+                                                    detailsHtml += `<br><span style="font-size: 0.8rem; color: #64748b;">${k}: ${v}</span>`;
+                                                }
+                                            }
+                                        } catch (e) {}
+                                    }
+                                    
+                                    L.geoJSON(geom, {
+                                        style: {
+                                            color: '#8b5cf6', // Purple for Special Planning Zones
+                                            fillColor: '#8b5cf6',
+                                            fillOpacity: 0.4,
+                                            weight: 2,
+                                            dashArray: '4, 4'
+                                        },
+                                        onEachFeature: function(feature, layer) {
+                                            layer.bindPopup(`<div style="min-width: 150px;"><b>특별계획구역</b><br><span style="color: #ec4899; font-weight: 500;">${item.name || ''}</span>${detailsHtml}</div>`);
+                                            layer.layerName = typeName;
+                                        }
+                                    }).addTo(layers.dev4);
+                                } catch (e) {
+                                    console.error('Failed to parse geojson', e);
+                                }
+                            });
+                        }
+                    } catch (err) {
+                        console.error('Failed to load 특별계획구역:', err);
+                    }
+                    continue;
+                }
+
+                const layerCode = typeMap[typeName];
+                if (!layerCode) continue;
+                
+                try {
+                    const res = await fetch(`/api/proxy/vworld?data=${layerCode}&geomFilter=${geomFilter}`);
+                    const json = await res.json();
+                    if (json && json.response && json.response.result && json.response.result.featureCollection) {
+                        L.geoJSON(json.response.result.featureCollection, {
+                            style: {
+                                color: '#ec4899',
+                                fillColor: '#ec4899',
+                                fillOpacity: 0.2,
+                                weight: 2,
+                                dashArray: '5, 5'
+                            },
+                            onEachFeature: function(feature, layer) {
+                                layer.bindPopup(`<b>${typeName}</b>`);
+                                // Custom layer name tag for highlighter intersection logic
+                                layer.layerName = typeName;
+                            }
+                        }).addTo(layers.dev4);
+                    }
+                } catch (err) {
+                    console.error(`Failed to fetch ${typeName} from VWorld:`, err);
+                }
+            }
+            triggerHighlighter();
+        }
+
+        async function fetchDistrictUnits() {
             if (map.getZoom() < minZoomRequired) return;
             if (!document.getElementById('toggle-dev2').checked) return;
             
@@ -2195,8 +2760,8 @@
                 const latDiff = northEast.lat - southWest.lat;
                 const lngDiff = northEast.lng - southWest.lng;
                 
-                const padLat = latDiff * 0.25;
-                const padLng = lngDiff * 0.25;
+                const padLat = 0;
+                const padLng = 0;
                 
                 const paddedBounds = L.latLngBounds(
                     L.latLng(southWest.lat - padLat, southWest.lng - padLng),
@@ -2231,7 +2796,7 @@
                         weight: 2,
                         dashArray: '5, 5'
                     }
-                }).bindPopup(`<b>지구단위계획구역</b><br>${item.name}`).addTo(layers.dev2);
+                }).bindPopup(`<b>개발행위허가제한지역</b><br>${item.name}`).addTo(layers.dev2);
             });
             triggerHighlighter();
         }
@@ -2330,26 +2895,19 @@
             if (!propelCd) return '초기';
             const code = propelCd.toUpperCase();
             
+            if (code === 'FINISHED' || code === '완료') return '완료';
+
+            // 사업시행인가 등 (중기)
             const middleCodes = [
-                'PP0208', 'PP0305', 'PP0503', 'PP0603', 'PP0704', 'PP1110', 'PP1504',
-                'PP1401', 'PP1402', 'PP1403', 'PP1404', 'PP1405'
+                'PP0209', 'PP0504', 'PP0604', 'PP0705', 'PP1111', 'PP1206', 'PP1406', 'PP1505', 'PP1809'
             ];
             if (middleCodes.includes(code)) return '중기';
             
+            // 관리처분인가 등 (후기)
             const lateCodes = [
-                'PP0209', 'PP0210', 'PP0211',
-                'PP0504', 'PP0505',
-                'PP0604', 'PP0605',
-                'PP0705', 'PP0706',
-                'PP1111', 'PP1112', 'PP1113',
-                'PP1206', 'PP1207', 'PP1208', 'PP1209',
-                'PP1306',
-                'PP1406', 'PP1407',
-                'PP1505', 'PP1506', 'PP1507',
-                'PP1604',
-                'PP1809', 'PP1810',
-                'PP1901',
-                'PP2006', 'PP2007'
+                'PP0210', 'PP0211', 'PP0505', 'PP0605', 'PP0706', 'PP1112', 'PP1113',
+                'PP1207', 'PP1208', 'PP1209', 'PP1306', 'PP1407', 'PP1506', 'PP1507',
+                'PP1604', 'PP1810', 'PP1901', 'PP2006', 'PP2007'
             ];
             if (lateCodes.includes(code)) return '후기';
             
@@ -2383,8 +2941,8 @@
                 const latDiff = northEast.lat - southWest.lat;
                 const lngDiff = northEast.lng - southWest.lng;
                 
-                const padLat = latDiff * 0.25;
-                const padLng = lngDiff * 0.25;
+                const padLat = 0;
+                const padLng = 0;
                 
                 const paddedBounds = L.latLngBounds(
                     L.latLng(southWest.lat - padLat, southWest.lng - padLng),
@@ -2458,8 +3016,8 @@
                 const latDiff = northEast.lat - southWest.lat;
                 const lngDiff = northEast.lng - southWest.lng;
                 
-                const padLat = latDiff * 0.25;
-                const padLng = lngDiff * 0.25;
+                const padLat = 0;
+                const padLng = 0;
                 
                 const paddedBounds = L.latLngBounds(
                     L.latLng(southWest.lat - padLat, southWest.lng - padLng),
@@ -2567,8 +3125,8 @@
                 const latDiff = northEast.lat - southWest.lat;
                 const lngDiff = northEast.lng - southWest.lng;
                 
-                const padLat = latDiff * 0.25;
-                const padLng = lngDiff * 0.25;
+                const padLat = 0;
+                const padLng = 0;
                 
                 const paddedBounds = L.latLngBounds(
                     L.latLng(southWest.lat - padLat, southWest.lng - padLng),
@@ -2849,20 +3407,20 @@
         window.filterRoadFlowsByLegend = function(val) {
             const minFlowMap = {
                 1: 0,
-                2: 1000,
-                3: 2000,
-                4: 3000,
-                5: 4000
+                2: 500,
+                3: 1000,
+                4: 2000,
+                5: 3000
             };
             const minFlow = minFlowMap[val] || 0;
             
             // Update UI value label
             const labelMap = {
                 1: "전체",
-                2: "1000명 이상",
-                3: "2000명 이상",
-                4: "3000명 이상",
-                5: "4000명 이상"
+                2: "500명 이상",
+                3: "1000명 이상",
+                4: "2000명 이상",
+                5: "3000명 이상"
             };
             const filterValLabel = document.getElementById('legend-filter-val');
             if (filterValLabel) {
@@ -2904,21 +3462,19 @@
 
         window.makeElementDraggable = function(el) {
             if (!el) return;
-            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            let startX = 0, startY = 0, currentX = 0, currentY = 0;
             const header = document.getElementById(el.id + '-header') || el;
             
             header.addEventListener('mousedown', dragStart);
             header.addEventListener('touchstart', dragStart, { passive: false });
 
             function dragStart(e) {
-                if (e.target.tagName === 'INPUT' || e.target.closest('input')) {
-                    return;
-                }
+                if (e.target.tagName === 'INPUT' || e.target.closest('input')) return;
                 const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
                 const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
                 
-                pos3 = clientX;
-                pos4 = clientY;
+                startX = clientX;
+                startY = clientY;
                 
                 if (e.type === 'mousedown') {
                     e.preventDefault();
@@ -2934,24 +3490,15 @@
                 const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
                 const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
                 
-                pos1 = pos3 - clientX;
-                pos2 = pos4 - clientY;
-                pos3 = clientX;
-                pos4 = clientY;
+                const dx = clientX - startX;
+                const dy = clientY - startY;
                 
-                let newTop = el.offsetTop - pos2;
-                let newLeft = el.offsetLeft - pos1;
+                currentX += dx;
+                currentY += dy;
+                startX = clientX;
+                startY = clientY;
                 
-                const maxLeft = window.innerWidth - el.offsetWidth;
-                const maxTop = window.innerHeight - el.offsetHeight;
-                if (newLeft < 0) newLeft = 0;
-                if (newTop < 0) newTop = 0;
-                if (newLeft > maxLeft) newLeft = maxLeft;
-                if (newTop > maxTop) newTop = maxTop;
-                
-                el.style.top = newTop + "px";
-                el.style.left = newLeft + "px";
-                el.style.right = "auto";
+                el.style.transform = `translate(${currentX}px, ${currentY}px)`;
             }
 
             function dragEnd(e) {
@@ -2996,8 +3543,8 @@
                 const latDiff = northEast.lat - southWest.lat;
                 const lngDiff = northEast.lng - southWest.lng;
                 
-                const padLat = latDiff * 0.25;
-                const padLng = lngDiff * 0.25;
+                const padLat = 0;
+                const padLng = 0;
                 
                 const paddedBounds = L.latLngBounds(
                     L.latLng(southWest.lat - padLat, southWest.lng - padLng),
@@ -3055,8 +3602,11 @@
                         let step = Math.floor((index / N) * 10) + 1;
                         step = Math.min(step, 10);
                         
-                        // 하위 7단계 삭제 (상위 30%만 표시)
-                        if (step <= 7) return;
+                        const percentSelect = document.getElementById('res-heatmap-percent');
+                        const targetPercent = percentSelect ? parseInt(percentSelect.value, 10) : 10;
+                        const minStep = targetPercent === 10 ? 10 : 8;
+
+                        if (step < minStep) return;
 
                         let color;
                         let classification;
@@ -3093,6 +3643,7 @@
 
                 });
             }
+            if (typeof triggerHighlighter === 'function') triggerHighlighter();
         }
 
         async function fetchWorkplaceHeatmap() {
@@ -3124,8 +3675,8 @@
                 const latDiff = northEast.lat - southWest.lat;
                 const lngDiff = northEast.lng - southWest.lng;
                 
-                const padLat = latDiff * 0.25;
-                const padLng = lngDiff * 0.25;
+                const padLat = 0;
+                const padLng = 0;
                 
                 const paddedBounds = L.latLngBounds(
                     L.latLng(southWest.lat - padLat, southWest.lng - padLng),
@@ -3183,8 +3734,11 @@
                         let step = Math.floor((index / N) * 10) + 1;
                         step = Math.min(step, 10);
                         
-                        // 하위 7단계 삭제 (상위 30%만 표시)
-                        if (step <= 7) return;
+                        const percentSelect = document.getElementById('work-heatmap-percent');
+                        const targetPercent = percentSelect ? parseInt(percentSelect.value, 10) : 10;
+                        const minStep = targetPercent === 10 ? 10 : 8;
+
+                        if (step < minStep) return;
 
                         let color;
                         let classification;
@@ -3221,6 +3775,7 @@
 
                 });
             }
+            if (typeof triggerHighlighter === 'function') triggerHighlighter();
         }
 
         function getAuctionFilterState() {
@@ -3238,11 +3793,13 @@
             const subwayDist = document.getElementById('buffer-subways').value;
             const univDist = document.getElementById('buffer-univs').value;
             const indDist = document.getElementById('buffer-inds').value;
+            const unexecutedOnly = document.getElementById('toggle-unexecuted-auctions') ? document.getElementById('toggle-unexecuted-auctions').checked : false;
             const reqElite = document.getElementById('toggle-middles') ? document.getElementById('toggle-middles').checked : false;
-            const minHouseholds = document.getElementById('min-households') ? document.getElementById('min-households').value : '';
+            const useMinHouseholds = document.getElementById('use-min-households') ? document.getElementById('use-min-households').checked : false;
+            const minHouseholds = (useMinHouseholds && document.getElementById('min-households')) ? document.getElementById('min-households').value : '';
             const checkedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => cb.value).join(',');
 
-            return `${isAuctionActive}_${isPublicActive}_${checkedTypes}_${checkedSpecialRights}_${checkedLandPrices}_${rateLimit}_${minArea}_${maxArea}_${useSubwayDist}_${useUnivDist}_${useIndDist}_${subwayDist}_${univDist}_${indDist}_${reqElite}_${minHouseholds}_${checkedRegions}`;
+            return `${isAuctionActive}_${isPublicActive}_${checkedTypes}_${checkedSpecialRights}_${checkedLandPrices}_${rateLimit}_${minArea}_${maxArea}_${useSubwayDist}_${useUnivDist}_${useIndDist}_${subwayDist}_${univDist}_${indDist}_${reqElite}_${minHouseholds}_${checkedRegions}_${unexecutedOnly}`;
         }
 
         function buildAuctionUrl(basePath, customBounds) {
@@ -3267,6 +3824,8 @@
             if (checkedRegions.length > 0) url += `&regions=${checkedRegions.join(',')}`;
             
             if (checkedTypes.length > 0) url += `&property_types=${checkedTypes.join(',')}`;
+            const unexecutedOnly = document.getElementById('toggle-unexecuted-auctions') ? document.getElementById('toggle-unexecuted-auctions').checked : false;
+            if (unexecutedOnly) url += `&unexecuted_only=true`;
             url += `&min_rate=${rateLimit}&sale_type=${saleType}`;
 
             const minArea = document.getElementById('min-area').value;
@@ -3281,7 +3840,8 @@
             const indDist = document.getElementById('buffer-inds').value;
 
             const reqElite = document.getElementById('toggle-middles') ? document.getElementById('toggle-middles').checked : false;
-            const minHouseholds = document.getElementById('min-households') ? document.getElementById('min-households').value : '';
+            const useMinHouseholds = document.getElementById('use-min-households') ? document.getElementById('use-min-households').checked : false;
+            const minHouseholds = (useMinHouseholds && document.getElementById('min-households')) ? document.getElementById('min-households').value : '';
 
             if (minArea) url += `&min_area=${minArea}`;
             if (maxArea) url += `&max_area=${maxArea}`;
@@ -3300,22 +3860,8 @@
         async function loadAuctions() {
             const zoomWarning = document.getElementById('zoom-warning');
             
-            if (map.getZoom() < minZoomRequired) {
-                layers.auction.clearLayers();
-                if (zoomWarning) {
-                    zoomWarning.style.display = 'block';
-                    setTimeout(() => { zoomWarning.style.opacity = '1'; }, 10);
-                }
-                cachedAuctionsData = null;
-                cachedAuctionsBounds = null;
-                cachedAuctionsZoom = null;
-                cachedAuctionsFilterState = '';
-                return;
-            } else {
-                if (zoomWarning) {
-                    zoomWarning.style.opacity = '0';
-                    setTimeout(() => { zoomWarning.style.display = 'none'; }, 300);
-                }
+            if (zoomWarning) {
+                zoomWarning.style.display = 'none';
             }
 
             const bounds = map.getBounds();
@@ -3329,16 +3875,16 @@
 
             let data;
             if (isCached) {
-                console.log("Auctions loaded from cache.");
-                data = cachedAuctionsData;
+                triggerHighlighter();
+                return;
             } else {
                 const southWest = bounds.getSouthWest();
                 const northEast = bounds.getNorthEast();
                 const latDiff = northEast.lat - southWest.lat;
                 const lngDiff = northEast.lng - southWest.lng;
                 
-                const padLat = latDiff * 0.25;
-                const padLng = lngDiff * 0.25;
+                const padLat = latDiff * 0.15;
+                const padLng = lngDiff * 0.15;
                 
                 const paddedBounds = L.latLngBounds(
                     L.latLng(southWest.lat - padLat, southWest.lng - padLng),
@@ -3376,17 +3922,21 @@
                 let isPublic = item.sale_type.includes('공매');
                 let typeColor = isPublic ? '#3b82f6' : '#ef4444';
                 
+                let rad = 6;
+                const useMinHouseholds = document.getElementById('use-min-households') ? document.getElementById('use-min-households').checked : false;
+                const minHouseholdsVal = (useMinHouseholds && document.getElementById('min-households')) ? parseInt(document.getElementById('min-households').value) : 0;
+                if (minHouseholdsVal >= 1000 && item.property_type && item.property_type.includes('아파트')) {
+                    rad = 12;
+                }
+
                 let marker = L.circleMarker([item.lat, item.lng], {
-                    radius: 6, fillColor: typeColor, color: '#fff', weight: 2, opacity: 1, fillOpacity: 1,
+                    radius: rad, fillColor: typeColor, color: '#fff', weight: 2, opacity: 1, fillOpacity: 1,
                     pane: 'auctionPane'
                 });
+                marker.defaultRadius = rad;
                 marker.auctionData = item;
                 marker.isPublic = isPublic;
                 marker.typeColor = typeColor;
-
-                marker.on('click', function(e) {
-                    openDemandPanel(item.lat, item.lng, item.case_no, item.address, item.property_type);
-                });
 
                 marker.bindPopup(function(layer) {
                     let d = layer.auctionData;
@@ -3396,11 +3946,12 @@
                     let typeLabel = `<span style="color:${tColor};font-weight:bold;">[${typeLabelStr}]</span>`;
                     
                     let cleanNotes = d.special_notes ? d.special_notes.replace(/0|#|A|미해당/gi, '').replace(/,/g, ' ').replace(/\s+/g, ' ').trim() : '';
+                    let escapedAddress = (d.address || '').replace(/'/g, "\\'");
 
                     return `
                         <div style="font-family:'Noto Sans KR'; min-width: 220px; padding-bottom: 5px;">
                             <div style="font-size:1.1rem;">${typeLabel} <b>${d.case_no}</b></div>
-                            <div style="color:gray; font-size:0.85rem; margin-bottom:8px;">${d.property_type} | ${d.address}</div>
+                            <div style="color:gray; font-size:0.85rem; margin-bottom:8px;">${formatPropertyType(d.property_type)} | ${d.address}</div>
                             <table style="width:100%; font-size:0.9rem; border-collapse: collapse; margin-bottom: 10px;">
                                 <tr><td style="color:gray; padding:3px 0;">감정가</td><td style="text-align:right; font-weight:bold;">${(d.appraisal_price / 100000000).toFixed(1)}억</td></tr>
                                 <tr><td style="color:gray; padding:3px 0;">최저가</td><td style="text-align:right; font-weight:bold; color:${tColor};">${d.min_bid_rate}% (${(d.min_price / 100000000).toFixed(1)}억)</td></tr>
@@ -3410,7 +3961,11 @@
                                 <tr><td style="color:gray; padding:3px 0;">공시지가</td><td style="text-align:right;">${d.official_land_price && d.official_land_price > 0 ? (d.official_land_price / 100000000).toFixed(2) + '억' : '정보없음'}</td></tr>
                                 ${cleanNotes ? `<tr><td style="color:#ef4444; padding:3px 0; font-weight:bold;">특수권리</td><td style="text-align:right; font-size:0.8rem; color:#ef4444; word-break:keep-all;">${cleanNotes}</td></tr>` : ''}
                             </table>
-                            <button onclick="window.innerWidth <= 768 ? window.location.href='/?case=${d.case_no}' : (window.opener ? (window.opener.location.href='/?case=${d.case_no}', window.opener.focus()) : window.open('/?case=${d.case_no}', '_blank'))" style="width:100%; background:var(--primary-blue); color:white; border:none; padding:12px 10px; border-radius:6px; cursor:pointer; font-size:1rem; font-weight:bold; touch-action:manipulation;">권리분석 리포트 보기</button>
+                            <button onclick="window.innerWidth <= 768 ? window.location.href='/?case=${d.case_no}' : (window.opener ? (window.opener.location.href='/?case=${d.case_no}', window.opener.focus()) : window.open('/?case=${d.case_no}', '_blank'))" style="width:100%; background:#0ea5e9; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; touch-action:manipulation; margin-bottom: 8px;"><i class="fa-solid fa-circle-info"></i> 기본정보 보기</button>
+                            <button onclick="window.innerWidth <= 768 ? window.location.href='/?case=${d.case_no}' : (window.opener ? (window.opener.location.href='/?case=${d.case_no}', window.opener.focus()) : window.open('/?case=${d.case_no}', '_blank'))" style="width:100%; background:var(--primary-blue); color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; touch-action:manipulation;"><i class="fa-solid fa-scale-balanced"></i> 권리분석 리포트</button>
+                            <button onclick="openDemandPanel(${d.lat}, ${d.lng}, '${d.case_no}', '${escapedAddress}', '${d.property_type}', ${d.area_size || 0}); map.closePopup();" style="width:100%; background:#8b5cf6; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; margin-top: 8px; touch-action:manipulation;"><i class="fa-solid fa-store"></i> 상권분석</button>
+                            <button onclick="openNaverPriceModal('${d.case_no}', ${d.lat}, ${d.lng}, '${d.property_type}', ${d.area_size || 0});" style="width:100%; background:#f59e0b; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; margin-top: 8px; touch-action:manipulation;"><i class="fa-solid fa-chart-line"></i> 네이버 시세 분석</button>
+
                         </div>
                     `;
                 });
@@ -3421,7 +3976,7 @@
                         return `
                             <div style="font-family:'Noto Sans KR'; font-size:0.85rem; padding: 5px; line-height: 1.4;">
                                 <b>사건번호:</b> ${d.case_no}<br>
-                                <b>종류:</b> ${d.property_type}<br>
+                                <b>종류:</b> ${formatPropertyType(d.property_type)}<br>
                                 <b>감정가:</b> ${(d.appraisal_price / 100000000).toFixed(1)}억<br>
                                 <b>최저가:</b> ${(d.min_price / 100000000).toFixed(1)}억<br>
                                 <b>최저가율:</b> ${d.min_bid_rate}%<br>
@@ -3443,6 +3998,22 @@
                 marker.addTo(layers.auction);
             });
 
+            const unexecutedOnly = document.getElementById('toggle-unexecuted-auctions') ? document.getElementById('toggle-unexecuted-auctions').checked : false;
+            if (data.length === 1 && unexecutedOnly) {
+                if (window._lastAutoZoomId !== data[0].id) {
+                    window._lastAutoZoomId = data[0].id;
+                    map.setView([data[0].lat, data[0].lng], 16);
+                    setTimeout(() => {
+                        layers.auction.eachLayer(layer => {
+                            if (layer.auctionData && layer.auctionData.id === data[0].id) {
+                                layer.openPopup();
+                            }
+                        });
+                    }, 500);
+                }
+            } else {
+                window._lastAutoZoomId = null;
+            }
             triggerHighlighter();
         } // End of loadAuctions
 
@@ -3453,7 +4024,7 @@
                 'toggle-middles': [layers.middle],
                 'toggle-inds': [layers.ind],
                 'toggle-commercial': [layers.commercial],
-                'toggle-dev2': [layers.dev2],
+                'toggle-dev4': [layers.dev4],
                 'toggle-dev3': [layers.dev3],
                 'toggle-zoning': [layers.zoning],
                 'toggle-planning-road': [layers.planningRoad],
@@ -3464,7 +4035,9 @@
             };
 
             Object.keys(toggleMap).forEach(id => {
-                document.getElementById(id).addEventListener('change', (e) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('change', (e) => {
                     const layerList = toggleMap[id];
                     if (e.target.checked) {
                         layerList.forEach(l => map.addLayer(l));
@@ -3483,6 +4056,20 @@
             document.getElementById('toggle-dev1').addEventListener('change', updateTaekjiLayer);
             document.querySelectorAll('.dev1-stage-check').forEach(cb => {
                 cb.addEventListener('change', updateTaekjiLayer);
+            });
+
+            document.getElementById('toggle-dev4').addEventListener('change', (e) => {
+                const subContainer = document.getElementById('dev4-sub-container');
+                if (e.target.checked) {
+                    if (subContainer) subContainer.style.display = 'block';
+                    fetchDeregulationZones();
+                } else {
+                    if (subContainer) subContainer.style.display = 'none';
+                    layers.dev4.clearLayers();
+                }
+            });
+            document.querySelectorAll('.dev4-type-check').forEach(cb => {
+                cb.addEventListener('change', fetchDeregulationZones);
             });
 
             document.getElementById('toggle-dev3').addEventListener('change', (e) => {
@@ -3530,6 +4117,256 @@
             document.getElementById('toggle-bus').addEventListener('change', (e) => {
                 e.target.checked ? (map.addLayer(layers.bus), loadBusStops()) : map.removeLayer(layers.bus);
             });
+
+            let cachedRealpriceData = null;
+            let cachedRealpriceBounds = null;
+            let cachedRealpriceZoom = null;
+            let cachedRealpricePropType = '';
+            let cachedRealpriceIndicator = '';
+            let cachedRealpriceGridSize = 1000;
+            let cachedRealpriceLatStep = 0.009;
+            let cachedRealpriceLngStep = 0.0112;
+
+            window.activeRealpriceHoverCircle = null;
+
+            function clearRealpriceGrids() {
+                if (window.activeRealpriceHoverCircle) {
+                    map.removeLayer(window.activeRealpriceHoverCircle);
+                    window.activeRealpriceHoverCircle = null;
+                }
+                layers.realpriceGrid.clearLayers();
+            }
+
+            async function fetchRealpriceGrids() {
+                const toggle = document.getElementById('toggle-realprice-grids');
+                if (!toggle || !toggle.checked) return;
+                
+                const minZoom = 14;
+                if (map.getZoom() < minZoom) {
+                    clearRealpriceGrids();
+                    return;
+                }
+                
+                const bounds = map.getBounds();
+                const propType = document.getElementById('realprice-prop-type').value;
+                const indicator = document.getElementById('realprice-indicator').value;
+                const gridSizeVal = parseInt(document.getElementById('realprice-grid-size').value, 10) || 1000;
+                
+                const isCached = cachedRealpriceZoom === map.getZoom() && 
+                                 cachedRealpriceBounds && 
+                                 cachedRealpriceBounds.contains(bounds) && 
+                                 cachedRealpricePropType === propType &&
+                                 cachedRealpriceIndicator === indicator &&
+                                 cachedRealpriceGridSize === gridSizeVal &&
+                                 cachedRealpriceData;
+                                 
+                let data;
+                let lat_step = 0.009;
+                let lng_step = 0.0112;
+                if (isCached) {
+                    data = cachedRealpriceData;
+                    lat_step = cachedRealpriceLatStep;
+                    lng_step = cachedRealpriceLngStep;
+                } else {
+                    const southWest = bounds.getSouthWest();
+                    const northEast = bounds.getNorthEast();
+                    const latDiff = northEast.lat - southWest.lat;
+                    const lngDiff = northEast.lng - southWest.lng;
+                    
+                    const padLat = latDiff * 0.25;
+                    const padLng = lngDiff * 0.25;
+                    
+                    const paddedBounds = L.latLngBounds(
+                        L.latLng(southWest.lat - padLat, southWest.lng - padLng),
+                        L.latLng(northEast.lat + padLat, northEast.lng + padLng)
+                    );
+                    
+                    const url = `/api/map/realprice_indicators?min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}&property_type=${encodeURIComponent(propType)}&indicator_type=${indicator}&grid_size=${gridSizeVal}`;
+                    
+                    try {
+                        const res = await fetch(url);
+                        const json = await res.json();
+                        if (json.status === 'success') {
+                            cachedRealpriceData = json.data;
+                            cachedRealpriceBounds = paddedBounds;
+                            cachedRealpriceZoom = map.getZoom();
+                            cachedRealpricePropType = propType;
+                            cachedRealpriceIndicator = indicator;
+                            cachedRealpriceGridSize = gridSizeVal;
+                            cachedRealpriceLatStep = json.lat_step || 0.009;
+                            cachedRealpriceLngStep = json.lng_step || 0.0112;
+                            data = cachedRealpriceData;
+                            lat_step = cachedRealpriceLatStep;
+                            lng_step = cachedRealpriceLngStep;
+                        } else {
+                            return;
+                        }
+                    } catch (err) {
+                        console.error("Failed to fetch real price indicators:", err);
+                        return;
+                    }
+                }
+                
+                clearRealpriceGrids();
+                if (!data || data.length === 0) return;
+                
+                // Calculate color scales based on value ranges
+                const vals = data.map(d => d.val).filter(v => v > 0).sort((a, b) => a - b);
+                if (vals.length === 0) return;
+                
+                const getGridColor = (val) => {
+                    if (val <= 0) return '#ffffff';
+                    const idx = vals.findIndex(v => v >= val);
+                    const percentile = (idx + 1) / vals.length;
+                    
+                    // Color ramp depending on indicator type
+                    if (indicator === 'jeonse_ratio') {
+                        // Jeonse ratio: green scale
+                        if (percentile >= 0.8) return '#065f46';
+                        if (percentile >= 0.6) return '#047857';
+                        if (percentile >= 0.4) return '#10b981';
+                        if (percentile >= 0.2) return '#34d399';
+                        return '#a7f3d0';
+                    } else if (indicator === 'transaction_count') {
+                        // Transaction count: blue scale
+                        if (percentile >= 0.8) return '#1e3a8a';
+                        if (percentile >= 0.6) return '#1d4ed8';
+                        if (percentile >= 0.4) return '#3b82f6';
+                        if (percentile >= 0.2) return '#60a5fa';
+                        return '#93c5fd';
+                    } else {
+                        // Prices and ratios: red/orange scale
+                        if (percentile >= 0.8) return '#991b1b';
+                        if (percentile >= 0.6) return '#dc2626';
+                        if (percentile >= 0.4) return '#f97316';
+                        if (percentile >= 0.2) return '#fb923c';
+                        return '#fed7aa';
+                    }
+                };
+                
+                const halfLat = lat_step / 2;
+                const halfLng = lng_step / 2;
+                
+                data.forEach(item => {
+                    if (item.val <= 0) return;
+                    const rectBounds = [
+                        [item.lat - halfLat, item.lng - halfLng],
+                        [item.lat + halfLat, item.lng + halfLng]
+                    ];
+                    
+                    const color = getGridColor(item.val);
+                    
+                    // Formulate value labels
+                    let valStr = '';
+                    let label = '';
+                    let valSuffix = '';
+                    if (indicator === 'avg_price_per_pyeong') {
+                        valStr = `${Math.round(item.avg_price).toLocaleString()}만억원`;
+                        label = '평당 매매가 (중앙값)';
+                        valSuffix = item.sale_price_change_rate ? formatChangeRate(item.sale_price_change_rate) : '';
+                    } else if (indicator === 'avg_deposit_per_pyeong') {
+                        valStr = `${Math.round(item.avg_deposit).toLocaleString()}만억원`;
+                        label = '평당 전세가 (중앙값)';
+                        valSuffix = item.rent_price_change_rate ? formatChangeRate(item.rent_price_change_rate) : '';
+                    } else if (indicator === 'jeonse_ratio') {
+                        valStr = `${item.jeonse_ratio.toFixed(1)}%`;
+                        label = '전세가율';
+                    } else if (indicator === 'transaction_count') {
+                        valStr = `매매 ${item.sale_count || 0}건 / 전월세 ${item.rent_count || 0}건`;
+                        label = '최근 1년 거래량';
+                    } else if (indicator === 'main_pyeong_type') {
+                        valStr = item.main_pyeong_type !== '-' ? `${item.main_pyeong_type} (${item.main_pyeong_ratio.toFixed(1)}%)` : '거래 없음';
+                        label = '주거래평수대';
+                    } else if (indicator === 'age_premium_ratio') {
+                        valStr = item.age_premium > 0 ? `${item.age_premium.toFixed(2)}배` : '신/구축 정보없음';
+                        label = '신축/구축 프리미엄 격차';
+                    } else if (indicator === 'floor_sensitivity') {
+                        valStr = item.floor_sensitivity > 0 ? `${item.floor_sensitivity.toFixed(2)}배` : '층별 정보없음';
+                        label = '로얄층/저층 민감도';
+                    }
+                    
+                    const rect = L.rectangle(rectBounds, {
+                        color: color,
+                        weight: 1,
+                        opacity: 0.3,
+                        fillColor: color,
+                        fillOpacity: 0.4
+                    });
+                    
+                    const formatChangeRate = (rate) => {
+                        if (rate == null || rate === 0) return '-';
+                        const absRate = Math.abs(rate).toFixed(1);
+                        if (rate > 0) return `<span style="color:#ef4444;">▲ ${absRate}%</span>`;
+                        return `<span style="color:#3b82f6;">▼ ${absRate}%</span>`;
+                    };
+                    
+                    const popupContent = `
+                        <div style="font-family:'Noto Sans KR'; min-width:200px; padding: 5px;">
+                            <strong style="color:var(--primary-blue); font-size:0.95rem; display:block; margin-bottom:6px;">실거래 분석 격자 (${propType})</strong>
+                            <table style="width:100%; font-size:0.8rem; border-collapse:collapse;">
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">지표명</td><td style="text-align:right; font-weight:bold; color:var(--text-dark);">${label}</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">현재 지표값</td><td style="text-align:right; font-weight:800; color:#ef4444;">${valStr}</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">매매가 (평당)</td><td style="text-align:right; font-weight:500;">${item.avg_price > 0 ? Math.round(item.avg_price).toLocaleString() + '만원 ' + formatChangeRate(item.sale_price_change_rate) : '-'}</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">전월세 (평당)</td><td style="text-align:right; font-weight:500;">${item.avg_deposit > 0 ? Math.round(item.avg_deposit).toLocaleString() + '만원 ' + formatChangeRate(item.rent_price_change_rate) : '-'}</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">전세가율</td><td style="text-align:right; font-weight:500;">${item.jeonse_ratio > 0 ? item.jeonse_ratio.toFixed(1) + '%' : '-'}</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">연간 거래수</td><td style="text-align:right; font-weight:500;">매매 ${item.sale_count || 0}건 / 전월세 ${item.rent_count || 0}건 (총 ${item.count}건)</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">신구축 격차</td><td style="text-align:right; font-weight:500;">${item.age_premium > 0 ? item.age_premium.toFixed(2) + '배' : '-'}</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">로얄층 민감도</td><td style="text-align:right; font-weight:500;">${item.floor_sensitivity > 0 ? item.floor_sensitivity.toFixed(2) + '배' : '-'}</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0; font-weight:bold;">평수대별 매매건수</td><td style="text-align:right; font-weight:bold; color:var(--primary-blue);">${item.sale_count || 0}건</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0; padding-left:10px;">├ 10평 이하</td><td style="text-align:right; font-weight:500;">${item.sales_under_10 || 0}건 (${item.sale_count > 0 ? ((item.sales_under_10 || 0)/item.sale_count*100).toFixed(1) : 0}%)</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0; padding-left:10px;">├ 20평 이하</td><td style="text-align:right; font-weight:500;">${item.sales_10_to_20 || 0}건 (${item.sale_count > 0 ? ((item.sales_10_to_20 || 0)/item.sale_count*100).toFixed(1) : 0}%)</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0; padding-left:10px;">├ 30평 이하</td><td style="text-align:right; font-weight:500;">${item.sales_20_to_30 || 0}건 (${item.sale_count > 0 ? ((item.sales_20_to_30 || 0)/item.sale_count*100).toFixed(1) : 0}%)</td></tr>
+                                <tr><td style="color:gray; padding:4px 0; padding-left:10px;">└ 30평 초과</td><td style="text-align:right; font-weight:500;">${item.sales_over_30 || 0}건 (${item.sale_count > 0 ? ((item.sales_over_30 || 0)/item.sale_count*100).toFixed(1) : 0}%)</td></tr>
+                            </table>
+                        </div>
+                    `;
+                    
+                    rect.bindPopup(popupContent);
+                    
+                    rect.bindTooltip(`
+                        <div style="text-align: center; line-height: 1.2;">
+                            <div style="font-size: 0.65rem; font-weight: 600; color: #475569;">${propType}</div>
+                            <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a; margin-top: 1px;">${valStr} <span style="font-size: 0.65rem; display: inline-block; margin-left: 2px;">${valSuffix !== '-' ? valSuffix : ''}</span></div>
+                        </div>
+                    `, {
+                        permanent: true,
+                        direction: 'center',
+                        className: 'realprice-grid-label',
+                        opacity: 0.95
+                    });
+
+                    rect.on('mouseover', function(e) {
+                        if (window.activeRealpriceHoverCircle) {
+                            map.removeLayer(window.activeRealpriceHoverCircle);
+                        }
+                        window.activeRealpriceHoverCircle = L.circle([item.lat, item.lng], {
+                            radius: 1000,
+                            color: '#2563eb',
+                            weight: 1.5,
+                            opacity: 0.7,
+                            fillColor: '#3b82f6',
+                            fillOpacity: 0.08,
+                            dashArray: '5, 5',
+                            interactive: false
+                        }).addTo(map);
+                    });
+
+                    rect.on('mouseout', function(e) {
+                        if (window.activeRealpriceHoverCircle) {
+                            map.removeLayer(window.activeRealpriceHoverCircle);
+                            window.activeRealpriceHoverCircle = null;
+                        }
+                    });
+
+                    rect.addTo(layers.realpriceGrid);
+                });
+            }
+
+            window.updateRealpriceGrids = function() {
+                cachedRealpriceBounds = null;
+                cachedRealpriceZoom = null;
+                fetchRealpriceGrids();
+            };
 
             // Fetch infra when map moves
             let moveEndTimeout;
@@ -3636,18 +4473,61 @@
                 clearTimeout(moveEndTimeout);
                 moveEndTimeout = setTimeout(() => {
                     updateCenterAddress();
-                    fetchInfraData();
-                    fetchDistrictUnits();
-                    updateTaekjiLayer();
-                    fetchRedevelopmentZones();
-                    fetchZoningPolygons();
-                    fetchPlanningRoads();
-                    fetchPopulationHeatmap();
-                    fetchResidentialHeatmap();
-                    fetchWorkplaceHeatmap();
-                    fetchRoadFlows();
+                    
+                    // 각 레이어 스위치가 실제로 활성화되어 있을 때만 API를 호출하도록 리팩토링
+                    if (document.getElementById('toggle-subways').checked || 
+                        document.getElementById('toggle-univs').checked || 
+                        document.getElementById('toggle-middles').checked || 
+                        document.getElementById('toggle-inds').checked || 
+                        document.getElementById('toggle-commercial').checked) {
+                        fetchInfraData();
+                    }
+                    if (document.getElementById('toggle-dev1') && document.getElementById('toggle-dev1').checked) {
+                        updateTaekjiLayer();
+                    }
+                    if (document.getElementById('toggle-dev4') && document.getElementById('toggle-dev4').checked) {
+                        fetchDeregulationZones();
+                    }
+                    if (document.getElementById('toggle-dev3') && document.getElementById('toggle-dev3').checked) {
+                        fetchRedevelopmentZones();
+                    }
+                    if (document.getElementById('toggle-zoning').checked) {
+                        fetchZoningPolygons();
+                    }
+                    if (document.getElementById('toggle-planning-road').checked) {
+                        fetchPlanningRoads();
+                    }
+                    if (document.getElementById('toggle-residential-heatmap').checked) {
+                        fetchResidentialHeatmap();
+                    }
+                    if (document.getElementById('toggle-workplace-heatmap').checked) {
+                        fetchWorkplaceHeatmap();
+                    }
+                    if (document.getElementById('toggle-road-flows').checked) {
+                        fetchRoadFlows();
+                    }
+                    
+                    // 가격데이터 오버레이가 활성화되어 있을 때만 가격데이터를 업데이트하여 속도 최적화
+                    const rpToggle = document.getElementById('toggle-realprice-grids');
+                    if (rpToggle && rpToggle.checked) {
+                        fetchRealpriceGrids();
+                    }
+                    
                     loadAuctions();
                 }, 400); // 400ms debounce
+            });
+
+            document.getElementById('toggle-realprice-grids').addEventListener('change', (e) => {
+                const subContainer = document.getElementById('realprice-sub-container');
+                if (e.target.checked) {
+                    if (subContainer) subContainer.style.display = 'flex';
+                    map.addLayer(layers.realpriceGrid);
+                    fetchRealpriceGrids();
+                } else {
+                    if (subContainer) subContainer.style.display = 'none';
+                    clearRealpriceGrids();
+                    map.removeLayer(layers.realpriceGrid);
+                }
             });
 
             document.getElementById('toggle-hagwons').addEventListener('change', (e) => {
@@ -3845,12 +4725,15 @@
                                     });
                                 }
                             }).addTo(layers.eliteSchools);
+                            triggerHighlighter();
                         } catch (error) {
                             console.error('Error loading elite school dongs:', error);
                             alert('명문학군 행정동 데이터를 불러오는 데 실패했습니다.');
                         } finally {
                             if (loadingOverlay) loadingOverlay.style.display = 'none';
                         }
+                    } else {
+                        triggerHighlighter();
                     }
                 } else {
                     map.removeLayer(layers.eliteSchools);
@@ -3860,6 +4743,9 @@
 
             // Initialize road flow legend dragging
             makeElementDraggable(document.getElementById('road-flow-legend'));
+            // Make panels draggable
+            makeElementDraggable(document.getElementById('left-panel'));
+            makeElementDraggable(document.getElementById('right-panel'));
 
             // Check initial state of toggle-road-flows
             const initialRoadFlowsToggle = document.getElementById('toggle-road-flows');
@@ -3882,22 +4768,44 @@
                 if (workLegend) workLegend.style.display = 'block';
             }
 
-            // Load main auction data first to show results quickly
-            loadAuctions().finally(() => {
-                const loadingOverlay = document.getElementById('loading');
-                if (loadingOverlay) loadingOverlay.style.display = 'none';
+            // Remove loading overlay immediately so the user sees the map interface without delay
+            const loadingOverlay = document.getElementById('loading');
+            if (loadingOverlay) loadingOverlay.style.display = 'none';
+            
+            // Load main auction data in the background
+            loadAuctions();
+            setTimeout(() => {
+                updateCenterAddress();
                 
-                // Defer loading heavy infra data to prevent main thread blocking
-                setTimeout(() => {
-                    updateCenterAddress();
-                    fetchInfraData();
+                // 초기 지연 실행 시에도 각 토글 스위치가 켜져 있을 때만 데이터를 비동기 로딩
+                if (document.getElementById('toggle-subways') && document.getElementById('toggle-subways').checked) {
                     fetchSubwayLines();
+                }
+                if ((document.getElementById('toggle-subways') && document.getElementById('toggle-subways').checked) || 
+                    (document.getElementById('toggle-univs') && document.getElementById('toggle-univs').checked) || 
+                    (document.getElementById('toggle-middles') && document.getElementById('toggle-middles').checked) || 
+                    (document.getElementById('toggle-inds') && document.getElementById('toggle-inds').checked) || 
+                    (document.getElementById('toggle-commercial') && document.getElementById('toggle-commercial').checked)) {
+                    fetchInfraData();
+                }
+                if (document.getElementById('toggle-hagwons') && document.getElementById('toggle-hagwons').checked) {
                     fetchHagwonPolygons();
+                }
+                if (document.getElementById('toggle-dev3') && document.getElementById('toggle-dev3').checked) {
                     fetchDistrictUnits();
+            fetchDeregulationZones();
+                }
+                if (document.getElementById('toggle-dev2') && document.getElementById('toggle-dev2').checked) {
+                    updateTaekjiLayer();
+                }
+                if ((document.getElementById('toggle-residential-heatmap') && document.getElementById('toggle-residential-heatmap').checked) || 
+                    (document.getElementById('toggle-workplace-heatmap') && document.getElementById('toggle-workplace-heatmap').checked)) {
                     fetchPopulationHeatmap();
+                }
+                if (document.getElementById('toggle-road-flows') && document.getElementById('toggle-road-flows').checked) {
                     fetchRoadFlows();
-                }, 100);
-            });
+                }
+            }, 100);
 
             // Right panel fetch button
             document.querySelector('#right-panel .btn-primary').addEventListener('click', loadAuctions);
@@ -4026,7 +4934,7 @@
                 }
             }
 
-            async function openDemandPanel(lat, lng, caseNo, address, propType) {
+            async function openDemandPanel(lat, lng, caseNo, address, propType, areaSize) {
                 const panel = document.getElementById('demand-panel');
                 if (!panel) return;
 
@@ -4036,31 +4944,111 @@
                 // Display skeleton state while fetching
                 showDemandSkeleton();
 
-                try {
-                    const res = await fetch(`/api/map/demographics?lat=${lat}&lng=${lng}`);
-                    if (!res.ok) throw new Error('API request failed');
-                    const json = await res.json();
-                    
-                    if (json.status === 'success') {
-                        renderDemandData(json, caseNo, address, propType);
-                    } else {
+                // 주택 여부 판별
+                const isRes = isResidential(propType);
+
+                if (isRes) {
+                    // 주택인 경우: 인구/지하철 분석과 실거래가 가격지표를 모두 패칭하여 융합 렌더링
+                    try {
+                        let demoUrl = `/api/map/demographics?lat=${lat}&lng=${lng}`;
+                        if (caseNo) {
+                            demoUrl += `&case_no=${encodeURIComponent(caseNo)}`;
+                        }
+                        if (address) {
+                            demoUrl += `&address=${encodeURIComponent(address)}`;
+                        }
+                        if (areaSize !== undefined && areaSize !== null) {
+                            demoUrl += `&area_size=${areaSize}`;
+                        }
+                        if (propType) {
+                            demoUrl += `&property_type=${encodeURIComponent(propType)}`;
+                        }
+                        
+                        const demoRes = await fetch(demoUrl);
+                        if (!demoRes.ok) throw new Error('Demographics API request failed');
+                        const demoJson = await demoRes.json();
+                        
+                        // 실거래가 가격지표 BBox 가져오기 (주변 250m 격자 포괄)
+                        const minLat = lat - 0.003;
+                        const maxLat = lat + 0.003;
+                        const minLng = lng - 0.004;
+                        const maxLng = lng + 0.004;
+                        
+                        let normPropType = '아파트';
+                        if (propType.includes('다세대') || propType.includes('빌라')) {
+                            normPropType = '다세대';
+                        } else if (propType.includes('단독') || propType.includes('다중') || propType.includes('주거용건물')) {
+                            normPropType = '단독';
+                        } else if (propType.includes('오피스텔')) {
+                            normPropType = '오피스텔';
+                        }
+                        
+                        const priceUrl = `/api/map/realprice_indicators?min_lat=${minLat}&max_lat=${maxLat}&min_lng=${minLng}&max_lng=${maxLng}&property_type=${encodeURIComponent(normPropType)}&indicator_type=avg_price_per_pyeong`;
+                        
+                        const priceRes = await fetch(priceUrl);
+                        if (!priceRes.ok) throw new Error('Price indicators API request failed');
+                        const priceJson = await priceRes.json();
+                        
+                        if (demoJson.status === 'success' && priceJson.status === 'success') {
+                            renderResidentialDemandData(demoJson, priceJson, caseNo, address, propType, lat, lng);
+                        } else {
+                            if (demoJson.status === 'success') {
+                                renderResidentialDemandData(demoJson, { status: 'success', data: [] }, caseNo, address, propType, lat, lng);
+                            } else {
+                                throw new Error(demoJson.message || '인구 분석 데이터 오류');
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Failed to load residential analytics:", err);
                         document.getElementById('demand-panel-content').innerHTML = `
                             <div class="demand-card" style="text-align: center; padding: 25px; color: #ef4444;">
                                 <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                                <p style="font-weight: bold; margin: 0;">데이터 분석 실패</p>
-                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">${json.message || '인구 통계 데이터를 가져오지 못했습니다.'}</p>
+                                <p style="font-weight: bold; margin: 0;">네트워크 및 데이터 분석 오류</p>
+                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">백엔드 서버로부터 정보를 가져올 수 없습니다.</p>
                             </div>
                         `;
                     }
-                } catch (err) {
-                    console.error("Failed to load demographics analysis:", err);
-                    document.getElementById('demand-panel-content').innerHTML = `
-                        <div class="demand-card" style="text-align: center; padding: 25px; color: #ef4444;">
-                            <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                            <p style="font-weight: bold; margin: 0;">네트워크 오류 발생</p>
-                            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">백엔드 서버와 통신할 수 없습니다.</p>
-                        </div>
-                    `;
+                } else {
+                    // 비주택(구분상가, 건물, 지식산업센터 등)인 경우: 기존 배후수요 및 인구분석 사용
+                    try {
+                        let url = `/api/map/demographics?lat=${lat}&lng=${lng}`;
+                        if (caseNo) {
+                            url += `&case_no=${encodeURIComponent(caseNo)}`;
+                        }
+                        if (address) {
+                            url += `&address=${encodeURIComponent(address)}`;
+                        }
+                        if (areaSize !== undefined && areaSize !== null) {
+                            url += `&area_size=${areaSize}`;
+                        }
+                        if (propType) {
+                            url += `&property_type=${encodeURIComponent(propType)}`;
+                        }
+                        const res = await fetch(url);
+                        if (!res.ok) throw new Error('API request failed');
+                        const json = await res.json();
+                        
+                        if (json.status === 'success') {
+                            renderDemandData(json, caseNo, address, propType);
+                        } else {
+                            document.getElementById('demand-panel-content').innerHTML = `
+                                <div class="demand-card" style="text-align: center; padding: 25px; color: #ef4444;">
+                                    <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                                    <p style="font-weight: bold; margin: 0;">데이터 분석 실패</p>
+                                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">${json.message || '인구 통계 데이터를 가져오지 못했습니다.'}</p>
+                                </div>
+                            `;
+                        }
+                    } catch (err) {
+                        console.error("Failed to load demographics analysis:", err);
+                        document.getElementById('demand-panel-content').innerHTML = `
+                            <div class="demand-card" style="text-align: center; padding: 25px; color: #ef4444;">
+                                <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                                <p style="font-weight: bold; margin: 0;">네트워크 오류 발생</p>
+                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">백엔드 서버와 통신할 수 없습니다.</p>
+                            </div>
+                        `;
+                    }
                 }
             }
 
@@ -4071,6 +5059,21 @@
                 const sub = resData.subway_proximity;
                 const demo = resData.demographics;
                 const eval = resData.assessment;
+
+                const specsComp = eval.specs_comparison || "";
+                let specsCardHtml = "";
+                if (specsComp) {
+                    specsCardHtml = `
+                        <div class="demand-card" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(109, 40, 217, 0.03)); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 12px; margin-top: 15px; padding: 14px;">
+                            <div class="demand-card-title" style="color: #6d28d9; font-size: 0.88rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-scale-balanced" style="color: #8b5cf6;"></i> 물건 스펙 및 입지 적합도 분석
+                            </div>
+                            <div style="font-size: 0.78rem; line-height: 1.6; color: #374151; word-break: keep-all;">
+                                ${specsComp.replace(/\n/g, '<br>')}
+                            </div>
+                        </div>
+                    `;
+                }
 
                 let evalDetail = eval.detail || "";
                 if (eval.recom_biz && evalDetail.includes('[입지 기반 추천 업종]')) {
@@ -4254,6 +5257,9 @@
                         </div>
                     </div>
 
+                    <!-- Property Specs Comparison -->
+                    ${specsCardHtml}
+
                     <!-- Recommended Business Card -->
                     ${eval.recom_biz ? `
                     <div class="demand-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(5, 150, 105, 0.03)); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; margin-top: 15px; padding: 14px;">
@@ -4270,6 +5276,460 @@
                     ` : ''}
                 `;
             }
+
+            function isResidential(propType) {
+                if (!propType) return false;
+                const p = propType.trim();
+                return p.includes('아파트') || 
+                       p.includes('다세대') || 
+                       p.includes('단독') || 
+                       p.includes('오피스텔') || 
+                       p.includes('빌라') || 
+                       p.includes('주상복합') || 
+                       p.includes('다중주택') ||
+                       p.includes('기타주거용건물');
+            }
+
+            function renderResidentialDemandData(resData, priceData, caseNo, address, propType, lat, lng) {
+                const content = document.getElementById('demand-panel-content');
+                if (!content) return;
+
+                const sub = resData.subway_proximity;
+                const demo = resData.demographics;
+                
+                const eval = resData.assessment || {};
+                const specsComp = eval.specs_comparison || "";
+                let specsCardHtml = "";
+                if (specsComp) {
+                    specsCardHtml = `
+                        <div class="demand-card" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(109, 40, 217, 0.03)); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 12px; margin-top: 15px; padding: 14px;">
+                            <div class="demand-card-title" style="color: #6d28d9; font-size: 0.88rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-scale-balanced" style="color: #8b5cf6;"></i> 물건 스펙 및 입지 적합도 분석
+                            </div>
+                            <div style="font-size: 0.78rem; line-height: 1.6; color: #374151; word-break: keep-all;">
+                                ${specsComp.replace(/\n/g, '<br>')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 250m 격자 매핑
+                const latStep = 0.00225;
+                const lngStep = 0.0028;
+                const targetLatIdx = Math.floor(lat / latStep);
+                const targetLngIdx = Math.floor(lng / lngStep);
+
+                let matchedGrid = null;
+                if (priceData && priceData.status === 'success' && priceData.data) {
+                    matchedGrid = priceData.data.find(g => g.lat_idx === targetLatIdx && g.lng_idx === targetLngIdx);
+                    if (!matchedGrid && priceData.data.length > 0) {
+                        let minDist = Infinity;
+                        priceData.data.forEach(g => {
+                            const dist = Math.pow(g.lat - lat, 2) + Math.pow(g.lng - lng, 2);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                matchedGrid = g;
+                            }
+                        });
+                    }
+                }
+
+                // 지하철 역 HTML 생성
+                let subwayListHtml = '';
+                if (sub.all_stations_in_1km && sub.all_stations_in_1km.length > 0) {
+                    subwayListHtml = sub.all_stations_in_1km.map(s => {
+                        const lineColor = getGlobalLineColor(s.line);
+                        return `
+                            <div class="demand-subway-item">
+                                <span class="demand-subway-name">
+                                    <span class="demand-subway-dot" style="background-color: ${lineColor};"></span>
+                                    <span>${s.name}역 (${s.line})</span>
+                                </span>
+                                <span style="font-weight: 700; color: var(--text-dark);">${s.distance}m</span>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    subwayListHtml = `<div style="text-align: center; color: var(--text-muted); font-size: 0.75rem; padding: 10px 0;">반경 1km 이내 지하철역이 없습니다.</div>`;
+                }
+
+                let gradeBadgeClass = 'subway-grade-비역세권';
+                if (sub.grade === '초역세권') gradeBadgeClass = 'subway-grade-초역세권';
+                else if (sub.grade === '역세권') gradeBadgeClass = 'subway-grade-역세권';
+
+                // 실거래가 기반 가격지표 카드 렌더링 구성
+                let priceCardHtml = "";
+                let guideHtml = "";
+
+                if (matchedGrid) {
+                    const avgPriceStr = matchedGrid.avg_price > 0 ? `${(matchedGrid.avg_price).toFixed(0).toLocaleString()}만원` : '정보없음';
+                    const avgDepositStr = matchedGrid.avg_deposit > 0 ? `${(matchedGrid.avg_deposit).toFixed(0).toLocaleString()}만원` : '정보없음';
+                    const avgRentStr = matchedGrid.avg_rent > 0 ? `${(matchedGrid.avg_rent).toFixed(0).toLocaleString()}만원` : '정보없음';
+                    const jeonseRatioStr = matchedGrid.jeonse_ratio > 0 ? `${matchedGrid.jeonse_ratio.toFixed(1)}%` : '정보없음';
+                    const txCount = matchedGrid.count || 0;
+                    
+                    // 전세가율 진단 및 게이지
+                    let jeonseStatus = "정보없음";
+                    let jeonseColor = "var(--text-muted)";
+                    let jeonseBarWidth = "0%";
+                    if (matchedGrid.jeonse_ratio > 0) {
+                        jeonseBarWidth = `${Math.min(100, matchedGrid.jeonse_ratio)}%`;
+                        if (matchedGrid.jeonse_ratio >= 80) {
+                            jeonseStatus = "⚠️ 매우 높음 (깡통유의/갭투자용이)";
+                            jeonseColor = "#d97706";
+                        } else if (matchedGrid.jeonse_ratio >= 65) {
+                            jeonseStatus = "✅ 안정적 (임대수요 풍부)";
+                            jeonseColor = "#16a34a";
+                        } else if (matchedGrid.jeonse_ratio >= 50) {
+                            jeonseStatus = "ℹ️ 보통 (실거주 양호)";
+                            jeonseColor = "#2563eb";
+                        } else {
+                            jeonseStatus = "📉 낮음 (투자금 높음/매매강세)";
+                            jeonseColor = "#dc2626";
+                        }
+                    }
+
+                    // 거래 활성 등급
+                    let txStatus = "정보없음";
+                    let txColor = "var(--text-muted)";
+                    if (txCount >= 15) {
+                        txStatus = "🔥 매우 활발 (환금성 최우수)";
+                        txColor = "#dc2626";
+                    } else if (txCount >= 5) {
+                        txStatus = "✅ 보통 (환금성 안정)";
+                        txColor = "#16a34a";
+                    } else {
+                        txStatus = "⚠️ 다소 저조 (환금성 유의)";
+                        txColor = "#cbd5e1";
+                    }
+
+                    // 연식 프리미엄 진단
+                    let agePremStr = "정보없음";
+                    if (matchedGrid.age_premium > 0) {
+                        agePremStr = `${matchedGrid.age_premium.toFixed(2)}배`;
+                        if (matchedGrid.age_premium >= 1.15) {
+                            agePremStr += " (신축선호 우수)";
+                        } else if (matchedGrid.age_premium >= 1.0) {
+                            agePremStr += " (연식 영향 보통)";
+                        } else {
+                            agePremStr += " (구축 선호/재건축 기대)";
+                        }
+                    }
+
+                    // 층수 민감도 진단
+                    let floorSensStr = "정보없음";
+                    if (matchedGrid.floor_sensitivity > 0) {
+                        floorSensStr = `${matchedGrid.floor_sensitivity.toFixed(2)}배`;
+                        if (matchedGrid.floor_sensitivity >= 1.1) {
+                            floorSensStr += " (로얄층 선호 뚜렷)";
+                        } else {
+                            floorSensStr += " (층별 영향 미미)";
+                        }
+                    }
+
+                    priceCardHtml = `
+                        <!-- Realprice indicator stats -->
+                        <div class="demand-card">
+                            <div class="demand-card-title">
+                                <i class="fa-solid fa-coins" style="color: #eab308;"></i> 최근 1년 실거래 가격지표 (250m 격자)
+                            </div>
+                            <div class="demand-grid" style="margin-bottom: 12px;">
+                                <div class="demand-stat-item">
+                                    <div class="demand-stat-label">평당 매매가 (중앙값)</div>
+                                    <div class="demand-stat-value" style="color: #ef4444;">${avgPriceStr}/평</div>
+                                </div>
+                                <div class="demand-stat-item">
+                                    <div class="demand-stat-label">평당 전세가 (중앙값/환산)</div>
+                                    <div class="demand-stat-value" style="color: #3b82f6;">${avgDepositStr}/평</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Detailed parameters -->
+                            <div style="font-size: 0.75rem; display: flex; flex-direction: column; gap: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(226,232,240,0.5); padding-bottom: 4px;">
+                                    <span style="color: var(--text-muted);">월세 (중앙값)</span>
+                                    <span style="font-weight: bold; color: var(--text-dark);">${avgRentStr}</span>
+                                </div>
+                                
+                                <div style="display: flex; flex-direction: column; gap: 3px; border-bottom: 1px solid rgba(226,232,240,0.5); padding-bottom: 6px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="color: var(--text-muted);">전세가율</span>
+                                        <span style="font-weight: bold; color: ${jeonseColor};">${jeonseRatioStr} (${jeonseStatus})</span>
+                                    </div>
+                                    ${matchedGrid.jeonse_ratio > 0 ? `
+                                    <div style="height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; width: 100%;">
+                                        <div style="width: ${jeonseBarWidth}; height: 100%; background: ${jeonseColor}; border-radius: 3px;"></div>
+                                    </div>
+                                    ` : ''}
+                                </div>
+ 
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(226,232,240,0.5); padding-bottom: 4px;">
+                                    <span style="color: var(--text-muted);">최근 1년 거래건수</span>
+                                    <span style="font-weight: bold; color: var(--text-dark);">매매 ${matchedGrid.sale_count || 0}건, 전월세 ${matchedGrid.rent_count || 0}건 (총 ${txCount}건) <span style="font-size:0.7rem; color:${txColor}; font-weight:bold;">(${txStatus})</span></span>
+                                </div>
+ 
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(226,232,240,0.5); padding-bottom: 4px;">
+                                    <span style="color: var(--text-muted);">신축 프리미엄비율</span>
+                                    <span style="font-weight: bold; color: var(--text-dark);">${agePremStr}</span>
+                                </div>
+ 
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(226,232,240,0.5); padding-bottom: 4px;">
+                                    <span style="color: var(--text-muted);">로얄층 민감도</span>
+                                    <span style="font-weight: bold; color: var(--text-dark);">${floorSensStr}</span>
+                                </div>
+ 
+                                <div style="display: flex; flex-direction: column; gap: 4px; border-top: 1px solid rgba(226,232,240,0.5); padding-top: 6px; margin-top: 4px;">
+                                    <span style="font-weight: bold; color: var(--text-dark); margin-bottom: 2px;">평수대별 매매건수 분포 (총 ${matchedGrid.sale_count || 0}건)</span>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 0.72rem;">
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span style="color: var(--text-muted);">10평 이하:</span>
+                                            <span style="font-weight: 600;">${matchedGrid.sales_under_10 || 0}건 (${matchedGrid.sale_count > 0 ? ((matchedGrid.sales_under_10 || 0)/matchedGrid.sale_count*100).toFixed(1) : 0}%)</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span style="color: var(--text-muted);">20평 이하:</span>
+                                            <span style="font-weight: 600;">${matchedGrid.sales_10_to_20 || 0}건 (${matchedGrid.sale_count > 0 ? ((matchedGrid.sales_10_to_20 || 0)/matchedGrid.sale_count*100).toFixed(1) : 0}%)</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span style="color: var(--text-muted);">30평 이하:</span>
+                                            <span style="font-weight: 600;">${matchedGrid.sales_20_to_30 || 0}건 (${matchedGrid.sale_count > 0 ? ((matchedGrid.sales_20_to_30 || 0)/matchedGrid.sale_count*100).toFixed(1) : 0}%)</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span style="color: var(--text-muted);">30평 초과:</span>
+                                            <span style="font-weight: 600;">${matchedGrid.sales_over_30 || 0}건 (${matchedGrid.sale_count > 0 ? ((matchedGrid.sales_over_30 || 0)/matchedGrid.sale_count*100).toFixed(1) : 0}%)</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; grid-column: span 2; border-top: 1px dashed rgba(226,232,240,0.8); padding-top: 4px; margin-top: 2px;">
+                                            <span style="color: var(--text-dark); font-weight: bold;">주거래평수대:</span>
+                                            <span style="font-weight: bold; color: var(--primary-blue);">${matchedGrid.main_pyeong_type !== '-' ? `${matchedGrid.main_pyeong_type} (${matchedGrid.main_pyeong_ratio.toFixed(1)}%)` : '-'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    // 가이드 텍스트 자동 구성
+                    let strategy = "";
+                    if (matchedGrid.jeonse_ratio >= 75) {
+                        strategy += `본 격자는 전세가율이 <strong>${matchedGrid.jeonse_ratio.toFixed(1)}%</strong>로 높은 편에 속합니다. 매매가 대비 임차 보증금이 많아 적은 자기자본으로 갭투자가 가능하지만, 임차인 보증금 미반환 리스크(역전세)가 있을 수 있으므로 주의깊게 검토하십시오. `;
+                    } else if (matchedGrid.jeonse_ratio >= 60) {
+                        strategy += `본 격자는 전세가율이 <strong>${matchedGrid.jeonse_ratio.toFixed(1)}%</strong>로 안정적인 범위를 보입니다. 주거 및 임대 배후수요가 견고하여 임차 매칭이 원활할 것으로 판단됩니다. `;
+                    } else if (matchedGrid.jeonse_ratio > 0) {
+                        strategy += `본 격자는 전세가율이 <strong>${matchedGrid.jeonse_ratio.toFixed(1)}%</strong>로 비교적 낮게 형성되어 있습니다. 레버리지 효과가 낮으므로 인수 후 실거주 매도 전략이나 대출 비중 등 자금 조달 계획을 꼼꼼히 설계하십시오. `;
+                    } else {
+                        strategy += `전세 실거래 정보가 집계되지 않았습니다. 실거주용 매매 가치 산정에 포커스를 맞추시기 바랍니다. `;
+                    }
+
+                    if (txCount >= 15) {
+                        strategy += `또한 최근 1년 거래 건수가 <strong>${txCount}건</strong>으로 시장 회전률이 뛰어난 곳이므로 매도 시 환금성이 최우수합니다.`;
+                    } else if (txCount >= 5) {
+                        strategy += `또한 최근 1년 거래 건수는 <strong>${txCount}건</strong> 수준으로 평이한 수준의 유동성을 보입니다.`;
+                    } else {
+                        strategy += `또한 최근 1년 간 격자 거래량이 <strong>${txCount}건</strong>으로 침체되어 있으므로 매도 시 처분 기간이 길어질 위험을 감수하고 가격 경쟁력을 확보해야 합니다.`;
+                    }
+
+                    guideHtml = `
+                        <div class="demand-card" style="background: rgba(37, 99, 235, 0.05); border: 1px dashed rgba(37, 99, 235, 0.3);">
+                            <div class="demand-card-title" style="color: var(--primary-blue); font-size: 0.9rem; margin-bottom: 5px;">
+                                <i class="fa-solid fa-lightbulb"></i> 주택 매매 및 임대 전략 가이드
+                            </div>
+                            <div style="font-size: 0.8rem; line-height: 1.5; color: var(--text-dark); word-break: keep-all;">
+                                ${strategy}
+                            </div>
+                        </div>
+                    `;
+
+                } else {
+                    priceCardHtml = `
+                        <div class="demand-card">
+                            <div class="demand-card-title" style="color: #ea580c;">
+                                <i class="fa-solid fa-coins"></i> 실거래 가격 정보 (250m 격자)
+                            </div>
+                            <div style="text-align: center; color: var(--text-muted); font-size: 0.75rem; padding: 20px 0;">
+                                <i class="fa-solid fa-circle-exclamation" style="font-size: 1.5rem; margin-bottom: 5px; color:#cbd5e1;"></i>
+                                <br>이 지역 격자 내에 최근 1년간 수집된<br>${propType} 실거래 데이터가 부족합니다.
+                            </div>
+                        </div>
+                    `;
+
+                    guideHtml = `
+                        <div class="demand-card" style="background: rgba(239, 68, 68, 0.05); border: 1px dashed rgba(239, 68, 68, 0.3);">
+                            <div class="demand-card-title" style="color: #ef4444; font-size: 0.9rem; margin-bottom: 5px;">
+                                <i class="fa-solid fa-triangle-exclamation"></i> 투자 유의 사항
+                            </div>
+                            <div style="font-size: 0.8rem; line-height: 1.5; color: var(--text-dark); word-break: keep-all;">
+                                현재 경공매 물건 근방에 실거래가 축적되지 않았습니다. 실거래가 지표가 낮을 시 지도의 '실거래 가격지표' 오버레이 기능을 활성화하여 더 넓은 반경의 시세 흐름을 분석하시길 권장합니다.
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 주거 인구 정보 요약도 함께 보여줌
+                const resPop = demo.residential_population || 0;
+                const house = demo.households || 0;
+
+                content.innerHTML = `
+                    <!-- Address & Case Metadata -->
+                    <div class="demand-card" style="border-left: 4px solid var(--primary-blue); background: rgba(255, 255, 255, 0.9);">
+                        <div style="font-size: 0.75rem; font-weight: bold; color: var(--primary-blue); margin-bottom: 2px;">
+                            ${propType} | ${caseNo}
+                        </div>
+                        <div style="font-size: 0.95rem; font-weight: bold; color: var(--text-dark); margin-bottom: 4px; line-height: 1.3;">
+                            ${address}
+                        </div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+                            <i class="fa-solid fa-house"></i> 주택 입지 및 거래/임대지표 분석 정보
+                        </div>
+                    </div>
+
+                    <!-- Real Price Indicators -->
+                    ${priceCardHtml}
+
+                    <!-- Subway Proximity -->
+                    <div class="demand-card">
+                        <div class="demand-card-title" style="margin-bottom: 6px;">
+                            <i class="fa-solid fa-train-subway" style="color: #10b981;"></i> 대중교통 입지 분석
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 0.8rem; font-weight: bold; color: var(--text-dark);">지하철 접근성</span>
+                            <span class="demand-subway-badge ${gradeBadgeClass}">${sub.grade}</span>
+                        </div>
+                        <div class="demand-subway-list">
+                            ${subwayListHtml}
+                        </div>
+                    </div>
+
+                    <!-- Residential Population & Households -->
+                    <div class="demand-card">
+                        <div class="demand-card-title">
+                            <i class="fa-solid fa-house-chimney-user" style="color: #ea580c;"></i> 반경 500m 거주 배후수요
+                        </div>
+                        <div class="demand-grid">
+                            <div class="demand-stat-item">
+                                <div class="demand-stat-label">거주인구</div>
+                                <div class="demand-stat-value" style="color: #ea580c;">${Number(resPop).toLocaleString()}<span style="font-size: 0.75rem; font-weight: normal; margin-left: 2px;">명</span></div>
+                            </div>
+                            <div class="demand-stat-item">
+                                <div class="demand-stat-label">세대수</div>
+                                <div class="demand-stat-value">${Number(house).toLocaleString()}<span style="font-size: 0.75rem; font-weight: normal; margin-left: 2px;">세대</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Property Specs Comparison -->
+                    ${specsCardHtml}
+
+                    <!-- Strategy Guide -->
+                    ${guideHtml}
+                `;
+            }
+
+        // [AI_ADDED] Planned Roads and Apartment Info Layers
+        let plannedRoadsLayer = null;
+        let aptInfoLayer = null;
+
+        async function togglePlannedRoads100m() {
+            const isChecked = document.getElementById('toggle-planned-road-100m').checked;
+            if (isChecked) {
+                if (!plannedRoadsLayer) {
+                    try {
+                        const res = await fetch('/data/planned_roads_100m.geojson');
+                        if (!res.ok) throw new Error("Failed to load geojson");
+                        const geoData = await res.json();
+                        plannedRoadsLayer = L.geoJSON(geoData, {
+                            style: {
+                                color: '#ef4444',
+                                weight: 2,
+                                dashArray: '5, 5',
+                                fillColor: '#ef4444',
+                                fillOpacity: 0.15
+                            },
+                            onEachFeature: (feature, layer) => {
+                                layer.bindPopup('<b>예정도로 (100m 버퍼)</b>');
+                            }
+                        }).addTo(map);
+                    } catch (e) {
+                        console.error('예정도로 버퍼 로딩 실패:', e);
+                        alert('예정도로 데이터가 준비되지 않았습니다.');
+                        document.getElementById('toggle-planned-road-100m').checked = false;
+                    }
+                } else {
+                    map.addLayer(plannedRoadsLayer);
+                }
+            } else {
+                if (plannedRoadsLayer) map.removeLayer(plannedRoadsLayer);
+            }
+        }
+
+        async function fetchVWorldParcel(lat, lng, aptInfo) {
+            try {
+                const res = await fetch(`/api/proxy/vworld?data=lp_pa_cbnd_bubun&geomFilter=POINT(${lng} ${lat})`);
+                const data = await res.json();
+                if (data.response && data.response.result && data.response.result.featureCollection) {
+                    return data.response.result.featureCollection;
+                }
+            } catch(e) {
+                console.error("VWorld parcel fetch error:", e);
+            }
+            return null;
+        }
+
+        let currentHighlightedParcel = null;
+
+        let aptGeoDataCache = null;
+        
+        function onMinHouseholdsChange() {
+            if (document.getElementById('toggle-apt-info').checked) {
+                toggleAptInfo();
+            }
+        }
+        document.getElementById('min-households').addEventListener('change', onMinHouseholdsChange);
+        if (document.getElementById('use-min-households')) {
+            document.getElementById('use-min-households').addEventListener('change', onMinHouseholdsChange);
+        }
+
+        async function toggleAptInfo() {
+            const isChecked = document.getElementById('toggle-apt-info').checked;
+            const useMinHouseholds = document.getElementById('use-min-households') ? document.getElementById('use-min-households').checked : false;
+            const minHouseholds = useMinHouseholds ? (parseInt(document.getElementById('min-households').value, 10) || 500) : 0;
+            
+            if (isChecked) {
+                try {
+                    if (!aptGeoDataCache) {
+                        const res = await fetch('/data/apt_info_500_polygons.geojson');
+                        if (!res.ok) throw new Error("Failed to load apt geojson");
+                        aptGeoDataCache = await res.json();
+                    }
+                    
+                    if (aptInfoLayer) map.removeLayer(aptInfoLayer);
+                    
+                    aptInfoLayer = L.geoJSON(aptGeoDataCache, {
+                        filter: function(feature) {
+                            return (feature.properties.households || 0) >= minHouseholds;
+                        },
+                        style: {
+                            color: '#0ea5e9',
+                            weight: 2,
+                            fillColor: '#0ea5e9',
+                            fillOpacity: 0.4,
+                            interactive: false
+                        }
+                    }).addTo(map);
+
+                } catch (e) {
+                    console.error('아파트 정보 로딩 실패:', e);
+                    alert('아파트 데이터가 준비되지 않았습니다.');
+                    document.getElementById('toggle-apt-info').checked = false;
+                }
+            } else {
+                if (aptInfoLayer) map.removeLayer(aptInfoLayer);
+                if (currentHighlightedParcel) map.removeLayer(currentHighlightedParcel);
+            }
+            if (typeof triggerHighlighter === 'function') triggerHighlighter();
+        }
+                        
+        // Removed old aptInfoLayer logic since it's merged above
+        // [/AI_ADDED]
+
         </script>
 
 <!-- Mobile Tab Bar -->
@@ -4286,6 +5746,368 @@
 <i class="fa-solid fa-sliders"></i>
 <span>필터</span>
 </button>
+</div>
+
+
+
+<!-- Naver Price Analysis Split Modal -->
+<div id="naverPriceModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
+    <div class="modal-content" style="background: white; padding: 20px; border-radius: 10px; width: 1000px; max-width: 95%; height: 80vh; max-height: 800px; display: flex; flex-direction: column;">
+        <h2 style="margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;"><i class="fa-solid fa-chart-line"></i> 네이버 시세 분석</h2>
+        <div id="naverPriceLoading" style="display: none; text-align: center; padding: 50px;">
+            <i class="fa-solid fa-spinner fa-spin fa-3x"></i>
+            <p style="margin-top:15px; font-size:1.1rem;">사례 부동산 탐색 및 시세 분석 중입니다...</p>
+        </div>
+        
+        <div id="naverPriceResult" style="display: none; flex: 1; flex-direction: row; gap: 20px; overflow: hidden;">
+            <!-- Left: Properties List -->
+            <div style="flex: 1; border-right: 1px solid #ddd; padding-right: 20px; overflow-y: auto;">
+                <h3 style="font-size:1.2rem; margin-bottom:10px;"><i class="fa-solid fa-list"></i> 유사 사례 부동산 리스트</h3>
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1;">
+                            <th style="padding:10px;">위치</th>
+                            <th style="padding:10px;">층수</th>
+                            <th style="padding:10px;">면적</th>
+                            <th style="padding:10px; text-align:right;">매물호가(억원)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="naverPricePropsBody">
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Right: Stats -->
+            <div style="flex: 1; padding-left: 10px; overflow-y: auto;">
+                <h3 style="font-size:1.2rem; margin-bottom:10px;"><i class="fa-solid fa-chart-pie"></i> 시세 요약 통계</h3>
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <tbody id="naverPriceTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="naverPriceError" style="display: none; color: red; margin-top: 15px; padding: 20px; background:#fef2f2; border:1px solid #fca5a5; border-radius:5px;"></div>
+        
+        <div style="text-align: right; margin-top: 20px; border-top:1px solid #eee; padding-top:15px;">
+            <button onclick="document.getElementById('naverPriceModal').style.display='none'" style="padding: 10px 20px; cursor: pointer; border-radius: 6px; border: none; background: #64748b; color:white; font-weight:bold;">닫기</button>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+async function openNaverPriceModal(caseNo, lat, lng, type, size) {
+    document.getElementById('naverPriceModal').style.display = 'flex';
+    document.getElementById('naverPriceLoading').style.display = 'block';
+    document.getElementById('naverPriceResult').style.display = 'none';
+    document.getElementById('naverPriceError').style.display = 'none';
+
+    const payload = {
+        lat: lat || 37.5665,
+        lon: lng || 126.9780,
+        type: type || "아파트",
+        area_pyeong: size ? size : 25,
+        floor: "5층",
+        total_floor: "15층",
+        build_year: "2010",
+        appraised_price: 500000000,
+        min_price: 400000000,
+        senior_debt: 0
+    };
+    
+    if(window.auctions && window.auctions.length > 0) {
+        const ac = window.auctions.find(a => a.case_no === caseNo);
+        if(ac) {
+            payload.appraised_price = ac.appraisal_price || payload.appraised_price;
+            payload.min_price = ac.minimum_price || payload.min_price;
+            if(ac.pyeong) payload.area_pyeong = ac.pyeong;
+            if(ac.floor) payload.floor = String(ac.floor);
+        }
+    }
+
+    try {
+        const response = await fetch('/api/naver_price_analysis', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const res = await response.json();
+        
+        document.getElementById('naverPriceLoading').style.display = 'none';
+        if (res.status === 'success') {
+            const data = res.data;
+            document.getElementById('naverPriceResult').style.display = 'flex';
+            
+            let html = `
+                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; width:45%; color:#475569;">분석 대상</th><td style="font-weight:bold;">${type} / ${data.target_categories.floor} / ${data.target_categories.area} / ${data.target_categories.age}</td></tr>
+                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">탐색 반경</th><td style="color:#0284c7; font-weight:bold;">${data.radius_used}m <span style="font-size:0.9em; color:#64748b;">(매칭: ${data.matched_count}건)</span></td></tr>
+                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">총 제비용</th><td>${(data.target_indicators.total_expense / 100000000).toFixed(2)} 억원</td></tr>
+                <tr style="border-bottom:1px solid #eee; background:#f8fafc;"><th style="padding:12px 8px; color:#475569;">지표 A (최저가+비용)</th><td style="font-weight:bold; color:#0f172a;">${(data.target_indicators.ind_a || 0).toFixed(2)} 억원</td></tr>
+                <tr style="border-bottom:1px solid #eee; background:#f8fafc;"><th style="padding:12px 8px; color:#475569;">지표 B (적정가+비용)</th><td style="font-weight:bold; color:#0f172a;">${(data.target_indicators.ind_b || 0).toFixed(2)} 억원</td></tr>
+                
+                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">사례 평균가</th><td>${(data.market_prices.avg_price || 0).toFixed(2)} 억원</td></tr>
+                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">사례 중간값</th><td>${(data.market_prices.median_price || 0).toFixed(2)} 억원</td></tr>
+                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">평균 90% 수준</th><td style="color:#16a34a; font-weight:bold;">${(data.market_prices.avg_90 || 0).toFixed(2)} 억원</td></tr>
+                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">중간 90% 수준</th><td style="color:#16a34a; font-weight:bold;">${(data.market_prices.median_90 || 0).toFixed(2)} 억원</td></tr>
+                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">사례 최저가</th><td style="color:#dc2626; font-weight:bold;">${(data.market_prices.min_price || 0).toFixed(2)} 억원</td></tr>
+                
+                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">괴리율 (지표A vs 평균)</th><td><span style="padding:4px 8px; border-radius:12px; background:${(data.disparities.ind_a_vs_avg || 0) > 0 ? '#dcfce7' : '#fee2e2'}; color:${(data.disparities.ind_a_vs_avg || 0) > 0 ? '#166534' : '#991b1b'};">${(data.disparities.ind_a_vs_avg || 0).toFixed(2)}%</span></td></tr>
+                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">괴리율 (지표A vs 중간)</th><td><span style="padding:4px 8px; border-radius:12px; background:${(data.disparities.ind_a_vs_median || 0) > 0 ? '#dcfce7' : '#fee2e2'}; color:${(data.disparities.ind_a_vs_median || 0) > 0 ? '#166534' : '#991b1b'};">${(data.disparities.ind_a_vs_median || 0).toFixed(2)}%</span></td></tr>
+            `;
+            if(data.special_rule_applied) {
+                html += `<tr><td colspan="2" style="color:#ef4444; font-size:0.9em; padding-top:10px;"><i class="fa-solid fa-triangle-exclamation"></i> 지하 매물 부족으로 1층 시세의 70% 특례 적용됨</td></tr>`;
+            }
+            document.getElementById('naverPriceTableBody').innerHTML = html;
+            
+            let propsHtml = '';
+            if(data.properties && data.properties.length > 0) {
+                data.properties.forEach(p => {
+                    propsHtml += `
+                        <tr style="border-bottom:1px solid #f1f5f9;">
+                            <td style="padding:12px 10px; font-size:0.95em;">${p.address}</td>
+                            <td style="padding:12px 10px; font-size:0.9em; color:#64748b;">${p.floor_cat}</td>
+                            <td style="padding:12px 10px; font-size:0.9em; color:#64748b;">${p.pyeong}평</td>
+                            <td style="padding:12px 10px; text-align:right; font-weight:500;">${(p.price || 0).toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+            } else {
+                propsHtml = `<tr><td colspan="4" style="text-align:center; padding:30px; color:#94a3b8;">유사 조건의 사례 부동산이 없습니다.</td></tr>`;
+            }
+            document.getElementById('naverPricePropsBody').innerHTML = propsHtml;
+            
+        } else {
+            throw new Error(res.message || "Unknown error");
+        }
+    } catch (err) {
+        document.getElementById('naverPriceLoading').style.display = 'none';
+        document.getElementById('naverPriceError').style.display = 'block';
+        document.getElementById('naverPriceError').innerText = "오류 발생: " + err.message;
+    }
+}
+let naverLayerGroup = null;
+
+function toggleNaverRealEstate() {
+    const isChecked = document.getElementById('toggle-naver').checked;
+    const selector = document.getElementById('naver-type-selector');
+    if (isChecked) {
+        selector.style.display = 'block';
+        fetchNaverRealEstate();
+        map.on('moveend', fetchNaverRealEstate);
+    } else {
+        selector.style.display = 'none';
+        map.off('moveend', fetchNaverRealEstate);
+        if (naverLayerGroup) {
+            map.removeLayer(naverLayerGroup);
+            naverLayerGroup = null;
+        }
+    }
+}
+
+async function fetchNaverRealEstate() {
+    const isChecked = document.getElementById('toggle-naver').checked;
+    if (!isChecked) return;
+    
+    const type = document.getElementById('naver-type').value;
+    const bounds = map.getBounds();
+    const min_lat = bounds.getSouthWest().lat;
+    const max_lat = bounds.getNorthEast().lat;
+    const min_lng = bounds.getSouthWest().lng;
+    const max_lng = bounds.getNorthEast().lng;
+    
+    if (naverLayerGroup) {
+        map.removeLayer(naverLayerGroup);
+    }
+    naverLayerGroup = L.markerClusterGroup({
+        chunkedLoading: true,
+        disableClusteringAtZoom: 16,
+        maxClusterRadius: 60,
+        clusterPane: 'naverPane'
+    }).addTo(map);
+    
+    try {
+        const res = await fetch(`/api/naver-realestate?estate_type=${encodeURIComponent(type)}&min_lat=${min_lat}&max_lat=${max_lat}&min_lng=${min_lng}&max_lng=${max_lng}`);
+        const json = await res.json();
+        
+        if (json.status === 'success' && json.data) {
+            const markers = [];
+            json.data.forEach(item => {
+                const markerHtml = `<div style="background-color: black; border-radius: 50%; width: 14px; height: 14px; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5); pointer-events: none;"></div>`;
+                const icon = L.divIcon({
+                    html: markerHtml,
+                    className: 'leaflet-div-icon',
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7]
+                });
+
+                function formatPrice(priceVal) {
+                    if (isNaN(priceVal) || priceVal == 0) return '-';
+                    let uk = Math.floor(priceVal / 100000000);
+                    let man = Math.floor((priceVal % 100000000) / 10000);
+                    return (uk > 0 ? uk + '억' : '') + (man > 0 ? (uk > 0 ? ' ' : '') + man + '만' : '');
+                }
+
+                let pyungRows = '';
+                if (item.pyung_groups) {
+                    item.pyung_groups.forEach(pg => {
+                        let minP = formatPrice(pg.min_price);
+                        let maxP = formatPrice(pg.max_price);
+                        let minPPP_str = formatPrice(pg.min_price_per_pyung);
+                        let maxPPP_str = formatPrice(pg.max_price_per_pyung);
+                        
+                        let idsStr = pg.estate_ids.slice(0, 5).join(", ");
+                        if (pg.estate_ids.length > 5) idsStr += " 외 " + (pg.estate_ids.length - 5) + "건";
+                        
+                        pyungRows += `
+                            <tr style="border-bottom: 1px dashed #eee;">
+                                <td style="padding:4px 0; font-weight:bold; color:#000; white-space:nowrap;">${pg.pyung}</td>
+                                <td style="padding:4px 0; text-align:right; font-weight:bold; color:#3b82f6; white-space:nowrap;">${pg.count}건</td>
+                                <td style="padding:4px 0; text-align:right; color:#ef4444; white-space:nowrap;">${minP} ~ ${maxP}</td>
+                                <td style="padding:4px 0; text-align:right; font-size:0.8rem; color:gray; white-space:nowrap;">당 ${minPPP_str}~${maxPPP_str}</td>
+                            </tr>
+                            <tr style="border-bottom: 2px solid #eaeaea;">
+                                <td colspan="4" style="padding:0 0 6px 0; font-size:0.75rem; color:gray; text-align:right;">매물번호: ${idsStr}</td>
+                            </tr>
+                        `;
+                    });
+                }
+                
+                const hoverContent = `<div style="font-family:'Noto Sans KR'; font-weight:bold; font-size:1rem;">${type} 총 ${item.total_count}건</div>`;
+                
+                const popupContent = `
+                    <div style="font-family:'Noto Sans KR'; min-width: 480px; padding-bottom: 5px;">
+                        <div style="font-size:1.1rem;"><span style="color:#00c73c;font-weight:bold;">[네이버 매물]</span> <b style="font-size:0.9rem;">${item.address}</b></div>
+                        ${item.age_info ? `<div style="font-size:0.85rem; color:#f59e0b; font-weight:bold; margin-top:2px;">⏱ [건축/노후도] ${item.age_info}</div>` : ''}
+                        <div style="color:gray; font-size:0.85rem; margin-bottom:8px; margin-top:4px;">해당 필지 내 총 <b>${item.total_count}건</b>의 매물이 존재합니다.</div>
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            <table style="width:100%; font-size:0.9rem; border-collapse: collapse; margin-bottom: 10px;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid #ccc;">
+                                        <th style="text-align:left; padding:4px 0; white-space:nowrap;">평형</th>
+                                        <th style="text-align:right; padding:4px 0; white-space:nowrap;">건수</th>
+                                        <th style="text-align:right; padding:4px 0; white-space:nowrap;">최저~최고가</th>
+                                        <th style="text-align:right; padding:4px 0; white-space:nowrap;">평당 최저~최고</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${pyungRows}
+                                </tbody>
+                            </table>
+                        </div>
+                        <button onclick="window.open('https://new.land.naver.com/complexes?ms=${item.lat},${item.lng},18&a=APT:OPST:VL:OR:ONE:GO:CST:DDD:SG:HO:EN', '_blank')" style="display:block; box-sizing: border-box; width:100%; padding:8px; background:#00c73c; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:1rem; margin-top:5px;">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> 네이버 부동산 원문 보기
+                        </button>
+                        <button onclick="showNaverDetails(${item.lat}, ${item.lng}, '${type}', '${item.address}')" style="display:block; box-sizing: border-box; width:100%; padding:8px; background:#475569; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:1rem; margin-top:5px;">
+                            <i class="fa-solid fa-list"></i> 세부 매물 리스트 보기
+                        </button>
+                    </div>
+                `;
+                
+                const marker = L.marker([item.lat, item.lng], { icon: icon, pane: 'naverPane' })
+                 .bindTooltip(hoverContent, { direction: 'top', offset: [0, -10], opacity: 1, className: 'naver-tooltip' })
+                 .bindPopup(popupContent, { offset: [0, -10], maxWidth: 600 });
+                
+                markers.push(marker);
+            });
+            naverLayerGroup.addLayers(markers);
+        } else {
+            console.warn(json.message);
+        }
+    } catch (e) {
+        console.error('Error fetching Naver real estate:', e);
+    }
+}
+async function showNaverDetails(lat, lng, estateType, address) {
+    document.getElementById('naverDetailsAddress').innerText = "- " + address;
+    const tbody = document.getElementById('naverDetailsTableBody');
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px;">로딩 중...</td></tr>';
+    document.getElementById('naverDetailsModal').style.display = 'flex';
+    
+    try {
+        const response = await fetch(`/api/naver-realestate-details?lat=${lat}&lng=${lng}&estate_type=${encodeURIComponent(estateType)}`);
+        const json = await response.json();
+        
+        if (json.status === 'success' && json.data) {
+            if (json.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px;">매물 데이터가 없습니다.</td></tr>';
+                return;
+            }
+            
+            let html = '';
+            json.data.forEach(item => {
+                const dealType = item.deal_type || '-';
+                let priceStr = item.price || '-';
+                if (item.rent && item.rent !== '0') {
+                    priceStr += ` / ${item.rent}`;
+                }
+                
+                let pppStr = '-';
+                if (item.price_per_pyung > 0) {
+                    pppStr = item.price_per_pyung.toLocaleString() + '만';
+                }
+                
+                const floorStr = item.floor || '-';
+                const areaStr = item.area || '-';
+                const pyungStr = item.pyung ? `${item.pyung}평` : '-';
+                const ageInfo = item.age_info || '-';
+                const typeDetail = item.type_detail || '-';
+                const estateId = item.estate_id || '-';
+                
+                html += `
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding:8px 10px; text-align:center;"><a href="https://new.land.naver.com/complexes?ms=${lat},${lng},18&a=APT:OPST:VL:OR:ONE:GO:CST:DDD:SG:HO:EN&articleNo=${estateId}" target="_blank" style="color:#2563eb; text-decoration:none; font-weight:bold;">${estateId}</a></td>
+                        <td style="padding:8px 10px; text-align:center;"><span style="background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px; font-size:0.8rem; font-weight:bold;">${dealType}</span></td>
+                        <td style="padding:8px 10px; text-align:right; font-weight:bold; color:#b91c1c;">${priceStr}</td>
+                        <td style="padding:8px 10px; text-align:right; color:#475569;">${pppStr}</td>
+                        <td style="padding:8px 10px; text-align:center;">${floorStr}</td>
+                        <td style="padding:8px 10px; text-align:right;">${pyungStr}<br><span style="font-size:0.75rem; color:gray;">(${areaStr})</span></td>
+                        <td style="padding:8px 10px; text-align:center; color:#f59e0b;">${ageInfo}</td>
+                        <td style="padding:8px 10px; text-align:left;">${typeDetail}</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        } else {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 20px; color:red;">에러: ${json.message}</td></tr>`;
+        }
+    } catch (e) {
+        console.error('Error fetching Naver details:', e);
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px; color:red;">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>';
+    }
+}
+</script>
+
+<!-- Naver Details Modal -->
+<div id="naverDetailsModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
+    <div class="modal-content" style="background: white; padding: 20px; border-radius: 10px; width: 1200px; max-width: 95%; height: 80vh; max-height: 800px; display: flex; flex-direction: column;">
+        <h2 style="margin-top:0; font-family:'Noto Sans KR';"><i class="fa-solid fa-list"></i> 세부 매물 리스트 <span id="naverDetailsAddress" style="font-size: 1.1rem; color: #64748b; font-weight: normal; margin-left: 10px;"></span></h2>
+        
+        <div style="flex:1; overflow-y:auto; margin-top: 10px;">
+            <table style="width:100%; border-collapse: collapse; font-family:'Noto Sans KR'; font-size:0.9rem;">
+                <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 1;">
+                    <tr style="border-bottom: 2px solid #cbd5e1; background: #e2e8f0;">
+                        <th style="padding:10px; text-align:center; white-space:nowrap;">매물번호</th>
+                        <th style="padding:10px; text-align:center; white-space:nowrap;">매매/임대</th>
+                        <th style="padding:10px; text-align:right; white-space:nowrap;">가격</th>
+                        <th style="padding:10px; text-align:right; white-space:nowrap;">평당가</th>
+                        <th style="padding:10px; text-align:center; white-space:nowrap;">층수</th>
+                        <th style="padding:10px; text-align:right; white-space:nowrap;">평수/면적</th>
+                        <th style="padding:10px; text-align:center; white-space:nowrap;">건축/노후도</th>
+                        <th style="padding:10px; text-align:left;">상세(매물특징)</th>
+                    </tr>
+                </thead>
+                <tbody id="naverDetailsTableBody">
+                    <!-- rows dynamically added -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="margin-top:20px; display:flex; justify-content:flex-end;">
+            <button onclick="document.getElementById('naverDetailsModal').style.display='none'" style="padding: 10px 20px; cursor: pointer; border-radius: 6px; border: none; background: #64748b; color:white; font-weight:bold;">닫기</button>
+        </div>
+    </div>
 </div>
 
 </body>

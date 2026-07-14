@@ -1,0 +1,522 @@
+1:  Created At: 2026-06-06T00:16:34Z
+2:  Completed At: 2026-06-06T00:16:34Z
+3:  File Path: `file:///c:/Users/llll/Documents/%EB%91%90%EC%9D%B8%EA%B2%BD%EB%A7%A4/%EB%B0%94%EC%9D%B4%EB%B8%8C%EC%BD%94%EB%94%A9/public/analysis.html`
+4:  Total Lines: 838
+5:  Total Bytes: 31783
+6:  Showing lines 39 to 838
+7:  The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+8:  39: 
+9:  40:         body {
+10:  41:             font-family: 'Outfit', 'Inter', 'Noto Sans KR', sans-serif;
+11:  42:             background: radial-gradient(circle at 50% 0%, #17153b 0%, var(--bg-dark) 80%);
+12:  43:             color: var(--text-main);
+13:  44:             min-height: 100vh;
+14:  45:             padding: 15px;
+15:  46:             line-height: 1.5;
+16:  47:             font-size: 0.85rem;
+17:  48:             overflow-x: hidden;
+18:  49:         }
+19:  50: 
+20:  51:         .container {
+21:  52:             max-width: 1200px;
+22:  53:             margin: 0 auto;
+23:  54:         }
+24:  55: 
+25:  56:         /* Header Style */
+26:  57:         header {
+27:  58:             text-align: center;
+28:  59:             margin-bottom: 15px;
+29:  60:             position: relative;
+30:  61:         }
+31:  62: 
+32:  63:         header h1 {
+33:  64:             font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+34:  65:        
+35:               letter-spacing: -0.5px;
+36:           }
+37:   
+38:           header p {
+39:               color: var(--text-muted);
+40:               font-size: 0.8rem;
+41:               font-weight: 400;
+42:           }
+43:   
+44:           /* Stat G
+45:       - **AND mode**: Only markers matching all selected filters should be highlighted.
+46:       - **OR mode**: Markers matching any selected filter should be highlighted.
+47:  3. **Summary Analysis (약식분석) Redirection**:
+48:     - Select only 1 or 2 filters.
+49:     - Click the `#highlight-count` badge or the brain icon button.
+50:     - Verify that the browser immediately opens `analysis.html` and displays the correct summary report for the selected filters.
+51:  
+52:              max-width: 1200px;
+53:              margin: 0 auto;
+54:                   'Content-Type': 'application/json'
+55:               },
+56:               body: JSON.stringify({ case_nos: caseNos })
+57:           })
+58:           .then(res => res.json())
+59:           .then(data => {
+60:               const reportContentEl = document.getElementById('ai-report-content');
+61:               if (data.status === 'success') {
+62:  810:         })
+63:  811:         .then(res => res.json())
+64:  812:         .then(data => {
+65:  813:             const reportContentEl = document.getElementById('ai-report-content');
+66:  814:             if (data.status === 'success') {
+67:  815:                 if (window.marked && typeof window.marked.parse === 'function') {
+68:  816:                     reportContentEl.innerHTML = window.marked.parse(data.report);
+69:  817:                 } else {
+70:  818:                     reportContentEl.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; color: var(--text-main); font-size: 0.85rem;">${data.report}</pre>`;
+71:  819:                 }
+72:  820:             } else {
+73:  821:                 reportContentEl.innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 호출 실패: ${data.message}</div>`;
+74:  822:             }
+75:  823:         })
+76:  824:         .catch(err => {
+77:  825:             console.error(err);
+78:  826:             document.getElementById('ai-report-content').innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 요청 중 오류가 발생했습니다.</div>`;
+79:  827:         });
+80:  828: 
+81:  829:     } else {
+82:  830:         // No data
+83:  831:         document.getElementById('auctions-table').style.display = 'none';
+84:  832:         document.getElementById('no-data-msg').style.display = 'block';
+85:  833:         document.getElementById('ai-report-content').innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">중첩 분석 데이터가 존재하지 않습니다.</div>`;
+86:  834:     }
+87:  835: </script>
+88:  836: </body>
+89:  837: </html>
+90:  838: 
+91:  The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.
+92:  
+168:          .best-grid {
+176:              .best-grid {
+181:          .best-card {
+194:          .best-card::after {
+209:          .best-card:hover {
+215:          .best-card:hover::after {
+500:              font-size: 1.05rem;
+501:              color: var(--primary-purple);
+502:          }
+503:          .markdown-body p {
+504:              margin-bottom: 12px;
+505:              font-size: 0.85rem;
+506:              text-align: justify;
+507:          }
+508:          .markdown-body ul, .markdown-body ol {
+509:              margin-bottom: 12px;
+510:              padding-left: 20px;
+511:          }
+512:          .markdown-body li {
+513:              margin-bottom: 4px;
+514:              font-size: 0.82rem;
+515:              color: var(--text-main);
+516:          }
+517:          .markdown-body li strong {
+518:              color: var(--text-highlight);
+519:          }
+520:          .markdown-body strong {
+521:              color: #fff;
+522:              font-weight: 700;
+523:          }
+524:      </style>
+525:  </head>
+526:  <body>
+527:  
+528:  <div class="container">
+529:      <header>
+530:          <h1>PREMIUM HIGHLIGHTER REPORT</h1>
+531:          <p>필터 중첩 분석 기반 추천 경매 분석 및 가치 평가 결과</p>
+532:      </header>
+533:  
+534:      <!-- Stats summary bar -->
+535:      <div class="stats-grid">
+536:          <div class="stat-card">
+537:              <i class="fa-solid fa-list-check"></i>
+538:              <div class="stat-content">
+539:                  <h3>분석 대상 물건</h3>
+540:                  <div class="value" id="stat-total">0</div>
+541:              </div>
+542:          </div>
+543:          <div class="stat-card">
+544:              <i class="fa-sol
+554:                  <div class="value" id="stat-best">3</div>
+561:      <div class="best-grid" id="best-cards-container">
+569:              <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+570:                  <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.5rem; margin-bottom: 10px; color: var(--primary-purple);"></i>
+571:                  <p>Gemini 2.5 Flash가 실시간으로 개발계획, 인수금액, 수익률을 분석 중입니다...</p>
+572:              </div>
+573:          </div>
+574:      </div>
+575:  
+576:      <!-- Complete list of matched auctions -->
+577:      <h2 class="section-title" style="margin-top: 25px;"><i class="fa-solid fa-table-list"></i> 전체 중첩 물건 리스트</h2>
+578:      <div class="list-section">
+579:          <table class="analysis-table" id="auctions-table">
+580:              <thead>
+581:                  <tr>
+582:                      <th style="width: 120px;">사건번호</th>
+583:                      <th style="width: 70px;">구분</th>
+584:                      <th>소재지</th>
+585:                      <th style="width: 200px;">매칭된 필터</th>
+586:                      <th style="width: 70px; text-align: center;">중첩 수</th>
+587:      }
+588:  </script>
+589:  </body>
+590:  </html>
+591:  
+592:              <tbody id="table-body">
+593:                  <!-- Rendered dynamically -->
+594:              </tbody>
+595:          </table>
+596:          <div class="no-data" id="no-data-msg" style="display: none;">
+597:              중첩 분석 데이터가 존재하지 않습니다.
+598:          </div>
+599:      </div>
+600:  </div>
+601:  
+602:  <script>
+603:      // Formatter helpers
+604:      function formatPrice(num) {
+605:          if (!num) return '-';
+606:          if (typeof num === 'string') {
+607:              num = parseInt(num.replace(/[^0-9]/g, ''), 10);
+608:          }
+609:          if (isNaN(num)) return '-';
+610:          return num.toLocaleString() + ' 원';
+611:      }
+612:  
+613:      // Comprehensive AI Recommendation Score helper
+614:      function calculateRecommendationScore(item) {
+615:          // 1. Yield Score (max 50 points)
+616:          const appraisal = parseFloat(item.appraisal_price || 0);
+617:          const minPrice = parseFloat(item.min_price || 0);
+618:          let discountRate = 0.0;
+619:          if (appraisal > 0) {
+620:              discountRate = Math.max(0.0, (appraisal - minPrice) / appraisal);
+621:          }
+622:          const yieldScore = discountRate * 50.0;
+623:  
+624:          // 2. Value-Up Score (max 30 points)
+625:          const overlapCount = parseInt(item.overlap_count || 0, 10);
+626:          const matchedLayers = item.matched_layers || [];
+627:          let devLayerCount = 0;
+628:          matchedLayers.forEach(l => {
+629:              if (['개발', '택지', '계획', '도로', '구역', '지하철', '역세권'].some(k => l.includes(k))) {
+630:                  devLayerCount++;
+631:              }
+632:          fetch('/api/map/overlap_analyze', {
+633:              method: 'POST',
+634:              headers: {
+635:                  'Content-Type': 'application/json'
+636:              },
+637:              body: JSON.stringify({ case_nos: caseNos })
+638:          })
+639:          .then(res => res.json())
+640:          .then(data => {
+641:              const reportContentEl = document.getElementById('ai-report-content');
+642:              if (data.status === 'success') {
+643:                  if (window.marked && typeof window.marked.parse === 'function') {
+644:                      reportContentEl.innerHTML = window.marked.parse(data.report);
+645:                  } else {
+646:                      reportContentEl.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; color: var(--text-main); font-size: 0.85rem;">${data.report}</pre>`;
+647:                  }
+648:              } else {
+649:                  reportContentEl.innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 호출 실패: ${data.message}</div>`;
+650:              }
+651:          })
+652:          .catch(err => {
+653:              console.error(err);
+654:              document.getElementById('ai-report-content').innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 요청 중 오류가 발생했습니다.</div>`;
+655:          });
+656:  
+657:      } else {
+658:          // No data
+659:          document.getElementById('auctions-table').style.display = 'none';
+660:          document.getElementById('no-data-msg').style.display = 'block';
+661:          document.getElementById('ai-report-content').innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">중첩 분석 데이터가 존재하지 않습니다.</div>`;
+662:      }
+663:  </script>
+664:  </body>
+665:  </html>
+666:  
+667:              const matchedLayersStr = item.matched_layers.join(', ');
+668:              
+669:              // Dynamic value appreciation analysis
+670:              let valueAnalysis = "";
+671:              const hasDev = item.matched_layers.some(l => l.includes('개발') || l.includes('택지') || l.includes('계획') || l.includes('도로'));
+672:              if (hasDev) {
+673:                  valueAnalysis = `해당 물건은 ${matchedLayersStr} 내/인근에 위치하여 도시개발 계획에 직접적인 수혜를 받습니다. 향후 주거 및 상업 인프라 확충과 도로망 신설 등 개발 호재 실현에 따라 가시적인 지가 상승 및 큰 폭의 부동산 자
+674:              }
+675:  
+676:              const card = document.createElement('div');
+677:              card.className = 'best-card';
+678:              card.style.cursor = 'pointer';
+679:              card.onclick = () => openCaseInDashboard(item.case_no);
+680:              card.innerHTML = `
+681:                  <div>
+682:                      <span class="rank-badge rank-${index + 1}">
+683:                          <i class="fa-solid fa-crown"></i> BEST ${index + 1}
+684:                      </span>
+685:                      <div class="card-header" style="margin-top: 10px;">
+686:                          <div class="case-number">${item.case_no}</div>
+687:                          <span class="property-type-badge">${item.property_type}</span>
+688:                          <div class="address" title="${item.address}">${item.address}</div>
+689:                      </div>
+690:  
+691:                      <div class="price-section">
+692:                          <div class="price-row">
+693:                              <span class="price-lbl">감정가</span>
+694:                              <span class="price-val">${formatPrice(item.appraisal_price)}</span>
+695:                          </div>
+696:                          <div class="price-row">
+697:                              <span class="price-lbl">최저가</span>
+698:                              <span class="price-val min-price">${formatPrice(item.min_price)}</span>
+699:                          </div>
+700:                      </div>
+701:  
+702:                      <div class="overlap-indicator">
+703:                          <div class="overlap-count-circle">${item.overlap_count}</div>
+704:                          <div class="overlap-text">
+705:                              <div>핵심 입지/개발 <strong>${item.overlap_count}개</strong> 중첩</div>
+706:      if (auctions.length > 0) {
+707:          // Sort auctions: 1) Overlap count DESC, 2) Appraisal price DESC
+708:          auctions.sort((a, b) => {
+709:              if (b.overlap_count !== a.overlap_count) {
+710:                  return b.overlap_count - a.overlap_count;
+711:              }
+712:              const aPrice = typeof a.appraisal_price === 'number' ? a.appraisal_price : parseInt(String(a.appraisal_price).replace(/[^0-9]/g, ''), 10) || 0;
+713:              const bPrice = typeof b.appraisal_price === 'number' ? b.appraisal_price : parseInt(String(b.appraisal_price).replace(/[^0-9]/g, ''), 10) || 0;
+714:              return bPrice - aPrice;
+715:          });
+716:  
+717:          // Set Stats
+718:          document.getElementById('stat-total').innerText = auctions.length;
+719:          const maxOverlap = Math.max(...auctions.map(a => a.overlap_count));
+720:          document.getElementById('stat-max-overlap').innerText = maxOverlap;
+721:          document.getElementById('stat-best').innerText = Math.min(auctions.length, 3);
+722:  
+723:          // Render BEST 3
+724:          const best3 = auctions.slice(0, 3);
+725:          const bestContainer = document.getElementById('best-cards-container');
+726:          bestContainer.innerHTML = '';
+727:  
+728:          best3.forEach((item, index) => {
+729:              const matchedLayersStr = item.matched_layers.join(', ');
+730:              
+731:              // Dynamic value appreciation analysis
+732:              let valueAnalysis = "";
+733:              const hasDev = item.matched_layers.some(l => l.includes('개발') || l.includes('택지') || l.includes('계획') || l.includes('도로'));
+734:              if (hasDev) {
+735:                  valueAnalysis = `해당 물건은 ${matchedLayersStr} 내/인근에 위치하여 도시개발 계획에 직접적인 수혜를 받습니다. 향후 주거 및 상업 인프라 확충과 도로망 신설 등 개발 호재 실현에 따라 가시적인 지가 상승 및 큰 폭의 부동산 자산 가치 상승이 확실시되는 핵심 유망 물건입니다.`;
+736:              } else {
+737:                  valueAnalysis = `교통망(${item.matched_layers.includes('지하철역') ? '지하철 인접' : '이면도로 발달'}) 및 풍부한 인프라(${item.matched_layers.includes('상권') ? '상권 인접' : ''}) 조건이 우수합니다. 생활 밀착형 배후 수요가 탄탄해 불황기에도 하방 경직성이 강하며 인프라 개선에 따른 가치 보전 및 향후 시세 상승 여력이 매우 높습니다.`;
+738:              bestContainer.appendChild(card);
+739:  
+740:              // Dynamic senior claims analysis
+741:                              <div>핵심 입지/개발 <strong>${item.overlap_count}개</strong> 중첩</div>
+742:                              <div style="font-size: 0.68rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+743:                                  등급: ${renderStars(item.overlap_count)}
+744:                              </div>
+745:                          </div>
+746:                      </div>
+747:  
+748:                      <div class="matched-badges">
+749:                          ${item.matched_layers.map(layer => `<span class="matched-badge">${layer}</span>`).join('')}
+750:                      </div>
+751:                  </div>
+752:  
+753:                  <div class="analysis-section">
+754:                      <div class="analysis-item">
+755:                          <div class="analysis-title">
+756:                              <i class="fa-solid fa-arrow-up-right-dots"></i> 개발 가치 및 상승 잠재력
+757:                          </div>
+758:                          <div class="analysis-desc">${valueAnalysis}</div>
+759:                      </div>
+760:                      <div class="analysis-item">
+761:                          <div class="analysis-title">
+762:                              <i class="fa-solid fa-shield-halved"></i> 인수액 리스크 (선순위 분석)
+763:                          </div>
+764:                          <div class="analysis-desc">${claimsAnalysis}</div>
+765:                      </div>
+766:                      <div class="analysis-item">
+767:                          <div class="analysis-title">
+768:          fetch('/api/map/overlap_analyze', {
+769:              method: 'POST',
+770:              headers: {
+771:                  'Content-Type': 'application/json'
+772:              },
+773:              body: JSON.stringify({ case_nos: caseNos })
+774:          })
+775:          .then(res => res.json())
+776:          .then(data => {
+777:              const reportContentEl = document.getElementById('ai-report-content');
+778:              if (data.status === 'success') {
+779:                  if (window.marked && typeof window.marked.parse === 'function') {
+780:                      reportContentEl.innerHTML = window.marked.parse(data.report);
+781:                  } else {
+782:                      reportContentEl.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; color: var(--text-main); font-size: 0.85rem;">${data.report}</pre>`;
+783:                  }
+784:              } else {
+785:                  reportContentEl.innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 호출 실패: ${data.message}</div>`;
+786:              }
+787:          })
+788:          .catch(err => {
+789:              console.error(err);
+790:              document.getElementById('ai-report-content').innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 요청 중 오류가 발생했습니다.</div>`;
+791:          });
+792:  
+793:      } else {
+794:          // No data
+795:          document.getElementById('auctions-table').style.display = 'none';
+796:          document.getElementById('no-data-msg').style.display = 'block';
+797:          document.getElementById('ai-report-content').innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">중첩 분석 데이터가 존재하지 않습니다.</div>`;
+798:      }
+799:  </script>
+800:  </body>
+801:  </html>
+802:  
+804:          fetch('/api/map/overlap_analyze', {
+805:              method: 'POST',
+806:              headers: {
+807:                  'Content-Type': 'application/json'
+808:              },
+809:              body: JSON.stringify({ case_nos: caseNos })
+810:          })
+811:          .then(res => res.json())
+812:          .then(data => {
+813:              const reportContentEl = document.getElementById('ai-report-content');
+814:              if (data.status === 'success') {
+815:                  if (window.marked && typeof window.marked.parse === 'function') {
+816:                      reportContentEl.innerHTML = window.marked.parse(data.report);
+817:                  } else {
+818:                      reportContentEl.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; color: var(--text-main); font-size: 0.85rem;">${data.report}</pre>`;
+819:                  }
+820:              } else {
+821:                  reportContentEl.innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 호출 실패: ${data.message}</div>`;
+822:              }
+823:          })
+824:          .catch(err => {
+825:              console.error(err);
+826:              document.getElementById('ai-report-content').innerHTML = `<div style="color: #ef4444; padding: 10px;">⚠️ AI 분석 요청 중 오류가 발생했습니다.</div>`;
+827:          });
+828:  
+829:      } else {
+830:          // No data
+831:          document.getElementById('auctions-table').style.display = 'none';
+832:          document.getElementById('no-data-msg').style.display = 'block';
+833:          document.getElementById('ai-report-content').innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 10px;">중첩 분석 데이터가 존재하지 않습니다.</div>`;
+834:      }
+835:  </script>
+836:  </body>
+837:  </html>
+838:  
+1630:                      countEl.style.display = 'none';
+1631:                      const btnAnalysis = document.getElementById('btn-show-analysis');
+1632:                      if (btnAnalysis) btnAnalysis.style.display = 'none';
+1633:                  }
+1634:              }
+1635:          }
+1636:  
+1637:          window.openOverlapAnalysis = function() {
+1638:              const btnHighlighter = document.getElementById('btn-highlighter');
+1639:              if (!btnHighlighter || !btnHighlighter.classList.contains('active')) {
+1640:                  alert('형광펜을 켠 후 필터를 3개 이상 선택해주세요.');
+1641:                  return;
+1642:              }
+1643:  
+1644:              const activeFilterIds = [
+1645:                  { id: 'toggle-subways', layer: layers.subway, name: '지하철역' },
+1646:                  { id: 'toggle-univs', layer: layers.univ, name: '대학교' },
+1647:                  { id: 'toggle-inds', layer: layers.ind, name: '산업단지' },
+1648:                  { id: 'toggle-middles', layer: layers.middle, name: '중학교' },
+1649:                  { id: 'toggle-commercial', layer: layers.commercial, name: '상권' },
+1650:                  { id: 'toggle-hagwons', layer: layers.hagwon, name: '학원가' },
+1651:                  { id: 'toggle-dev1', layer: layers.dev1, name: '택지지구' },
+1652:                  { id: 'toggle-dev2', layer: layers.dev2, name: '지구단위계획' },
+1653:                  { id: 'toggle-dev3', layer: layers.dev3, name: '
+1683:  
+1684:                  if (matchedLayersList.length > 0) {
+1685:                      matchedAuctions.push({
+1686:                          case_no: marker.auctionData.case_no,
+1687:                          property_type: marker.auctionData.property_type || '주택',
+1688:                          address: marker.auctionData.address || marker.auctionData.road_address || '',
+1689:                          appraisal_price: marker.auctionData.appraisal_price || 0,
+1690:                          min_price: marker.auctionData.min_price || 0,
+1691:                          overlap_count: matchedLayersList.length,
+1692:                          matched_layers: matchedLayersList,
+1693:                          special_notes: marker.auctionData.special_notes || ''
+1694:                      });
+1695:                  }
+1696:              });
+1697:  
+1698:              if (matchedAuctions.length === 0) {
+1699:                  alert('필터 조건에 부합하여 중첩된 물건이 없습니다.');
+1700:                  return;
+1701:              }
+1702:  
+1703:              // Save to local storage
+1704:              localStorage.setItem('highlighted_auctions', JSON.stringify(matchedAuctions));
+1705:              
+1706:              // Open in a new tab/window
+1707:              window.open('analysis.html', '_blank');
+1708:          };
+1709:  
+1710:          // 4. Data Loading Logic
+1711:          async function fetchInfraData() {
+1712:              if (map.getZoom() < minZoomRequired) return;
+1713:              const bounds = map.getBounds();
+1714:              const checkedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => cb.value);
+1715:              let url = `/api/map/pois?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}`;
+1740:                  });
+1741:  
+1742:                  let isInside = false;
+1743:                  if (mode === 'AND') {
+1744:                      isInside = (matchedLayersList.length === activeLayers.length);
+1745:                  } else {
+1746:                      isInside = (matchedLayersList.length >= 1);
+1747:                  }
+1748:  
+1749:                  if (isInside) {
+1750:                      matchedAuctions.push({
+1751:                          case_no: marker.auctionData.case_no,
+1752:                          property_type: marker.auctionData.property_type || '주택',
+1753:                          address: marker.auctionData.address || marker.auctionData.road_address || '',
+1754:                          appraisal_price: marker.auctionData.appraisal_price || 0,
+1755:                          min_price: marker.auctionData.min_price || 0,
+1756:                          overlap_count: matchedLayersList.length,
+1757:                          matched_layers: matchedLayersList,
+1758:                          special_notes: marker.auctionData.special_notes || ''
+1759:                      });
+1760:                  }
+1761:              });
+1762:  
+1763:              if (matchedAuctions.length === 0) {
+1764:                  alert('필터 조건에 부합하여 중첩된 물건이 없습니다.');
+1765:                  return;
+1766:              }
+1767:  
+1768:              // Save to local storage
+1769:              localStorage.setItem('highlighted_auctions', JSON.stringify(matchedAuctions));
+1770:              
+1771:              // Open in a new tab/window
+1772:              window.open('analysis.html', '_blank');
+1773:          };
+1774:  
+1775:          // 4. Data Loading Logic
+1776:          async function fetchInfraData() {
+1777:              if (map.getZoom() < minZoomRequired) return;
+1778:              const bounds = map.getBounds();
+1779:              const checkedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => cb.value);
+1780:              let url = `/api/map/pois?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}`;
+1781:              if (checkedRegions.length > 0) url += `&regions=${checkedRegions.join(',')}`;
+1782:              
+1783:              try {
+1784:                  const res = await fetch(url);
+1785:                  const json = await res.json();
+1786:  
+1787:                  if (json.status === 'success') {
+1788:                      const data = json.data;
+1789:  
+1790:                      if (data.subways && document.getElementById('toggle-subways').checked) {

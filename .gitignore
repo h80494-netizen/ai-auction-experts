@@ -68,3 +68,7 @@ temp_shp/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Ignored large data files
+data/*.dbf
+data/*.zip

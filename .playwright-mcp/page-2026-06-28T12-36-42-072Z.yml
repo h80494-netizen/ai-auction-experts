@@ -1,0 +1,377 @@
+- generic [active] [ref=e1]:
+  - generic:
+    - heading "정비사업 정보몽땅 스킵네비게이션" [level=1] [ref=e2]
+    - list:
+      - listitem:
+        - link "본문바로가기" [ref=e3] [cursor=pointer]:
+          - /url: "#main-contants"
+      - listitem:
+        - link "주메뉴바로가기" [ref=e4] [cursor=pointer]:
+          - /url: "#gnb"
+  - generic [ref=e5]:
+    - banner [ref=e6]:
+      - generic [ref=e8]:
+        - heading "서울특별시 정비사업 정보몽땅 로고 블랙" [level=1] [ref=e9]:
+          - link "서울특별시 정비사업 정보몽땅 로고 블랙" [ref=e10] [cursor=pointer]:
+            - /url: javascript:goCleanup();
+            - img "서울특별시 정비사업 정보몽땅 로고 블랙" [ref=e11]
+        - link "전체메뉴" [ref=e14] [cursor=pointer]:
+          - /url: "#n"
+          - generic [ref=e15]: 전체메뉴
+    - generic [ref=e19]:
+      - generic [ref=e21]:
+        - generic [ref=e23]: 알림마당
+        - link "고시/공고" [ref=e25] [cursor=pointer]:
+          - /url: "#n"
+      - generic [ref=e27]:
+        - generic [ref=e28]:
+          - generic [ref=e30]:
+            - generic [ref=e31]:
+              - generic [ref=e32]:
+                - textbox "시작일자" [ref=e33]:
+                  - /placeholder: 2021-01-01
+                - button "달력형 날짜 선택창 열림" [ref=e34] [cursor=pointer]:
+                  - img "달력형 날짜 선택창 열림" [ref=e35]
+              - generic [ref=e36]: "-"
+              - generic [ref=e37]:
+                - textbox "종료일자" [ref=e38]:
+                  - /placeholder: 2021-01-01
+                - button "달력형 날짜 선택창 열림" [ref=e39] [cursor=pointer]:
+                  - img "달력형 날짜 선택창 열림" [ref=e40]
+            - combobox "등록기관선택" [ref=e41]:
+              - option "전체" [selected]
+              - option "서울특별시"
+              - option "강남구"
+              - option "강동구"
+              - option "강북구"
+              - option "강서구"
+              - option "관악구"
+              - option "광진구"
+              - option "구로구"
+              - option "금천구"
+              - option "노원구"
+              - option "도봉구"
+              - option "동대문구"
+              - option "동작구"
+              - option "마포구"
+              - option "서대문구"
+              - option "서초구"
+              - option "성동구"
+              - option "성북구"
+              - option "송파구"
+              - option "양천구"
+              - option "영등포구"
+              - option "용산구"
+              - option "은평구"
+              - option "종로구"
+              - option "중구"
+              - option "중랑구"
+            - combobox "검색 조건 선택" [ref=e42]:
+              - option "제목" [selected]
+            - generic [ref=e43]:
+              - textbox "검색 단어 입력" [ref=e44]
+              - button "검색" [ref=e45] [cursor=pointer]
+          - paragraph [ref=e46]: 전체 437건이 검색되었습니다.
+        - list [ref=e48]:
+          - listitem [ref=e49]:
+            - 'link "우면한라아파트 재건축 조합설립추진위원회 구성을 위한 주민설명회 개최 안내 번호 : 437 등록일 : 2026-06-24 등록기관 : 서초구 조회수 : 84" [ref=e50] [cursor=pointer]':
+              - /url: /cleanup/bbs/vscr.do?cpage=1&searchCode=&searchValue=&bbsClCode=100&ctgryClCode=100&bbs.bbsSn=12041
+              - heading "우면한라아파트 재건축 조합설립추진위원회 구성을 위한 주민설명회 개최 안내" [level=3] [ref=e51]
+              - generic [ref=e52]:
+                - generic [ref=e53]:
+                  - generic [ref=e54]: "번호 : 437"
+                  - generic [ref=e55]: "등록일 : 2026-06-24"
+                  - generic [ref=e56]: "등록기관 : 서초구"
+                - generic [ref=e58]: "조회수 : 84"
+          - listitem [ref=e59]:
+            - 'link "신림4재정비촉진구역 재개발정비사업 공공지원 추진위원회 구성을 위한 주민설명회 개최 공고 번호 : 436 등록일 : 2026-06-24 등록기관 : 관악구 조회수 : 140" [ref=e60] [cursor=pointer]':
+              - /url: /cleanup/bbs/vscr.do?cpage=1&searchCode=&searchValue=&bbsClCode=100&ctgryClCode=100&bbs.bbsSn=12038
+              - heading "신림4재정비촉진구역 재개발정비사업 공공지원 추진위원회 구성을 위한 주민설명회 개최 공고" [level=3] [ref=e61]
+              - generic [ref=e62]:
+                - generic [ref=e63]:
+                  - generic [ref=e64]: "번호 : 436"
+                  - generic [ref=e65]: "등록일 : 2026-06-24"
+                  - generic [ref=e66]: "등록기관 : 관악구"
+                - generic [ref=e68]: "조회수 : 140"
+          - listitem [ref=e69]:
+            - 'link "2026년도 서울특별시 주택공급 정상화 사업비(이주비) 융자 지원 계획 변경 공고 번호 : 435 등록일 : 2026-06-19 등록기관 : 서울특별시 조회수 : 438" [ref=e70] [cursor=pointer]':
+              - /url: /cleanup/bbs/vscr.do?cpage=1&searchCode=&searchValue=&bbsClCode=100&ctgryClCode=100&bbs.bbsSn=12008
+              - heading "2026년도 서울특별시 주택공급 정상화 사업비(이주비) 융자 지원 계획 변경 공고" [level=3] [ref=e71]
+              - generic [ref=e72]:
+                - generic [ref=e73]:
+                  - generic [ref=e74]: "번호 : 435"
+                  - generic [ref=e75]: "등록일 : 2026-06-19"
+                  - generic [ref=e76]: "등록기관 : 서울특별시"
+                - generic [ref=e78]: "조회수 : 438"
+          - listitem [ref=e79]:
+            - 'link "명일우성아파트 재건축정비사업 추진위원회 구성을 위한 예비임원(추진위원장 및 감사) 선거일 공고 번호 : 434 등록일 : 2026-06-18 등록기관 : 강동구 조회수 : 146" [ref=e80] [cursor=pointer]':
+              - /url: /cleanup/bbs/vscr.do?cpage=1&searchCode=&searchValue=&bbsClCode=100&ctgryClCode=100&bbs.bbsSn=12005
+              - heading "명일우성아파트 재건축정비사업 추진위원회 구성을 위한 예비임원(추진위원장 및 감사) 선거일 공고" [level=3] [ref=e81]
+              - generic [ref=e82]:
+                - generic [ref=e83]:
+                  - generic [ref=e84]: "번호 : 434"
+                  - generic [ref=e85]: "등록일 : 2026-06-18"
+                  - generic [ref=e86]: "등록기관 : 강동구"
+                - generic [ref=e88]: "조회수 : 146"
+          - listitem [ref=e89]:
+            - 'link "명일우성아파트 재건축정비사업 추진위원회 구성을 위한 예비임원(추진위원장 및 감사) 선거를 위한 선거인명부 확정공고 및 후보자 확정 공고 번호 : 433 등록일 : 2026-06-18 등록기관 : 강동구 조회수 : 135" [ref=e90] [cursor=pointer]':
+              - /url: /cleanup/bbs/vscr.do?cpage=1&searchCode=&searchValue=&bbsClCode=100&ctgryClCode=100&bbs.bbsSn=12004
+              - heading "명일우성아파트 재건축정비사업 추진위원회 구성을 위한 예비임원(추진위원장 및 감사) 선거를 위한 선거인명부 확정공고 및 후보자 확정 공고" [level=3] [ref=e91]
+              - generic [ref=e92]:
+                - generic [ref=e93]:
+                  - generic [ref=e94]: "번호 : 433"
+                  - generic [ref=e95]: "등록일 : 2026-06-18"
+                  - generic [ref=e96]: "등록기관 : 강동구"
+                - generic [ref=e98]: "조회수 : 135"
+          - listitem [ref=e99]:
+            - 'link "신길16-2구역 주택정비형 재개발사업 조합설립추진위원회 예비추진위원장 및 예비감사 선거 선거일 및 후보자 확정 공고 번호 : 432 등록일 : 2026-06-15 등록기관 : 영등포구 조회수 : 226" [ref=e100] [cursor=pointer]':
+              - /url: /cleanup/bbs/vscr.do?cpage=1&searchCode=&searchValue=&bbsClCode=100&ctgryClCode=100&bbs.bbsSn=11982
+              - heading "신길16-2구역 주택정비형 재개발사업 조합설립추진위원회 예비추진위원장 및 예비감사 선거 선거일 및 후보자 확정 공고" [level=3] [ref=e101]
+              - generic [ref=e102]:
+                - generic [ref=e103]:
+                  - generic [ref=e104]: "번호 : 432"
+                  - generic [ref=e105]: "등록일 : 2026-06-15"
+                  - generic [ref=e106]: "등록기관 : 영등포구"
+                - generic [ref=e108]: "조회수 : 226"
+          - listitem [ref=e109]:
+            - 'link "신길16-2구역 주택정비형 재개발사업 조합설립추진위원회 예비추진위원장 및 예비감사 선거 선거인명부 확정 공고 번호 : 431 등록일 : 2026-06-15 등록기관 : 영등포구 조회수 : 259" [ref=e110] [cursor=pointer]':
+              - /url: /cleanup/bbs/vscr.do?cpage=1&searchCode=&searchValue=&bbsClCode=100&ctgryClCode=100&bbs.bbsSn=11980
+              - heading "신길16-2구역 주택정비형 재개발사업 조합설립추진위원회 예비추진위원장 및 예비감사 선거 선거인명부 확정 공고" [level=3] [ref=e111]
+              - generic [ref=e112]:
+                - generic [ref=e113]:
+                  - generic [ref=e114]: "번호 : 431"
+                  - generic [ref=e115]: "등록일 : 2026-06-15"
+                  - generic [ref=e116]: "등록기관 : 영등포구"
+                - generic [ref=e118]: "조회수 : 259"
+          - listitem [ref=e119]:
+            - 'link "명일우성아파트 재건축정비사업 조합설립 추진위원회 (예비)추진위원장 및 (예비)감사 선거 선거인명부 열람 공고 번호 : 430 등록일 : 2026-05-26 등록기관 : 강동구 조회수 : 383" [ref=e120] [cursor=pointer]':
+              - /url: /cleanup/bbs/vscr.do?cpage=1&searchCode=&searchValue=&bbsClCode=100&ctgryClCode=100&bbs.bbsSn=11905
+              - heading "명일우성아파트 재건축정비사업 조합설립 추진위원회 (예비)추진위원장 및 (예비)감사 선거 선거인명부 열람 공고" [level=3] [ref=e121]
+              - generic [ref=e122]:
+                - generic [ref=e123]:
+                  - generic [ref=e124]: "번호 : 430"
+                  - generic [ref=e125]: "등록일 : 2026-05-26"
+                  - generic [ref=e126]: "등록기관 : 강동구"
+                - generic [ref=e128]: "조회수 : 383"
+          - listitem [ref=e129]:
+            - 'link "명일우성아파트 재건축사업 조합설립추진위원회 예비추진위원장·예비감사 선거를 위한 후보자 등록 공고 번호 : 429 등록일 : 2026-05-26 등록기관 : 강동구 조회수 : 296" [ref=e130] [cursor=pointer]':
+              - /url: /cleanup/bbs/vscr.do?cpage=1&searchCode=&searchValue=&bbsClCode=100&ctgryClCode=100&bbs.bbsSn=11904
+              - heading "명일우성아파트 재건축사업 조합설립추진위원회 예비추진위원장·예비감사 선거를 위한 후보자 등록 공고" [level=3] [ref=e131]
+              - generic [ref=e132]:
+                - generic [ref=e133]:
+                  - generic [ref=e134]: "번호 : 429"
+                  - generic [ref=e135]: "등록일 : 2026-05-26"
+                  - generic [ref=e136]: "등록기관 : 강동구"
+                - generic [ref=e138]: "조회수 : 296"
+          - listitem [ref=e139]:
+            - 'link "명일우성아파트 재건축 조합설립추진위원회 구성을 위한 주민설명회 개최 안내 번호 : 428 등록일 : 2026-05-22 등록기관 : 강동구 조회수 : 482" [ref=e140] [cursor=pointer]':
+              - /url: /cleanup/bbs/vscr.do?cpage=1&searchCode=&searchValue=&bbsClCode=100&ctgryClCode=100&bbs.bbsSn=11894
+              - heading "명일우성아파트 재건축 조합설립추진위원회 구성을 위한 주민설명회 개최 안내" [level=3] [ref=e141]
+              - generic [ref=e142]:
+                - generic [ref=e143]:
+                  - generic [ref=e144]: "번호 : 428"
+                  - generic [ref=e145]: "등록일 : 2026-05-22"
+                  - generic [ref=e146]: "등록기관 : 강동구"
+                - generic [ref=e148]: "조회수 : 482"
+        - list [ref=e150]:
+          - listitem [ref=e151]:
+            - link "첫 페이지로 이동합니다." [ref=e152] [cursor=pointer]:
+              - /url: /cleanup/bbs/lscr.do?bbsClCode=100&ctgryClCode=100&cpage=1&pageSize=10
+          - listitem [ref=e153]:
+            - link "이동할 이전 페이지 없음" [ref=e154] [cursor=pointer]:
+              - /url: "#n"
+          - listitem [ref=e155]:
+            - link "1" [ref=e156] [cursor=pointer]:
+              - /url: "#n"
+          - listitem [ref=e157]:
+            - link "2" [ref=e158] [cursor=pointer]:
+              - /url: /cleanup/bbs/lscr.do?bbsClCode=100&ctgryClCode=100&cpage=2&pageSize=10
+          - listitem [ref=e159]:
+            - link "3" [ref=e160] [cursor=pointer]:
+              - /url: /cleanup/bbs/lscr.do?bbsClCode=100&ctgryClCode=100&cpage=3&pageSize=10
+          - listitem [ref=e161]:
+            - link "4" [ref=e162] [cursor=pointer]:
+              - /url: /cleanup/bbs/lscr.do?bbsClCode=100&ctgryClCode=100&cpage=4&pageSize=10
+          - listitem [ref=e163]:
+            - link "5" [ref=e164] [cursor=pointer]:
+              - /url: /cleanup/bbs/lscr.do?bbsClCode=100&ctgryClCode=100&cpage=5&pageSize=10
+          - listitem [ref=e165]:
+            - link "6" [ref=e166] [cursor=pointer]:
+              - /url: /cleanup/bbs/lscr.do?bbsClCode=100&ctgryClCode=100&cpage=6&pageSize=10
+          - listitem [ref=e167]:
+            - link "7" [ref=e168] [cursor=pointer]:
+              - /url: /cleanup/bbs/lscr.do?bbsClCode=100&ctgryClCode=100&cpage=7&pageSize=10
+          - listitem [ref=e169]:
+            - link "8" [ref=e170] [cursor=pointer]:
+              - /url: /cleanup/bbs/lscr.do?bbsClCode=100&ctgryClCode=100&cpage=8&pageSize=10
+          - listitem [ref=e171]:
+            - link "9" [ref=e172] [cursor=pointer]:
+              - /url: /cleanup/bbs/lscr.do?bbsClCode=100&ctgryClCode=100&cpage=9&pageSize=10
+          - listitem [ref=e173]:
+            - link "10" [ref=e174] [cursor=pointer]:
+              - /url: /cleanup/bbs/lscr.do?bbsClCode=100&ctgryClCode=100&cpage=10&pageSize=10
+          - listitem [ref=e175]:
+            - link "11번 페이지로 이동합니다." [ref=e176] [cursor=pointer]:
+              - /url: /cleanup/bbs/lscr.do?bbsClCode=100&ctgryClCode=100&cpage=11&pageSize=10
+          - listitem [ref=e177]:
+            - link "마지막 페이지로 이동합니다." [ref=e178] [cursor=pointer]:
+              - /url: /cleanup/bbs/lscr.do?bbsClCode=100&ctgryClCode=100&cpage=44&pageSize=10
+    - contentinfo [ref=e179]:
+      - generic [ref=e180]:
+        - generic [ref=e181]:
+          - generic [ref=e182]:
+            - list [ref=e184]:
+              - listitem [ref=e185]:
+                - link "이용약관" [ref=e186] [cursor=pointer]:
+                  - /url: /cleanup/view/useStplat.do
+              - listitem [ref=e187]:
+                - link "개인정보처리방침" [ref=e188] [cursor=pointer]:
+                  - /url: /cleanup/view/personInfo.do
+              - listitem [ref=e189]:
+                - link "저작권정책" [ref=e190] [cursor=pointer]:
+                  - /url: https://www.seoul.go.kr/helper/copyright.do
+              - listitem [ref=e191]:
+                - link "이용안내" [ref=e192] [cursor=pointer]:
+                  - /url: /cleanup/bbs/lscr.do?bbsClCode=1800
+              - listitem [ref=e193]:
+                - link "원격지원" [ref=e194] [cursor=pointer]:
+                  - /url: http://211.253.61.4/start/
+              - listitem [ref=e195]:
+                - link "원격지원 안내" [ref=e196] [cursor=pointer]:
+                  - /url: "#n"
+            - generic [ref=e197]:
+              - paragraph [ref=e198]: 홈페이지 이용 문의 안내
+              - list [ref=e199]:
+                - listitem [ref=e200]: 콜센터 02) 2126-4673,4674,4672
+              - text: 평일 09:00 ~ 18:00 이후 업무상담은 제한될 수 있습니다.
+          - link "과학기술정보통신부 WEB ACCESSIBILITY 마크(웹 접근성 품질인증 마크)" [ref=e202] [cursor=pointer]:
+            - /url: http://www.webwatch.or.kr/Situation/WA_Situation.html?MenuCD=110
+            - img "과학기술정보통신부 WEB ACCESSIBILITY 마크(웹 접근성 품질인증 마크)" [ref=e203]
+        - generic [ref=e204]:
+          - paragraph [ref=e205]: 유관기관 안내
+          - generic [ref=e206]:
+            - generic [ref=e207]:
+              - button "이전" [ref=e208] [cursor=pointer]:
+                - generic [ref=e209]: 이전
+              - button "다음" [ref=e210] [cursor=pointer]:
+                - generic [ref=e211]: 다음
+              - button "멈춤" [ref=e212] [cursor=pointer]:
+                - generic [ref=e213]: 멈춤
+              - button "전체보기" [ref=e214] [cursor=pointer]:
+                - generic [ref=e215]: 전체보기
+            - generic [ref=e218]:
+              - link [ref=e219] [cursor=pointer]:
+                - /url: https://seereal.lh.or.kr
+                - img [ref=e220]
+              - link [ref=e221] [cursor=pointer]:
+                - /url: http://www.vworld.kr/
+                - img [ref=e222]
+              - link [ref=e223] [cursor=pointer]:
+                - /url: http://www.iros.go.kr
+                - img [ref=e224]
+              - link [ref=e225] [cursor=pointer]:
+                - /url: https://www.gov.kr
+                - img [ref=e226]
+              - link [ref=e227] [cursor=pointer]:
+                - /url: http://www.kvoting.go.kr
+                - img [ref=e228]
+              - link [ref=e229] [cursor=pointer]:
+                - /url: https://uri.seoul.go.kr
+                - img [ref=e230]
+              - link "서울도시계획포털" [ref=e231] [cursor=pointer]:
+                - /url: http://urban.seoul.go.kr
+                - img "서울도시계획포털" [ref=e232]
+              - link "토지e음" [ref=e233] [cursor=pointer]:
+                - /url: http://www.luris.go.kr
+                - img "토지e음" [ref=e234]
+              - link "건축행정시스템 세움터" [ref=e235] [cursor=pointer]:
+                - /url: http://eais.go.kr
+                - img "건축행정시스템 세움터" [ref=e236]
+              - link "서울토지정보서비스" [ref=e237] [cursor=pointer]:
+                - /url: http://kras.seoul.go.kr/
+                - img "서울토지정보서비스" [ref=e238]
+              - link "서울시조례입법예고" [ref=e239] [cursor=pointer]:
+                - /url: https://legal.seoul.go.kr/legal/front/page/lawmake.html?pAct=lawmake_list
+                - img "서울시조례입법예고" [ref=e240]
+              - link "법령입법예고" [ref=e241] [cursor=pointer]:
+                - /url: http://www.mltm.go.kr/USR/law/m_46/lst.jsp
+                - img "법령입법예고" [ref=e242]
+              - link [ref=e243] [cursor=pointer]:
+                - /url: http://law.go.kr
+                - img [ref=e244]
+              - link [ref=e245] [cursor=pointer]:
+                - /url: http://land.seoul.go.kr
+                - img [ref=e246]
+              - link [ref=e247] [cursor=pointer]:
+                - /url: http://www.realtyprice.kr/
+                - img [ref=e248]
+              - link [ref=e249] [cursor=pointer]:
+                - /url: https://seereal.lh.or.kr
+                - img [ref=e250]
+              - link [ref=e251] [cursor=pointer]:
+                - /url: http://www.vworld.kr/
+                - img [ref=e252]
+              - link [ref=e253] [cursor=pointer]:
+                - /url: http://www.iros.go.kr
+                - img [ref=e254]
+              - link [ref=e255] [cursor=pointer]:
+                - /url: https://www.gov.kr
+                - img [ref=e256]
+              - link [ref=e257] [cursor=pointer]:
+                - /url: http://www.kvoting.go.kr
+                - img [ref=e258]
+              - link [ref=e259] [cursor=pointer]:
+                - /url: https://uri.seoul.go.kr
+                - img [ref=e260]
+              - link [ref=e261] [cursor=pointer]:
+                - /url: http://urban.seoul.go.kr
+                - img [ref=e262]
+              - link [ref=e263] [cursor=pointer]:
+                - /url: http://www.luris.go.kr
+                - img [ref=e264]
+              - link [ref=e265] [cursor=pointer]:
+                - /url: http://eais.go.kr
+                - img [ref=e266]
+              - link [ref=e267] [cursor=pointer]:
+                - /url: http://kras.seoul.go.kr/
+                - img [ref=e268]
+              - link [ref=e269] [cursor=pointer]:
+                - /url: https://legal.seoul.go.kr/legal/front/page/lawmake.html?pAct=lawmake_list
+                - img [ref=e270]
+              - link [ref=e271] [cursor=pointer]:
+                - /url: http://www.mltm.go.kr/USR/law/m_46/lst.jsp
+                - img [ref=e272]
+              - link [ref=e273] [cursor=pointer]:
+                - /url: http://law.go.kr
+                - img [ref=e274]
+              - link [ref=e275] [cursor=pointer]:
+                - /url: http://land.seoul.go.kr
+                - img [ref=e276]
+              - link [ref=e277] [cursor=pointer]:
+                - /url: http://www.realtyprice.kr/
+                - img [ref=e278]
+              - link [ref=e279] [cursor=pointer]:
+                - /url: https://seereal.lh.or.kr
+                - img [ref=e280]
+              - link [ref=e281] [cursor=pointer]:
+                - /url: http://www.vworld.kr/
+                - img [ref=e282]
+              - link [ref=e283] [cursor=pointer]:
+                - /url: http://www.iros.go.kr
+                - img [ref=e284]
+              - link [ref=e285] [cursor=pointer]:
+                - /url: https://www.gov.kr
+                - img [ref=e286]
+              - link [ref=e287] [cursor=pointer]:
+                - /url: http://www.kvoting.go.kr
+                - img [ref=e288]
+              - link [ref=e289] [cursor=pointer]:
+                - /url: https://uri.seoul.go.kr
+                - img [ref=e290]
+        - generic [ref=e291]:
+          - generic [ref=e292]:
+            - paragraph [ref=e293]: (04514) 서울 중구 서소문로 124 씨티스퀘어 13층 주거정비과 /
+            - paragraph [ref=e294]: © Seoul CleanupSystem. All rights reserved.
+          - generic [ref=e295]:
+            - text: "정비사업정보몽땅 홈페이지 메인 상단의 적용 이미지 (사진) 사용에 대한 저작권 출처: 2022, 서울시청, www.seoul.go.kr"
+            - text: "본 저작물은 서울특별시에서 ‘2022년’ 작성하여 공공누리 제4유형으로 개방한 ‘안양천(작성자: 서울시청 홍보담당관)’을 이용하였으며, 해당 저작물은 서울특별시 누리집(홈페이지) ‘http://www.seoul.go.kr’에서 무료로 다운받으실 수 있습니다."
