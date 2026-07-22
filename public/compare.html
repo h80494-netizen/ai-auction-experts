@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <script>
+        if (sessionStorage.getItem('auth_token') !== 'verified') {
+            window.location.href = '/index.html';
+        }
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Auction Expert - 중첩 물건 AI 비교분석</title>

@@ -72,3 +72,12 @@ Thumbs.db
 # Ignored large data files
 data/*.dbf
 data/*.zip
+ 
+# Ignore large GIS data
+*.gpkg
+
+# Ignore scratch and temporary scripts
+scratch/
+
+# Ignore node_modules
+node_modules/

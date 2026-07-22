@@ -1014,17 +1014,7 @@
                 <i class="fa-solid fa-magnifying-glass" style="color: var(--text-muted); margin-right: 8px; font-size: 0.9rem; cursor: pointer;" onclick="searchPlaceName()"></i>
                 <input type="text" id="search-place-input" placeholder="지명, 명소 검색 (예: 잠실야구장)" style="border: none; outline: none; width: 100%; font-size: 0.85rem; font-family: 'Noto Sans KR', sans-serif;" onkeydown="if(event.key === 'Enter') searchPlaceName()">
             </div>
-            <div class="region-toggles" style="display: flex; gap: 10px; align-items: center; padding: 0 10px; flex-shrink: 0; white-space: nowrap; flex-wrap: nowrap;">
-                <label style="cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:bold; color:var(--text-dark);">
-                    <input type="checkbox" class="region-checkbox" value="서울" onchange="loadAuctions(); updateCenterAddress(); fetchInfraData(); fetchPopulationHeatmap(); fetchResidentialHeatmap(); fetchWorkplaceHeatmap();" checked> 서울
-                </label>
-                <label style="cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:bold; color:var(--text-dark);">
-                    <input type="checkbox" class="region-checkbox" value="경기" onchange="loadAuctions(); updateCenterAddress(); fetchInfraData(); fetchPopulationHeatmap(); fetchResidentialHeatmap(); fetchWorkplaceHeatmap();" checked> 경기
-                </label>
-                <label style="cursor:pointer; display:flex; align-items:center; gap:5px; font-weight:bold; color:var(--text-dark);">
-                    <input type="checkbox" class="region-checkbox" value="인천" onchange="loadAuctions(); updateCenterAddress(); fetchInfraData(); fetchPopulationHeatmap(); fetchResidentialHeatmap(); fetchWorkplaceHeatmap();" checked> 인천
-                </label>
-            </div>
+            <!-- Region filter removed per user request -->
         </div>
 
         <div class="top-actions" style="display: flex; align-items: center; gap: 8px;">
@@ -1111,8 +1101,28 @@
                     style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
                     버퍼: <input type="number" id="buffer-inds" value="1000"
                         style="width: 50px; padding: 2px; border: 1px solid var(--border-color); border-radius: 4px;"
-                        onchange="fetchInfraData()"> m
+                        onchange="fetchIndustrialPolygons()"> m
                 </div>
+            </div>
+            
+            <div class="toggle-row">
+                <div class="toggle-label">
+                    <div>
+                        <i class="fa-solid fa-bed" style="color: #e11d48;"></i> 숙박업밀집지역
+                        <span class="toggle-desc">200m이내 5개이상 지역 붉은색 표시</span>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="toggle-lodging"><span class="slider"></span></label>
+            </div>
+            
+            <div class="toggle-row">
+                <div class="toggle-label">
+                    <div>
+                        <i class="fa-solid fa-camera" style="color: #ef4444;"></i> 관광지 집중도
+                        <span class="toggle-desc">관광명소 밀집 현황</span>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="toggle-tourist-density"><span class="slider"></span></label>
             </div>
             <div class="toggle-row">
                 <div class="toggle-label">
@@ -1386,17 +1396,18 @@
                         <span style="font-size: 0.7rem; color: var(--primary-blue); cursor: pointer; font-weight: 500;" onclick="toggleAllCheckboxes('zoning-class-check', true)">전체선택</span>
                     </div>
                     <div id="zoning-stages-list" style="border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 10px; background: #fff; display: flex; flex-direction: column; gap: 6px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); max-height: 180px; overflow-y: auto;">
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="전용주거지역" checked> 전용주거지역</label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="1종일반주거지역" checked> 1종일반주거지역</label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="2종일반주거지역" checked> 2종일반주거지역</label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="3종일반주거지역" checked> 3종일반주거지역</label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="준주거지역" checked> 준주거지역</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="전용주거지역"> 전용주거지역</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="1종일반주거지역"> 1종일반주거지역</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="2종일반주거지역"> 2종일반주거지역</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="3종일반주거지역"> 3종일반주거지역</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="준주거지역"> 준주거지역</label>
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="상업지역" checked> 상업지역</label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="전용공업지역" checked> 전용공업지역</label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="일반공업지역" checked> 일반공업지역</label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="준공업지역" checked> 준공업지역</label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="녹지지역" checked> 녹지지역</label>
-                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="기타" checked> 기타 용도지역</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="전용공업지역"> 전용공업지역</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="일반공업지역"> 일반공업지역</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="준공업지역"> 준공업지역</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="녹지지역"> 녹지지역</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="계획관리지역"> 계획관리지역</label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; color: var(--text-dark);"><input type="checkbox" class="zoning-class-check" value="기타"> 기타 용도지역</label>
                     </div>
                 </div>
             </div>
@@ -1452,7 +1463,7 @@
                         <span style="font-size: 0.72rem; font-weight: bold; color: var(--text-dark);">부동산 종류</span>
                         <select id="realprice-prop-type" style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.8rem; outline: none; background: #fff;" onchange="updateRealpriceGrids()">
                             <option value="아파트">아파트</option>
-                            <option value="다세대">연립다세대</option>
+                            <option value="연립/다세대">연립다세대</option>
                             <option value="오피스텔">오피스텔</option>
                             <option value="단독">단독다가구</option>
                             <option value="토지">토지</option>
@@ -1513,6 +1524,7 @@
                 <label class="checkbox-item"><input type="checkbox" value="공장창고(집합)"> 공장창고(집합)</label>
                 <label class="checkbox-item"><input type="checkbox" value="공장창고(일반)"> 공장창고(일반)</label>
                 <label class="checkbox-item"><input type="checkbox" value="토지"> 토지</label>
+                <label class="checkbox-item"><input type="checkbox" value="숙박"> 숙박</label>
                 <label class="checkbox-item"><input type="checkbox" value="기타"> 기타</label>
             </div>
 
@@ -1552,10 +1564,19 @@
             <div class="layer-group-title" style="margin-top: 15px;">전용면적 (평)</div>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <input type="number" id="min-area" placeholder="최소"
-                    style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px;">
+                    style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px;" onchange="loadAuctions()">
                 <span>~</span>
                 <input type="number" id="max-area" placeholder="최대"
-                    style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px;">
+                    style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px;" onchange="loadAuctions()">
+            </div>
+
+            <div class="layer-group-title" style="margin-top: 15px;">대지면적 (평)</div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="number" id="min-land-area" placeholder="최소"
+                    style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px;" onchange="loadAuctions()">
+                <span>~</span>
+                <input type="number" id="max-land-area" placeholder="최대"
+                    style="width: 100%; padding: 6px; border: 1px solid var(--border-color); border-radius: 6px;" onchange="loadAuctions()">
             </div>
 
             <div class="layer-group-title" style="margin-top: 15px;">추가 조건</div>
@@ -1796,6 +1817,9 @@
         map.createPane('naverPane');
         map.getPane('naverPane').style.zIndex = 700; // Put Naver above auction
         
+        map.createPane('polyTopPane');
+        map.getPane('polyTopPane').style.zIndex = 450; // Put important polygons above zoning (400)
+        
         map.getPane('tooltipPane').style.zIndex = 750; // Ensure tooltips are above Naver markers
         map.getPane('popupPane').style.zIndex = 750; // Ensure popups are above Naver markers
 
@@ -1858,6 +1882,8 @@ let cachedRedevelopmentZonesData = null;
             roadFlows: L.layerGroup(),
             eliteSchools: L.layerGroup(),
             realpriceGrid: L.layerGroup(),
+            lodging: L.layerGroup(),
+            touristDensity: L.layerGroup(),
             auction: L.layerGroup().addTo(map)
         };
 
@@ -2011,12 +2037,25 @@ let cachedRedevelopmentZonesData = null;
                             isInside = true;
                         }
                     }
+                } else if (layer instanceof L.Polygon) {
+                    if (layer.getBounds && layer.getBounds().contains(latlng)) {
+                        let feature = layer.feature || layer.toGeoJSON();
+                        if (window.turf && turf.booleanPointInPolygon(pt, feature)) {
+                            isInside = true;
+                        }
+                    }
                 } else if (layer.getRadius && typeof layer.getRadius === 'function') {
                     if (layer._mRadius || (layer.options && layer.options.dashArray === '4, 4')) {
                         if (layer.getBounds && layer.getBounds().contains(latlng)) {
                             if (map.distance(layer.getLatLng(), latlng) <= layer.getRadius()) {
                                 isInside = true;
                             }
+                        }
+                    } else if (layer instanceof L.CircleMarker) {
+                        let metersPerPixel = 40075016.686 * Math.abs(Math.cos(layer.getLatLng().lat * Math.PI/180)) / Math.pow(2, map.getZoom()+8);
+                        let radiusMeters = layer.getRadius() * metersPerPixel;
+                        if (map.distance(layer.getLatLng(), latlng) <= radiusMeters) {
+                            isInside = true;
                         }
                     }
                 } else if (layer.getLatLngs && typeof layer.getLatLngs === 'function') {
@@ -2058,6 +2097,8 @@ let cachedRedevelopmentZonesData = null;
                 { id: 'toggle-inds', layer: layers.ind, isLine: false },
                 { id: 'toggle-middles', layer: layers.middle, isLine: false },
                 { id: 'toggle-commercial', layer: layers.commercial, isLine: false },
+                { id: 'toggle-lodging', layer: layers.lodging, isLine: false },
+                { id: 'toggle-tourist-density', layer: layers.touristDensity, isLine: false },
                 { id: 'toggle-hagwons', layer: layers.hagwon, isLine: false },
                 { id: 'toggle-dev1', layer: layers.dev1, isLine: false },
                 { id: 'toggle-dev3', layer: layers.dev3, isLine: false },
@@ -2341,15 +2382,7 @@ let cachedRedevelopmentZonesData = null;
                     });
                 }
 
-                // Populate Industrial Complexes markers
-                layers.ind.clearLayers();
-                if (data.industrial_complexes) {
-                    data.industrial_complexes.forEach(i => {
-                        let radius = parseInt(document.getElementById('buffer-inds').value) || 500;
-                        L.circle([i.lat, i.lng], { color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.1, radius: radius, weight: 1, dashArray: '4, 4' }).addTo(layers.ind);
-                        createDotMarker(i.lat, i.lng, '#f59e0b', `<b>${i.name}</b><br>산업단지`).addTo(layers.ind);
-                    });
-                }
+                // Industrial Complexes markers are now handled by fetchIndustrialPolygons
 
                 // Populate Middle Schools markers
                 layers.middle.clearLayers();
@@ -2989,6 +3022,135 @@ let cachedRedevelopmentZonesData = null;
             triggerHighlighter();
         }
 
+        async function fetchLodgingPolygons() {
+            if (!document.getElementById('toggle-lodging').checked) {
+                layers.lodging.clearLayers();
+                return;
+            }
+            const bounds = map.getBounds();
+            try {
+                const res = await fetch(`/api/map/lodging_polygons?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}`);
+                const json = await res.json();
+                if (json.status === 'success') {
+                    layers.lodging.clearLayers();
+                    json.data.forEach(item => {
+                        let coords = JSON.parse(item.coordinates_json);
+                        L.polygon(coords, {
+                            pane: 'polyTopPane',
+                            color: '#eab308',
+                            weight: 2,
+                            fillColor: '#fef08a',
+                            fillOpacity: 0.5
+                        }).bindPopup(`<b>숙박업소 밀집지역</b><br>밀집 개수: ${item.count}개`).addTo(layers.lodging);
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to fetch lodging polygons", e);
+            }
+        }
+
+        async function fetchTouristDensity() {
+            if (!document.getElementById('toggle-tourist-density').checked) {
+                layers.touristDensity.clearLayers();
+                return;
+            }
+            const bounds = map.getBounds();
+            try {
+                const res = await fetch(`/api/map/tourist_density?min_lat=${bounds.getSouth()}&max_lat=${bounds.getNorth()}&min_lng=${bounds.getWest()}&max_lng=${bounds.getEast()}`);
+                const json = await res.json();
+                if (json.status === 'success') {
+                    layers.touristDensity.clearLayers();
+                    json.data.forEach(item => {
+                        L.circleMarker([item.lat, item.lng], {
+                            pane: 'polyTopPane',
+                            radius: Math.min(20, Math.max(5, item.rate * 2)),
+                            color: '#ec4899',
+                            fillColor: '#fbcfe8',
+                            fillOpacity: 0.6,
+                            weight: 1
+                        }).bindPopup(`<b>${item.name}</b><br>${item.area_nm} ${item.signgu_nm}<br>집중도: ${item.rate}%`).addTo(layers.touristDensity);
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to fetch tourist density", e);
+            }
+        }
+
+        let cachedIndustrialPolygonsData = null;
+        let cachedIndustrialPolygonsBounds = null;
+        let cachedIndustrialPolygonsZoom = null;
+
+        async function fetchIndustrialPolygons() {
+            if (!document.getElementById('toggle-inds').checked) {
+                layers.ind.clearLayers();
+                return;
+            }
+
+            const bounds = map.getBounds();
+            const southWest = bounds.getSouthWest();
+            const northEast = bounds.getNorthEast();
+
+            let data = cachedIndustrialPolygonsData;
+            
+            if (!cachedIndustrialPolygonsBounds || !cachedIndustrialPolygonsBounds.contains(bounds) || map.getZoom() !== cachedIndustrialPolygonsZoom) {
+                const padLat = 0;
+                const padLng = 0;
+                
+                const paddedBounds = L.latLngBounds(
+                    L.latLng(southWest.lat - padLat, southWest.lng - padLng),
+                    L.latLng(northEast.lat + padLat, northEast.lng + padLng)
+                );
+
+                try {
+                    const res = await fetch(`/api/map/industrial_polygons?min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}`);
+                    const json = await res.json();
+                    if (json.status === 'success') {
+                        cachedIndustrialPolygonsData = json.data;
+                        cachedIndustrialPolygonsBounds = paddedBounds;
+                        cachedIndustrialPolygonsZoom = map.getZoom();
+                        data = cachedIndustrialPolygonsData;
+                    } else {
+                        return;
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch industrial polygons:", err);
+                    return;
+                }
+            }
+
+            layers.ind.clearLayers();
+            let radius = parseInt(document.getElementById('buffer-inds').value) || 1000;
+            
+            data.forEach(item => {
+                let polyGeojson = JSON.parse(item.polygon_geojson);
+                
+                // Draw main polygon
+                const polyLayer = L.geoJSON(polyGeojson, {
+                    style: {
+                        color: '#b45309',
+                        fillColor: '#b45309',
+                        fillOpacity: 0.5,
+                        weight: 2
+                    }
+                }).bindPopup(`<b>산업단지</b><br>${item.name}`).bindTooltip(item.name, {permanent: false, direction: 'top'});
+                
+                polyLayer.addTo(layers.ind);
+                
+                // Get center of the polygon layer and draw a circle buffer
+                const center = polyLayer.getBounds().getCenter();
+                L.circle(center, {
+                    color: '#f59e0b',
+                    fillColor: '#f59e0b',
+                    fillOpacity: 0.1,
+                    radius: radius,
+                    weight: 1,
+                    dashArray: '4, 4',
+                    interactive: false
+                }).addTo(layers.ind);
+            });
+            triggerHighlighter();
+        }
+
         async function fetchZoningPolygons() {
             if (map.getZoom() < minZoomRequired) return;
             if (!document.getElementById('toggle-zoning').checked) return;
@@ -3042,11 +3204,13 @@ let cachedRedevelopmentZonesData = null;
             }
 
             layers.zoning.clearLayers();
+            const canvasRenderer = L.canvas({ padding: 0.5 });
             data.forEach(item => {
                 let geojson = JSON.parse(item.geojson);
                 
                 let color = '#6366f1';
                 let zoningType = '기타';
+                let fillOp = 0.12;
                 let name = item.name;
 
                 if (name.includes('전용주거')) {
@@ -3079,15 +3243,20 @@ let cachedRedevelopmentZonesData = null;
                 } else if (name.includes('녹지') || name.includes('개발제한구역')) {
                     color = '#22c55e';
                     zoningType = '녹지지역';
+                } else if (name.includes('계획관리')) {
+                    color = '#4d7c0f'; // Darker green for 계획관리지역
+                    fillOp = 0.35; // Increased opacity
+                    zoningType = '계획관리지역';
                 }
 
                 if (!checkedZonings.includes(zoningType)) return;
 
                 L.geoJSON(geojson, {
+                    renderer: canvasRenderer,
                     style: {
                         color: color,
                         fillColor: color,
-                        fillOpacity: 0.12,
+                        fillOpacity: fillOp,
                         weight: 1.5,
                         opacity: 0.6
                     }
@@ -3787,6 +3956,8 @@ let cachedRedevelopmentZonesData = null;
             const rateLimit = document.getElementById('rate-slider').value;
             const minArea = document.getElementById('min-area').value;
             const maxArea = document.getElementById('max-area').value;
+            const minLandArea = document.getElementById('min-land-area').value;
+            const maxLandArea = document.getElementById('max-land-area').value;
             const useSubwayDist = document.getElementById('toggle-subways').checked;
             const useUnivDist = document.getElementById('toggle-univs').checked;
             const useIndDist = document.getElementById('toggle-inds').checked;
@@ -3799,7 +3970,7 @@ let cachedRedevelopmentZonesData = null;
             const minHouseholds = (useMinHouseholds && document.getElementById('min-households')) ? document.getElementById('min-households').value : '';
             const checkedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => cb.value).join(',');
 
-            return `${isAuctionActive}_${isPublicActive}_${checkedTypes}_${checkedSpecialRights}_${checkedLandPrices}_${rateLimit}_${minArea}_${maxArea}_${useSubwayDist}_${useUnivDist}_${useIndDist}_${subwayDist}_${univDist}_${indDist}_${reqElite}_${minHouseholds}_${checkedRegions}_${unexecutedOnly}`;
+            return `${isAuctionActive}_${isPublicActive}_${checkedTypes}_${checkedSpecialRights}_${checkedLandPrices}_${rateLimit}_${minArea}_${maxArea}_${minLandArea}_${maxLandArea}_${useSubwayDist}_${useUnivDist}_${useIndDist}_${subwayDist}_${univDist}_${indDist}_${reqElite}_${minHouseholds}_${checkedRegions}_${unexecutedOnly}`;
         }
 
         function buildAuctionUrl(basePath, customBounds) {
@@ -3830,6 +4001,8 @@ let cachedRedevelopmentZonesData = null;
 
             const minArea = document.getElementById('min-area').value;
             const maxArea = document.getElementById('max-area').value;
+            const minLandArea = document.getElementById('min-land-area').value;
+            const maxLandArea = document.getElementById('max-land-area').value;
 
             // Read distance filters from the Left Panel
             const useSubwayDist = document.getElementById('toggle-subways').checked;
@@ -3845,6 +4018,8 @@ let cachedRedevelopmentZonesData = null;
 
             if (minArea) url += `&min_area=${minArea}`;
             if (maxArea) url += `&max_area=${maxArea}`;
+            if (minLandArea) url += `&min_land_area=${minLandArea}`;
+            if (maxLandArea) url += `&max_land_area=${maxLandArea}`;
             if (useSubwayDist && subwayDist) url += `&subway_dist_max=${subwayDist}`;
             if (useUnivDist && univDist) url += `&univ_dist_max=${univDist}`;
             if (useIndDist && indDist) url += `&ind_dist_max=${indDist}`;
@@ -4023,6 +4198,8 @@ let cachedRedevelopmentZonesData = null;
                 'toggle-univs': [layers.univ],
                 'toggle-middles': [layers.middle],
                 'toggle-inds': [layers.ind],
+                'toggle-lodging': [layers.lodging],
+                'toggle-tourist-density': [layers.touristDensity],
                 'toggle-commercial': [layers.commercial],
                 'toggle-dev4': [layers.dev4],
                 'toggle-dev3': [layers.dev3],
@@ -4041,10 +4218,13 @@ let cachedRedevelopmentZonesData = null;
                     const layerList = toggleMap[id];
                     if (e.target.checked) {
                         layerList.forEach(l => map.addLayer(l));
-                        if (['toggle-subways', 'toggle-univs', 'toggle-middles', 'toggle-inds', 'toggle-commercial'].includes(id)) {
+                        if (['toggle-subways', 'toggle-univs', 'toggle-middles', 'toggle-commercial'].includes(id)) {
                             updateCenterAddress();
                             fetchInfraData();
                         }
+                        if (id === 'toggle-inds') fetchIndustrialPolygons();
+                        if (id === 'toggle-lodging') fetchLodgingPolygons();
+                        if (id === 'toggle-tourist-density') fetchTouristDensity();
                     } else {
                         layerList.forEach(l => map.removeLayer(l));
                     }
@@ -4261,11 +4441,11 @@ let cachedRedevelopmentZonesData = null;
                     let label = '';
                     let valSuffix = '';
                     if (indicator === 'avg_price_per_pyeong') {
-                        valStr = `${Math.round(item.avg_price).toLocaleString()}만억원`;
+                        valStr = `${Math.round(item.avg_price).toLocaleString()}만`;
                         label = '평당 매매가 (중앙값)';
                         valSuffix = item.sale_price_change_rate ? formatChangeRate(item.sale_price_change_rate) : '';
                     } else if (indicator === 'avg_deposit_per_pyeong') {
-                        valStr = `${Math.round(item.avg_deposit).toLocaleString()}만억원`;
+                        valStr = `${Math.round(item.avg_deposit).toLocaleString()}만`;
                         label = '평당 전세가 (중앙값)';
                         valSuffix = item.rent_price_change_rate ? formatChangeRate(item.rent_price_change_rate) : '';
                     } else if (indicator === 'jeonse_ratio') {
@@ -4478,9 +4658,17 @@ let cachedRedevelopmentZonesData = null;
                     if (document.getElementById('toggle-subways').checked || 
                         document.getElementById('toggle-univs').checked || 
                         document.getElementById('toggle-middles').checked || 
-                        document.getElementById('toggle-inds').checked || 
                         document.getElementById('toggle-commercial').checked) {
                         fetchInfraData();
+                    }
+                    if (document.getElementById('toggle-inds').checked) {
+                        fetchIndustrialPolygons();
+                    }
+                    if (document.getElementById('toggle-lodging').checked) {
+                        fetchLodgingPolygons();
+                    }
+                    if (document.getElementById('toggle-tourist-density').checked) {
+                        fetchTouristDensity();
                     }
                     if (document.getElementById('toggle-dev1') && document.getElementById('toggle-dev1').checked) {
                         updateTaekjiLayer();
@@ -4784,9 +4972,17 @@ let cachedRedevelopmentZonesData = null;
                 if ((document.getElementById('toggle-subways') && document.getElementById('toggle-subways').checked) || 
                     (document.getElementById('toggle-univs') && document.getElementById('toggle-univs').checked) || 
                     (document.getElementById('toggle-middles') && document.getElementById('toggle-middles').checked) || 
-                    (document.getElementById('toggle-inds') && document.getElementById('toggle-inds').checked) || 
                     (document.getElementById('toggle-commercial') && document.getElementById('toggle-commercial').checked)) {
                     fetchInfraData();
+                }
+                if (document.getElementById('toggle-inds') && document.getElementById('toggle-inds').checked) {
+                    fetchIndustrialPolygons();
+                }
+                if (document.getElementById('toggle-lodging') && document.getElementById('toggle-lodging').checked) {
+                    fetchLodgingPolygons();
+                }
+                if (document.getElementById('toggle-tourist-density') && document.getElementById('toggle-tourist-density').checked) {
+                    fetchTouristDensity();
                 }
                 if (document.getElementById('toggle-hagwons') && document.getElementById('toggle-hagwons').checked) {
                     fetchHagwonPolygons();

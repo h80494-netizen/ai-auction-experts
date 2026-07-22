@@ -24,7 +24,9 @@ def get_latest_excel_path():
             
     return os.path.join(data_dir, '경공매데이터_260515.xlsx')
 
-EXCEL_PATH = get_latest_excel_path()
+import sys
+EXCEL_PATH = sys.argv[1] if len(sys.argv) > 1 else get_latest_excel_path()
+
 
 def import_auctions():
     print("Connecting to DB...")
@@ -150,13 +152,13 @@ def import_auctions():
             # sale date (입찰일)
             sale_date_val = row.get('입찰일')
             sale_date = ""
-            if pd.notna(sale_date_val):
+            if pd.notna(sale_date_val) and str(sale_date_val).strip() not in ['0', '0.0', 'nan', '']:
                 if isinstance(sale_date_val, datetime.datetime):
                     sale_date = sale_date_val.strftime('%Y-%m-%d')
                 else:
                     try:
                         dt = pd.to_datetime(sale_date_val)
-                        if pd.notna(dt):
+                        if pd.notna(dt) and dt.year > 1970:
                             sale_date = dt.strftime('%Y-%m-%d')
                     except Exception:
                         sale_date = str(sale_date_val).strip()

@@ -681,9 +681,7 @@ def get_map_pois(
         middle_schools = [dict(row) for row in cursor.fetchall()]
     
     industrial_complexes = []
-    if not active_types or "industrial_complexes" in active_types:
-        cursor.execute(f"SELECT name, lat, lng FROM industrial_complexes{query_condition} LIMIT 500", params)
-        industrial_complexes = [dict(row) for row in cursor.fetchall()]
+    # industrial_complexes are now fetched via /api/map/industrial_polygons
 
     bus_stops = []
     # Only fetch bus stops if bounding box is provided (to prevent crashing with 200k items)
@@ -725,6 +723,48 @@ def get_map_pois(
         }
     }
 
+
+@app.get("/api/map/industrial_polygons")
+def get_map_industrial_polygons(
+    min_lat: Optional[float] = None,
+    max_lat: Optional[float] = None,
+    min_lng: Optional[float] = None,
+    max_lng: Optional[float] = None
+):
+    if not os.path.exists(DB_PATH):
+        return {"status": "error", "message": "DB not found"}
+        
+    if not (min_lat and max_lat and min_lng and max_lng):
+        return {"status": "success", "data": []}
+        
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='industrial_polygons'")
+    if not cursor.fetchone():
+        conn.close()
+        return {"status": "success", "data": []}
+        
+    c_lat = (min_lat + max_lat) / 2.0
+    c_lng = (min_lng + max_lng) / 2.0
+    
+    query = f'''
+        SELECT id, name, polygon_geojson, buffer_geojson FROM industrial_polygons
+        WHERE max_lat >= ? AND min_lat <= ? 
+          AND max_lng >= ? AND min_lng <= ?
+        ORDER BY (max_lat - {c_lat})*(max_lat - {c_lat}) + (max_lng - {c_lng})*(max_lng - {c_lng}) ASC
+        LIMIT 500
+    '''
+    cursor.execute(query, (min_lat, max_lat, min_lng, max_lng))
+    polygons = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    
+    return {
+        "status": "success",
+        "data": polygons
+    }
 
 @app.get("/api/map/redevelopment_zones")
 def get_map_redevelopment_zones(
@@ -917,6 +957,46 @@ def get_map_hagwon_polygons():
     
     return {"status": "success", "data": polygons}
 
+@app.get("/api/map/lodging_polygons")
+def get_map_lodging_polygons():
+    if not os.path.exists(DB_PATH):
+        return {"status": "error", "message": "DB not found"}
+    
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='lodging_polygons'")
+    if not cursor.fetchone():
+        conn.close()
+        return {"status": "success", "data": []}
+        
+    cursor.execute("SELECT id, count, coordinates_json FROM lodging_polygons")
+    polygons = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return {"status": "success", "data": polygons}
+
+@app.get("/api/map/tourist_density")
+def get_map_tourist_density():
+    if not os.path.exists(DB_PATH):
+        return {"status": "error", "message": "DB not found"}
+    
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tourist_density'")
+    if not cursor.fetchone():
+        conn.close()
+        return {"status": "success", "data": []}
+        
+    cursor.execute("SELECT id, area_nm, signgu_nm, name, rate, lat, lng FROM tourist_density")
+    densities = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return {"status": "success", "data": densities}
+
 @app.get("/api/map/district_units")
 def get_district_units(
     min_lat: Optional[float] = None,
@@ -1079,6 +1159,8 @@ def get_map_auctions(
     max_lng: Optional[float] = None,
     min_area: Optional[float] = None,
     max_area: Optional[float] = None,
+    min_land_area: Optional[float] = None,
+    max_land_area: Optional[float] = None,
     subway_dist_max: Optional[float] = None,
     univ_dist_max: Optional[float] = None,
     ind_dist_max: Optional[float] = None,
@@ -1147,6 +1229,8 @@ def get_map_auctions(
                 type_clauses.append("property_type = '토지'")
             elif t in ('공장', '공장창고(일반)'):
                 type_clauses.append("property_type = '공장'")
+            elif t == '숙박':
+                type_clauses.append("property_type = '숙박'")
             elif t == '기타':
                 type_clauses.append("(property_type NOT IN ('아파트', '다세대', '오피스텔', '단독', '지산', '집합', '일반', '토지', '공장'))")
             else:
@@ -1162,6 +1246,12 @@ def get_map_auctions(
     if max_area is not None:
         query += " AND area_size <= ?"
         params.append(max_area)
+    if min_land_area is not None:
+        query += " AND land_size >= ?"
+        params.append(min_land_area)
+    if max_land_area is not None:
+        query += " AND land_size <= ?"
+        params.append(max_land_area)
     if subway_dist_max is not None:
         query += " AND subway_dist > 0 AND subway_dist <= ?"
         params.append(subway_dist_max)
@@ -1226,6 +1316,8 @@ def export_map_auctions(
     min_rate: Optional[float] = None,
     min_area: Optional[float] = None,
     max_area: Optional[float] = None,
+    min_land_area: Optional[float] = None,
+    max_land_area: Optional[float] = None,
     subway_dist_max: Optional[float] = None,
     univ_dist_max: Optional[float] = None,
     ind_dist_max: Optional[float] = None,
@@ -1296,6 +1388,8 @@ def export_map_auctions(
                 type_clauses.append("property_type = '토지'")
             elif t in ('공장', '공장창고(일반)'):
                 type_clauses.append("property_type = '공장'")
+            elif t == '숙박':
+                type_clauses.append("property_type = '숙박'")
             elif t == '기타':
                 type_clauses.append("(property_type NOT IN ('아파트', '다세대', '오피스텔', '단독', '지산', '집합', '일반', '토지', '공장'))")
             else:
@@ -1311,6 +1405,12 @@ def export_map_auctions(
     if max_area is not None:
         query += " AND area_size <= ?"
         params.append(max_area)
+    if min_land_area is not None:
+        query += " AND land_size >= ?"
+        params.append(min_land_area)
+    if max_land_area is not None:
+        query += " AND land_size <= ?"
+        params.append(max_land_area)
     if subway_dist_max is not None:
         query += " AND subway_dist > 0 AND subway_dist <= ?"
         params.append(subway_dist_max)
