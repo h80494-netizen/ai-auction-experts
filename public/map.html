@@ -2214,6 +2214,8 @@ let cachedRedevelopmentZonesData = null;
                 { id: 'toggle-inds', layer: layers.ind, name: '산업단지', isLine: false },
                 { id: 'toggle-middles', layer: layers.middle, name: '중학교', isLine: false },
                 { id: 'toggle-commercial', layer: layers.commercial, name: '상권', isLine: false },
+                { id: 'toggle-lodging', layer: layers.lodging, name: '숙박업소', isLine: false },
+                { id: 'toggle-tourist-density', layer: layers.touristDensity, name: '관광지', isLine: false },
                 { id: 'toggle-hagwons', layer: layers.hagwon, name: '학원가', isLine: false },
                 { id: 'toggle-dev1', layer: layers.dev1, name: '택지지구', isLine: false },
                 { id: 'toggle-dev3', layer: layers.dev3, name: '재개발/재건축', isLine: false },
@@ -3061,14 +3063,14 @@ let cachedRedevelopmentZonesData = null;
                 if (json.status === 'success') {
                     layers.touristDensity.clearLayers();
                     json.data.forEach(item => {
-                        L.circleMarker([item.lat, item.lng], {
+                        L.circle([item.lat, item.lng], {
                             pane: 'polyTopPane',
-                            radius: Math.min(20, Math.max(5, item.rate * 2)),
+                            radius: 1000,
                             color: '#ec4899',
                             fillColor: '#fbcfe8',
                             fillOpacity: 0.6,
                             weight: 1
-                        }).bindPopup(`<b>${item.name}</b><br>${item.area_nm} ${item.signgu_nm}<br>집중도: ${item.rate}%`).addTo(layers.touristDensity);
+                        }).bindPopup(`<b>${item.name}</b><br>${item.area_nm} ${item.signgu_nm}<br>집중도: ${item.rate}%<br>(반경 1km)`).addTo(layers.touristDensity);
                     });
                 }
             } catch (e) {
@@ -3178,8 +3180,8 @@ let cachedRedevelopmentZonesData = null;
                 const latDiff = northEast.lat - southWest.lat;
                 const lngDiff = northEast.lng - southWest.lng;
                 
-                const padLat = 0;
-                const padLng = 0;
+                const padLat = latDiff * 0.25;
+                const padLng = lngDiff * 0.25;
                 
                 const paddedBounds = L.latLngBounds(
                     L.latLng(southWest.lat - padLat, southWest.lng - padLng),
@@ -3187,7 +3189,7 @@ let cachedRedevelopmentZonesData = null;
                 );
 
                 try {
-                    const res = await fetch(`/api/map/zoning?min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}`);
+                    const res = await fetch(`/api/map/zoning?min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}&zoom=${map.getZoom()}`);
                     const json = await res.json();
                     if (json.status === 'success') {
                         cachedZoningPolygonsData = json.data;
@@ -4136,8 +4138,8 @@ let cachedRedevelopmentZonesData = null;
                                 <tr><td style="color:gray; padding:3px 0;">공시지가</td><td style="text-align:right;">${d.official_land_price && d.official_land_price > 0 ? (d.official_land_price / 100000000).toFixed(2) + '억' : '정보없음'}</td></tr>
                                 ${cleanNotes ? `<tr><td style="color:#ef4444; padding:3px 0; font-weight:bold;">특수권리</td><td style="text-align:right; font-size:0.8rem; color:#ef4444; word-break:keep-all;">${cleanNotes}</td></tr>` : ''}
                             </table>
-                            <button onclick="window.innerWidth <= 768 ? window.location.href='/?case=${d.case_no}' : (window.opener ? (window.opener.location.href='/?case=${d.case_no}', window.opener.focus()) : window.open('/?case=${d.case_no}', '_blank'))" style="width:100%; background:#0ea5e9; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; touch-action:manipulation; margin-bottom: 8px;"><i class="fa-solid fa-circle-info"></i> 기본정보 보기</button>
-                            <button onclick="window.innerWidth <= 768 ? window.location.href='/?case=${d.case_no}' : (window.opener ? (window.opener.location.href='/?case=${d.case_no}', window.opener.focus()) : window.open('/?case=${d.case_no}', '_blank'))" style="width:100%; background:var(--primary-blue); color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; touch-action:manipulation;"><i class="fa-solid fa-scale-balanced"></i> 권리분석 리포트</button>
+                            <button onclick="window.openBasicInfo('${d.case_no}')" style="width:100%; background:#0ea5e9; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; touch-action:manipulation; margin-bottom: 8px;"><i class="fa-solid fa-circle-info"></i> 기본정보 보기</button>
+                            <button onclick="openAnalysisModal('${d.case_no}')" style="width:100%; background:var(--primary-blue); color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; touch-action:manipulation;"><i class="fa-solid fa-scale-balanced"></i> 권리분석 리포트</button>
                             <button onclick="openDemandPanel(${d.lat}, ${d.lng}, '${d.case_no}', '${escapedAddress}', '${d.property_type}', ${d.area_size || 0}); map.closePopup();" style="width:100%; background:#8b5cf6; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; margin-top: 8px; touch-action:manipulation;"><i class="fa-solid fa-store"></i> 상권분석</button>
                             <button onclick="openNaverPriceModal('${d.case_no}', ${d.lat}, ${d.lng}, '${d.property_type}', ${d.area_size || 0});" style="width:100%; background:#f59e0b; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; margin-top: 8px; touch-action:manipulation;"><i class="fa-solid fa-chart-line"></i> 네이버 시세 분석</button>
 
@@ -6306,5 +6308,96 @@ async function showNaverDetails(lat, lng, estateType, address) {
     </div>
 </div>
 
+<!-- 권리분석 조건 입력 모달 -->
+<div id="analysisConditionModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:white; padding:20px; border-radius:10px; width:90%; max-width:400px; box-shadow:0 4px 15px rgba(0,0,0,0.2);">
+        <h3 style="margin-top:0; margin-bottom:15px; font-size:1.2rem; color:#333;">권리분석 설정</h3>
+        
+        <div style="margin-bottom:15px;">
+            <label style="display:block; font-weight:bold; margin-bottom:5px; color:#555;">투자자 유형</label>
+            <div style="display:flex; gap:10px;">
+                <label><input type="radio" name="investorType" value="individual" checked> 개인</label>
+                <label><input type="radio" name="investorType" value="business"> 매매사업자</label>
+            </div>
+        </div>
+
+        <div style="margin-bottom:15px;">
+            <label style="display:block; font-weight:bold; margin-bottom:5px; color:#555;">목표 수익률 (%)</label>
+            <input type="number" id="targetYield" value="10" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:5px; box-sizing:border-box;">
+        </div>
+
+        <div style="margin-bottom:15px;">
+            <label style="display:block; font-weight:bold; margin-bottom:5px; color:#555;">투자 기간</label>
+            <div style="display:flex; gap:10px;">
+                <label><input type="radio" name="investTerm" value="short" checked> 단기 (1년 미만)</label>
+                <label><input type="radio" name="investTerm" value="long"> 장기 (3년 이상)</label>
+            </div>
+        </div>
+
+        <div style="margin-bottom:20px;">
+            <label style="display:block; font-weight:bold; margin-bottom:5px; color:#555;">조정대상지역 여부</label>
+            <div style="display:flex; gap:10px;">
+                <label><input type="radio" name="isRegulated" value="no" checked> 비조정대상지역</label>
+                <label><input type="radio" name="isRegulated" value="yes"> 조정대상지역</label>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button onclick="closeAnalysisModal()" style="padding:10px 15px; border:none; background:#e0e0e0; border-radius:5px; cursor:pointer; color:#333; font-weight:bold;">취소</button>
+            <button onclick="confirmAnalysisModal()" style="padding:10px 15px; border:none; background:var(--primary-blue, #0ea5e9); color:white; border-radius:5px; cursor:pointer; font-weight:bold;">분석 시작</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentAnalysisCaseNo = '';
+window.openBasicInfo = function(caseNo) {
+    const isPublicSale = caseNo.includes('-');
+
+    if (isPublicSale) {
+        // 공매 (마당쇠 - 유료결제 이슈 우회)
+        const gCode = caseNo.replace(/-/g, '');
+        window.open(`https://madangs.com/goview?g_code=${gCode}`, '_blank');
+    } else {
+        // 경매 (두인경매)
+        // caView.php는 비로그인 시 빈화면으로 닫히는 문제가 있으므로 caList(검색결과)로 이동
+        let searchUrl = 'https://www.dooinauction.com/ca/caList.php';
+        const match = caseNo.match(/(\d{4})[^\d]+(\d+)/);
+        if (match) {
+            searchUrl = `https://www.dooinauction.com/ca/caList.php?sn1=${match[1]}&sn2=${match[2]}`;
+        }
+        window.open(searchUrl, '_blank');
+    }
+}
+
+function openAnalysisModal(caseNo) {
+    currentAnalysisCaseNo = caseNo;
+    document.getElementById('analysisConditionModal').style.display = 'flex';
+}
+function closeAnalysisModal() {
+    document.getElementById('analysisConditionModal').style.display = 'none';
+}
+function confirmAnalysisModal() {
+    const investorType = document.querySelector('input[name="investorType"]:checked').value;
+    const targetYield = document.getElementById('targetYield').value;
+    const investTerm = document.querySelector('input[name="investTerm"]:checked').value;
+    const isRegulated = document.querySelector('input[name="isRegulated"]:checked').value;
+    
+    closeAnalysisModal();
+    
+    const url = `/?case=${currentAnalysisCaseNo}&investorType=${investorType}&targetYield=${targetYield}&investTerm=${investTerm}&isRegulated=${isRegulated}`;
+    
+    if (window.innerWidth <= 768) {
+        window.location.href = url;
+    } else {
+        if (window.opener) {
+            window.opener.location.href = url;
+            window.opener.focus();
+        } else {
+            window.open(url, '_blank');
+        }
+    }
+}
+</script>
 </body>
 </html>

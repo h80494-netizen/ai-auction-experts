@@ -810,7 +810,8 @@ def get_map_zoning(
     min_lat: Optional[float] = None,
     max_lat: Optional[float] = None,
     min_lng: Optional[float] = None,
-    max_lng: Optional[float] = None
+    max_lng: Optional[float] = None,
+    zoom: Optional[float] = None
 ):
     if not os.path.exists(DB_PATH):
         return {"status": "error", "message": "DB not found"}
@@ -831,9 +832,15 @@ def get_map_zoning(
         SELECT id, name, propel_cd, geojson FROM zoning_polygons
         WHERE max_lat >= ? AND min_lat <= ? 
           AND max_lng >= ? AND min_lng <= ?
-        LIMIT 2000
     '''
-    cursor.execute(query, (min_lat, max_lat, min_lng, max_lng))
+    params = [min_lat, max_lat, min_lng, max_lng]
+    
+    if zoom is not None and zoom < 13:
+        query += " AND name != '계획관리지역'"
+        
+    query += " LIMIT 2000"
+    
+    cursor.execute(query, params)
     data = [dict(row) for row in cursor.fetchall()]
     
     conn.close()

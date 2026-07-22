@@ -621,7 +621,7 @@
                                 Recommended Property
                             </div>
                             <div>
-                                <a href="/?case=${encodeURIComponent(rec.case_no)}" target="_blank" class="case-link">
+                                <a href="javascript:void(0);" onclick="openAnalysisModal('${rec.case_no}')" class="case-link">
                                     ${rec.case_no} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.8rem; opacity: 0.7;"></i>
                                 </a>
                                 <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;">
@@ -665,7 +665,7 @@
                     let trHtml = `
                         <tr>
                             <td style="font-weight: 700; white-space: nowrap;">
-                                <a href="/?case=${encodeURIComponent(row.case_no)}" target="_blank" style="color: #c084fc; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                                <a href="javascript:void(0);" onclick="openAnalysisModal('${row.case_no}')" style="color: #c084fc; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
                                     ${row.case_no} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.7rem;"></i>
                                 </a>
                                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; font-weight: 500;">
@@ -703,5 +703,77 @@
             }
         }
     </script>
+<!-- 권리분석 조건 입력 모달 -->
+<div id="analysisConditionModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:var(--card-bg, white); padding:20px; border-radius:10px; width:90%; max-width:400px; box-shadow:0 4px 15px rgba(0,0,0,0.5); color:var(--text-main, #333); border: 1px solid var(--border-color, #ccc);">
+        <h3 style="margin-top:0; margin-bottom:15px; font-size:1.2rem; color:var(--text-main, #333);">권리분석 설정</h3>
+        
+        <div style="margin-bottom:15px;">
+            <label style="display:block; font-weight:bold; margin-bottom:5px; color:var(--text-muted, #555);">투자자 유형</label>
+            <div style="display:flex; gap:10px;">
+                <label><input type="radio" name="investorType" value="individual" checked> 개인</label>
+                <label><input type="radio" name="investorType" value="business"> 매매사업자</label>
+            </div>
+        </div>
+
+        <div style="margin-bottom:15px;">
+            <label style="display:block; font-weight:bold; margin-bottom:5px; color:var(--text-muted, #555);">목표 수익률 (%)</label>
+            <input type="number" id="targetYield" value="10" style="width:100%; padding:8px; border:1px solid var(--border-color, #ccc); border-radius:5px; box-sizing:border-box; background:var(--bg-main, #fff); color:var(--text-main, #333);">
+        </div>
+
+        <div style="margin-bottom:15px;">
+            <label style="display:block; font-weight:bold; margin-bottom:5px; color:var(--text-muted, #555);">투자 기간</label>
+            <div style="display:flex; gap:10px;">
+                <label><input type="radio" name="investTerm" value="short" checked> 단기 (1년 미만)</label>
+                <label><input type="radio" name="investTerm" value="long"> 장기 (3년 이상)</label>
+            </div>
+        </div>
+
+        <div style="margin-bottom:20px;">
+            <label style="display:block; font-weight:bold; margin-bottom:5px; color:var(--text-muted, #555);">조정대상지역 여부</label>
+            <div style="display:flex; gap:10px;">
+                <label><input type="radio" name="isRegulated" value="no" checked> 비조정대상지역</label>
+                <label><input type="radio" name="isRegulated" value="yes"> 조정대상지역</label>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button onclick="closeAnalysisModal()" style="padding:10px 15px; border:none; background:#4b5563; border-radius:5px; cursor:pointer; color:white; font-weight:bold;">취소</button>
+            <button onclick="confirmAnalysisModal()" style="padding:10px 15px; border:none; background:#0ea5e9; color:white; border-radius:5px; cursor:pointer; font-weight:bold;">분석 시작</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentAnalysisCaseNo = '';
+function openAnalysisModal(caseNo) {
+    currentAnalysisCaseNo = caseNo;
+    document.getElementById('analysisConditionModal').style.display = 'flex';
+}
+function closeAnalysisModal() {
+    document.getElementById('analysisConditionModal').style.display = 'none';
+}
+function confirmAnalysisModal() {
+    const investorType = document.querySelector('input[name="investorType"]:checked').value;
+    const targetYield = document.getElementById('targetYield').value;
+    const investTerm = document.querySelector('input[name="investTerm"]:checked').value;
+    const isRegulated = document.querySelector('input[name="isRegulated"]:checked').value;
+    
+    closeAnalysisModal();
+    
+    const url = `/?case=${encodeURIComponent(currentAnalysisCaseNo)}&investorType=${investorType}&targetYield=${targetYield}&investTerm=${investTerm}&isRegulated=${isRegulated}`;
+    
+    if (window.innerWidth <= 768) {
+        window.location.href = url;
+    } else {
+        if (window.opener) {
+            window.opener.location.href = url;
+            window.opener.focus();
+        } else {
+            window.open(url, '_blank');
+        }
+    }
+}
+</script>
 </body>
 </html>
