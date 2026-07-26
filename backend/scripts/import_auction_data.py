@@ -6,23 +6,30 @@ import datetime
 DB_PATH = os.path.join(os.path.dirname(__file__), '../data/map_data.db')
 
 def get_latest_excel_path():
-    data_dir = os.path.join(os.path.dirname(__file__), '../../data')
-    if not os.path.exists(data_dir):
-        data_dir = 'data'
+    base_data_dir = os.path.join(os.path.dirname(__file__), '../../data')
+    if not os.path.exists(base_data_dir):
+        base_data_dir = 'data'
     
-    if os.path.exists(data_dir):
-        excel_files = []
-        for f in os.listdir(data_dir):
-            if f.startswith('경공매데이터') and f.endswith('.xlsx'):
-                path = os.path.join(data_dir, f)
-                excel_files.append((os.path.getmtime(path), path))
-        if excel_files:
-            excel_files.sort(reverse=True)
-            # Log the selected path for visibility
-            print(f"Detected latest Excel file: {excel_files[0][1]}")
-            return excel_files[0][1]
+    search_dirs = [
+        base_data_dir,
+        os.path.join(base_data_dir, '경공매업데이트')
+    ]
+    
+    excel_files = []
+    for d in search_dirs:
+        if os.path.exists(d):
+            for f in os.listdir(d):
+                if f.startswith('경공매데이터') and f.endswith('.xlsx'):
+                    path = os.path.join(d, f)
+                    excel_files.append((os.path.getmtime(path), path))
+                    
+    if excel_files:
+        excel_files.sort(reverse=True)
+        # Log the selected path for visibility
+        print(f"Detected latest Excel file: {excel_files[0][1]}")
+        return excel_files[0][1]
             
-    return os.path.join(data_dir, '경공매데이터_260515.xlsx')
+    return os.path.join(base_data_dir, '경공매데이터_260515.xlsx')
 
 import sys
 EXCEL_PATH = sys.argv[1] if len(sys.argv) > 1 else get_latest_excel_path()

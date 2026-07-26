@@ -849,7 +849,7 @@ async def scrape_myauction_case(case_number: str, address_hint: str = ""):
                         # 페이지 내 텍스트에서도 중지 문구 체크
                         try:
                             page_content = await doc_page.content()
-                            if "열람이 중지" in page_content or "로그인" in page_content:
+                            if "열람이 중지" in page_content or "열람제한" in page_content:
                                 alert_flag = True
                         except Exception as e:
                             print(f"[{name}] content 추출 실패: {e}")

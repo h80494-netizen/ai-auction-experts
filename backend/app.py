@@ -1226,7 +1226,7 @@ def get_map_auctions(
                 type_clauses.append("property_type = '오피스텔'")
             elif t == '단독':
                 type_clauses.append("property_type = '단독'")
-            elif t in ('지산', '공장창고(집합)'):
+            elif t in ('지산', '공장창고(집합)', '공장(지산)'):
                 type_clauses.append("property_type = '지산'")
             elif t in ('집합', '상가(집합)'):
                 type_clauses.append("property_type = '집합'")
@@ -1234,7 +1234,7 @@ def get_map_auctions(
                 type_clauses.append("property_type = '일반'")
             elif t == '토지':
                 type_clauses.append("property_type = '토지'")
-            elif t in ('공장', '공장창고(일반)'):
+            elif t in ('공장', '공장창고(일반)', '공장(일반)'):
                 type_clauses.append("property_type = '공장'")
             elif t == '숙박':
                 type_clauses.append("property_type = '숙박'")
@@ -1385,7 +1385,7 @@ def export_map_auctions(
                 type_clauses.append("property_type = '오피스텔'")
             elif t == '단독':
                 type_clauses.append("property_type = '단독'")
-            elif t in ('지산', '공장창고(집합)'):
+            elif t in ('지산', '공장창고(집합)', '공장(지산)'):
                 type_clauses.append("property_type = '지산'")
             elif t in ('집합', '상가(집합)'):
                 type_clauses.append("property_type = '집합'")
@@ -1393,7 +1393,7 @@ def export_map_auctions(
                 type_clauses.append("property_type = '일반'")
             elif t == '토지':
                 type_clauses.append("property_type = '토지'")
-            elif t in ('공장', '공장창고(일반)'):
+            elif t in ('공장', '공장창고(일반)', '공장(일반)'):
                 type_clauses.append("property_type = '공장'")
             elif t == '숙박':
                 type_clauses.append("property_type = '숙박'")

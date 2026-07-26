@@ -841,6 +841,18 @@ function createWaterfallRow(label, value, maxVal, colorClass) {
 window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const caseParam = params.get('case');
+    const investorTypeParam = params.get('investorType');
+
+    if (investorTypeParam && document.getElementById('investorType')) {
+        if (investorTypeParam === 'corporate' || investorTypeParam === '법인') {
+            document.getElementById('investorType').value = '법인';
+        } else if (investorTypeParam === 'business' || investorTypeParam === '매매사업자') {
+            document.getElementById('investorType').value = '매매사업자';
+        } else if (investorTypeParam === 'individual' || investorTypeParam === '개인') {
+            document.getElementById('investorType').value = '개인';
+        }
+    }
+
     console.log("[Auto-Analyze] DOMContentLoaded caseParam:", caseParam);
     if (caseParam && typeof caseNumberInput !== 'undefined' && caseNumberInput) {
         caseNumberInput.value = caseParam;

@@ -3960,19 +3960,13 @@ let cachedRedevelopmentZonesData = null;
             const maxArea = document.getElementById('max-area').value;
             const minLandArea = document.getElementById('min-land-area').value;
             const maxLandArea = document.getElementById('max-land-area').value;
-            const useSubwayDist = document.getElementById('toggle-subways').checked;
-            const useUnivDist = document.getElementById('toggle-univs').checked;
-            const useIndDist = document.getElementById('toggle-inds').checked;
-            const subwayDist = document.getElementById('buffer-subways').value;
-            const univDist = document.getElementById('buffer-univs').value;
-            const indDist = document.getElementById('buffer-inds').value;
             const unexecutedOnly = document.getElementById('toggle-unexecuted-auctions') ? document.getElementById('toggle-unexecuted-auctions').checked : false;
             const reqElite = document.getElementById('toggle-middles') ? document.getElementById('toggle-middles').checked : false;
             const useMinHouseholds = document.getElementById('use-min-households') ? document.getElementById('use-min-households').checked : false;
             const minHouseholds = (useMinHouseholds && document.getElementById('min-households')) ? document.getElementById('min-households').value : '';
             const checkedRegions = Array.from(document.querySelectorAll('.region-checkbox:checked')).map(cb => cb.value).join(',');
 
-            return `${isAuctionActive}_${isPublicActive}_${checkedTypes}_${checkedSpecialRights}_${checkedLandPrices}_${rateLimit}_${minArea}_${maxArea}_${minLandArea}_${maxLandArea}_${useSubwayDist}_${useUnivDist}_${useIndDist}_${subwayDist}_${univDist}_${indDist}_${reqElite}_${minHouseholds}_${checkedRegions}_${unexecutedOnly}`;
+            return `${isAuctionActive}_${isPublicActive}_${checkedTypes}_${checkedSpecialRights}_${checkedLandPrices}_${rateLimit}_${minArea}_${maxArea}_${minLandArea}_${maxLandArea}_${reqElite}_${minHouseholds}_${checkedRegions}_${unexecutedOnly}`;
         }
 
         function buildAuctionUrl(basePath, customBounds) {
@@ -4007,12 +4001,7 @@ let cachedRedevelopmentZonesData = null;
             const maxLandArea = document.getElementById('max-land-area').value;
 
             // Read distance filters from the Left Panel
-            const useSubwayDist = document.getElementById('toggle-subways').checked;
-            const useUnivDist = document.getElementById('toggle-univs').checked;
-            const useIndDist = document.getElementById('toggle-inds').checked;
-            const subwayDist = document.getElementById('buffer-subways').value;
-            const univDist = document.getElementById('buffer-univs').value;
-            const indDist = document.getElementById('buffer-inds').value;
+            // Removed coupling between layer toggles and auction filters per user request
 
             const reqElite = document.getElementById('toggle-middles') ? document.getElementById('toggle-middles').checked : false;
             const useMinHouseholds = document.getElementById('use-min-households') ? document.getElementById('use-min-households').checked : false;
@@ -4022,9 +4011,7 @@ let cachedRedevelopmentZonesData = null;
             if (maxArea) url += `&max_area=${maxArea}`;
             if (minLandArea) url += `&min_land_area=${minLandArea}`;
             if (maxLandArea) url += `&max_land_area=${maxLandArea}`;
-            if (useSubwayDist && subwayDist) url += `&subway_dist_max=${subwayDist}`;
-            if (useUnivDist && univDist) url += `&univ_dist_max=${univDist}`;
-            if (useIndDist && indDist) url += `&ind_dist_max=${indDist}`;
+            
             if (reqElite) url += `&req_elite_school=true`;
             if (minHouseholds) url += `&min_households=${minHouseholds}`;
             
@@ -6318,6 +6305,7 @@ async function showNaverDetails(lat, lng, estateType, address) {
             <div style="display:flex; gap:10px;">
                 <label><input type="radio" name="investorType" value="individual" checked> 개인</label>
                 <label><input type="radio" name="investorType" value="business"> 매매사업자</label>
+                <label><input type="radio" name="investorType" value="corporate"> 법인</label>
             </div>
         </div>
 
