@@ -2336,8 +2336,8 @@ let cachedRedevelopmentZonesData = null;
             localStorage.setItem('highlighted_auctions', JSON.stringify(matchedAuctions));
             console.log("Saved to localStorage: highlighted_auctions");
             
-            // Open in a new tab/window
-            window.open('analysis.html', '_blank');
+            // Open in a new tab/window with cache-buster
+            window.open('analysis.html?v=' + Date.now(), '_blank');
         };
 
         async function fetchInfraData() {
