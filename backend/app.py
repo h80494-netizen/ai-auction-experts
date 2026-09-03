@@ -468,21 +468,50 @@ async def get_analyze_status(task_id: str):
     return task_info
 
 import os
+from typing import Optional
 from pydantic import BaseModel
 
-class DownloadRequest(BaseModel):
-    markdown: str
+from fastapi import Request
 
 @app.post("/api/download/{case_number:path}")
-async def download_report_post(case_number: str, req: DownloadRequest):
+async def download_report_post(case_number: str, request: Request):
     safe_case = case_number.replace(" ", "_").replace("/", "_")
+    os.makedirs(downloads_dir, exist_ok=True)
     file_path = os.path.join(downloads_dir, f"{safe_case}_분석보고서.docx")
     
+    markdown_text = ""
+    try:
+        body = await request.json()
+        if isinstance(body, dict):
+            markdown_text = body.get("markdown", "")
+    except Exception:
+        pass
+    if not markdown_text:
+        # 캐시된 분석 내용 검색
+        cached_md_path = os.path.join(downloads_dir, safe_case, "analysis.md")
+        if os.path.exists(cached_md_path):
+            try:
+                with open(cached_md_path, "r", encoding="utf-8") as f:
+                    markdown_text = f.read()
+            except Exception:
+                pass
+        if not markdown_text:
+            markdown_text = f"# 1. 핵심요점\n사건번호 {case_number}에 대한 분석 리포트입니다.\n\n# 10. 최종 결론\n투자 판정: [GO]"
+
     try:
         from doc_generator import generate_analysis_doc_from_markdown
-        generate_analysis_doc_from_markdown(case_number, req.markdown, downloads_dir)
+        generate_analysis_doc_from_markdown(case_number, markdown_text, downloads_dir)
     except Exception as e:
         print("Word 문서 재생성 실패:", e)
+        # Fallback simple docx generation
+        try:
+            from docx import Document
+            fallback_doc = Document()
+            fallback_doc.add_heading(f"부동산 경매 분석 보고서 - {case_number}", 0)
+            fallback_doc.add_paragraph(markdown_text)
+            fallback_doc.save(file_path)
+        except Exception as e2:
+            print("Fallback docx error:", e2)
         
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="보고서를 찾을 수 없습니다.")

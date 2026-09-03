@@ -449,29 +449,34 @@ startBtn.addEventListener('click', async () => {
                         // 숨길 요소들 임시 숨김 처리 & 좌우 대칭 A4 규격 최적화 모드 적용
                         if (buttonsContainer) buttonsContainer.style.display = 'none';
                         if (scrollHint) scrollHint.style.display = 'none';
-                        if (element) element.classList.add('pdf-capture-mode');
+                        if (element) {
+                            element.classList.add('pdf-capture-mode');
+                            element.scrollLeft = 0;
+                        }
                         
                         const opt = {
                             margin:       [6, 6, 6, 6],
                             filename:     `${safeCaseNum}_권리분석리포트.pdf`,
                             image:        { type: 'jpeg', quality: 0.98 },
-                            html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#13141c', letterRendering: true },
+                            html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#13141c', letterRendering: true, scrollX: 0, scrollY: 0 },
                             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
                         };
                         
-                        html2pdf().set(opt).from(element).save().then(() => {
-                            // 캡쳐 완료 후 원상 복구
-                            if (element) element.classList.remove('pdf-capture-mode');
-                            if (buttonsContainer) buttonsContainer.style.display = 'flex';
-                            if (scrollHint) scrollHint.style.display = 'block';
-                        }).catch(err => {
-                            console.error("PDF 캡쳐 에러:", err);
-                            if (element) element.classList.remove('pdf-capture-mode');
-                            if (buttonsContainer) buttonsContainer.style.display = 'flex';
-                            if (scrollHint) scrollHint.style.display = 'block';
-                            alert("PDF 캡쳐 중 오류가 발생하여 브라우저 인쇄 창으로 전환합니다.");
-                            window.print();
-                        });
+                        setTimeout(() => {
+                            html2pdf().set(opt).from(element).save().then(() => {
+                                // 캡쳐 완료 후 원상 복구
+                                if (element) element.classList.remove('pdf-capture-mode');
+                                if (buttonsContainer) buttonsContainer.style.display = 'flex';
+                                if (scrollHint) scrollHint.style.display = 'block';
+                            }).catch(err => {
+                                console.error("PDF 캡쳐 에러:", err);
+                                if (element) element.classList.remove('pdf-capture-mode');
+                                if (buttonsContainer) buttonsContainer.style.display = 'flex';
+                                if (scrollHint) scrollHint.style.display = 'block';
+                                alert("PDF 캡쳐 중 오류가 발생하여 브라우저 인쇄 창으로 전환합니다.");
+                                window.print();
+                            });
+                        }, 150);
                     } catch (e) {
                         console.error(e);
                         if (element) element.classList.remove('pdf-capture-mode');
