@@ -859,6 +859,31 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    const targetYieldParam = params.get('targetYield');
+    if (targetYieldParam && document.getElementById('targetReturnRate')) {
+        document.getElementById('targetReturnRate').value = targetYieldParam;
+    }
+
+    const investTermParam = params.get('investTerm');
+    if (investTermParam && document.getElementById('investmentDuration')) {
+        if (investTermParam === 'long' || investTermParam.includes('장기')) {
+            document.getElementById('investmentDuration').value = '장기(3년, 임대전략)';
+        } else {
+            document.getElementById('investmentDuration').value = '단기(6개월)';
+        }
+    }
+
+    const isRegulatedParam = params.get('isRegulated');
+    if (isRegulatedParam && document.getElementById('isRegulatedArea')) {
+        const isReg = (isRegulatedParam === 'yes' || isRegulatedParam === 'true');
+        document.getElementById('isRegulatedArea').value = isReg ? 'true' : 'false';
+        const displayEl = document.getElementById('isRegulatedAreaDisplay');
+        if (displayEl) {
+            displayEl.innerText = isReg ? '조정대상지역' : '비조정대상지역';
+            displayEl.style.color = isReg ? '#ef4444' : '#10b981';
+        }
+    }
+
     console.log("[Auto-Analyze] DOMContentLoaded caseParam:", caseParam);
     if (caseParam && typeof caseNumberInput !== 'undefined' && caseNumberInput) {
         caseNumberInput.value = caseParam;
