@@ -1067,4 +1067,132 @@ input[type=range]::-webkit-slider-runnable-track {
     word-break: break-word;
 }
 
+/* ----------------- PDF Export & Print Optimization ----------------- */
+.pdf-capture-mode {
+    width: 800px !important;
+    max-width: 800px !important;
+    margin: 0 auto !important;
+    padding: 15px !important;
+    box-sizing: border-box !important;
+    background: #13141c !important;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+}
+
+.pdf-capture-mode .report-grid-dashboard {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.pdf-capture-mode .report-item {
+    padding: 8px 10px !important;
+    border-radius: 8px !important;
+    font-size: 11px !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+}
+
+.pdf-capture-mode .report-item h4 {
+    font-size: 0.85rem !important;
+    margin-bottom: 4px !important;
+    line-height: 1.3 !important;
+}
+
+.pdf-capture-mode .markdown-content {
+    font-size: 10.5px !important;
+    line-height: 1.4 !important;
+}
+
+.pdf-capture-mode .markdown-content p,
+.pdf-capture-mode .markdown-content li {
+    font-size: 10.5px !important;
+    line-height: 1.4 !important;
+    margin-bottom: 3px !important;
+}
+
+.pdf-capture-mode .markdown-content ul,
+.pdf-capture-mode .markdown-content ol {
+    padding-left: 14px !important;
+    margin-bottom: 4px !important;
+}
+
+.pdf-capture-mode .summary-box h3 {
+    font-size: 1.25rem !important;
+}
+
+.pdf-capture-mode #decisionBadge {
+    font-size: 0.9rem !important;
+    padding: 4px 14px !important;
+}
+
+.pdf-capture-mode #report-section-0 {
+    font-size: 11.5px !important;
+    line-height: 1.5 !important;
+}
+
+.pdf-capture-mode .conclusion-box {
+    grid-column: span 2 !important;
+}
+
+/* Browser Print Optimization (@media print) */
+@page {
+    size: A4 portrait;
+    margin: 8mm 8mm 8mm 8mm;
+}
+
+@media print {
+    body {
+        background: #13141c !important;
+        color: #f1f5f9 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    header, .input-section, .status-section, #downloadButtonsContainer, #scrollHint, .board-modal-overlay, #loginOverlay {
+        display: none !important;
+    }
+    
+    .final-report {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    
+    .report-grid-dashboard {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+    
+    .report-item {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        padding: 8px 10px !important;
+        font-size: 10.5px !important;
+        background: rgba(255, 255, 255, 0.04) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    }
+    
+    .report-item h4 {
+        font-size: 0.85rem !important;
+    }
+    
+    .markdown-content, .markdown-content p, .markdown-content li {
+        font-size: 10.5px !important;
+        line-height: 1.38 !important;
+    }
+}
+
 

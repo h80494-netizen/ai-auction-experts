@@ -498,14 +498,21 @@ def generate_analysis_doc_from_markdown(case_number, markdown_text, output_dir=D
             if ai_num == 10 and chart_data:
                 # 차트 데이터 삽입 (9. 최종결론 직전)
                 doc.add_heading('수익성 시뮬레이터', level=2)
-                doc.add_paragraph('낙찰가에 따른 실질(Net) 수익금 시뮬레이터', style='Intense Quote')
-                doc.add_paragraph(f"시뮬레이션 입찰가\n{format_man(chart_data.get('max_bidding_price', 0))}원")
-                doc.add_paragraph(f"예상 Net 수익금:\n{format_man(chart_data.get('target_profit', 0))}원")
+                p_sub1 = doc.add_paragraph('낙찰가에 따른 실질(Net) 수익금 시뮬레이터')
+                p_sub1.runs[0].font.italic = True
+                p_sub1.runs[0].font.color.rgb = RGBColor(100, 100, 100)
+                doc.add_paragraph(f"시뮬레이션 입찰가: {format_man(chart_data.get('max_bidding_price', 0))}원")
+                doc.add_paragraph(f"예상 Net 수익금: {format_man(chart_data.get('target_profit', 0))}원")
                 
                 doc.add_heading('투자금 폭포수', level=2)
-                doc.add_paragraph('한계 입찰가 역산 워터폴 시뮬레이션', style='Intense Quote')
+                p_sub2 = doc.add_paragraph('한계 입찰가 역산 워터폴 시뮬레이션')
+                p_sub2.runs[0].font.italic = True
+                p_sub2.runs[0].font.color.rgb = RGBColor(100, 100, 100)
                 table = doc.add_table(rows=6, cols=2)
-                table.style = 'Table Grid'
+                try:
+                    table.style = 'Table Grid'
+                except Exception:
+                    pass
                 rows = [
                     ('보수적 매도가', format_man(chart_data.get('conservative_sale_price', 0))),
                     ('목표 수익 (-)', format_man(chart_data.get('target_profit', 0))),
@@ -520,11 +527,13 @@ def generate_analysis_doc_from_markdown(case_number, markdown_text, output_dir=D
                 doc.add_paragraph("") # Add some spacing
                 
                 doc.add_heading('명도 및 출구전략 흐름도', level=2)
-                doc.add_paragraph('타임라인별 Exit 전략 모델', style='Intense Quote')
-                doc.add_paragraph(f"낙찰 및 명도\n상한가: {format_man(chart_data.get('max_bidding_price', 0))}")
-                doc.add_paragraph(f"↓\n단기 매도 (1년 내)\n양도세율: {chart_data.get('short_term_tax_rate', 77)}%\n기대수익: Low")
-                doc.add_paragraph(f"↓\n전월세 임대 셋팅\n보증금 회수 (투자금 방어)")
-                doc.add_paragraph(f"↓\n일반 과세 매도 (2년 후)\n양도세율: {chart_data.get('long_term_tax_rate', 20)}%\n기대수익: High")
+                p_sub3 = doc.add_paragraph('타임라인별 Exit 전략 모델')
+                p_sub3.runs[0].font.italic = True
+                p_sub3.runs[0].font.color.rgb = RGBColor(100, 100, 100)
+                doc.add_paragraph(f"낙찰 및 명도 (상한가: {format_man(chart_data.get('max_bidding_price', 0))})")
+                doc.add_paragraph(f"↓\n단기 매도 (1년 내) - 양도세율: {chart_data.get('short_term_tax_rate', 77)}% (기대수익: Low)")
+                doc.add_paragraph(f"↓\n전월세 임대 셋팅 - 보증금 회수 (투자금 방어)")
+                doc.add_paragraph(f"↓\n일반 과세 매도 (2년 후) - 양도세율: {chart_data.get('long_term_tax_rate', 20)}% (기대수익: High)")
                 doc.add_paragraph("")
 
             doc.add_heading(title, level=1)
@@ -540,7 +549,10 @@ def generate_analysis_doc_from_markdown(case_number, markdown_text, output_dir=D
                         
                     p = doc.add_paragraph()
                     if line_stripped.startswith("- ") or line_stripped.startswith("* "):
-                        p.style = 'List Bullet'
+                        try:
+                            p.style = 'List Bullet'
+                        except Exception:
+                            pass
                         line_stripped = line_stripped[2:]
                         
                     parts = line_stripped.split("**")
