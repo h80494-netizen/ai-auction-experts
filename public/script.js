@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const attemptLogin = async () => {
-        const pwd = pwdInput.value;
+        const pwd = pwdInput.value.trim();
         if (!pwd) return;
         
         loginBtn.innerText = "확인 중...";
@@ -22,9 +22,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             if (data.status === 'success') {
                 sessionStorage.setItem('auth_token', 'verified');
+                if (data.user_type === 'admin') {
+                    sessionStorage.setItem('admin_board_key', 'h80494');
+                }
                 overlay.classList.add('hidden');
+                if (data.message && (data.user_type === 'member' || data.user_type === 'admin')) {
+                    alert(data.message);
+                }
             } else {
-                alert('비밀번호가 일치하지 않습니다.');
+                alert(data.message || '비밀번호가 일치하지 않습니다.');
                 pwdInput.value = '';
                 pwdInput.focus();
             }
@@ -862,4 +868,453 @@ window.addEventListener('DOMContentLoaded', () => {
             searchCaseBtn.click();
         }
     }
+
+    // Initialize Inquiry Board Listeners
+    initInquiryBoard();
 });
+
+/* ----------------- Inquiry Board Interactive Logic ----------------- */
+let currentViewingInquiryId = null;
+let currentPendingPinInquiryId = null;
+let currentViewingInquiryData = null;
+let adminAuthKey = sessionStorage.getItem('admin_board_key') || '';
+let cachedPins = {}; // in-memory cache for pins entered in this session
+
+function initInquiryBoard() {
+    const boardModal = document.getElementById('inquiryBoardModal');
+    const openBtnLogin = document.getElementById('openBoardBtnLogin');
+    const openSignupBtnLogin = document.getElementById('openSignupBtnLogin');
+    const openBtnHeader = document.getElementById('openBoardBtnHeader');
+    const closeBtn = document.getElementById('closeBoardModalBtn');
+    const showWriteBtn = document.getElementById('showWriteFormBtn');
+    const cancelWriteBtn = document.getElementById('cancelWriteBtn');
+    const backToListBtn = document.getElementById('backToListBtn');
+    const inqForm = document.getElementById('inquiryForm');
+    const commentForm = document.getElementById('commentForm');
+    const pinModal = document.getElementById('pinModal');
+    const cancelPinBtn = document.getElementById('cancelPinBtn');
+    const confirmPinBtn = document.getElementById('confirmPinBtn');
+    const adminLoginModal = document.getElementById('adminLoginModal');
+    const boardAdminBtn = document.getElementById('boardAdminBtn');
+    const cancelAdminBtn = document.getElementById('cancelAdminBtn');
+    const confirmAdminBtn = document.getElementById('confirmAdminBtn');
+    const deleteInqBtn = document.getElementById('deleteInqBtn');
+    const approveInqBtn = document.getElementById('approveInqBtn');
+
+    if (openBtnLogin) openBtnLogin.addEventListener('click', () => openBoard());
+    if (openSignupBtnLogin) openSignupBtnLogin.addEventListener('click', () => {
+        openBoard();
+        showWriteView();
+    });
+    if (openBtnHeader) openBtnHeader.addEventListener('click', () => openBoard());
+    if (closeBtn) closeBtn.addEventListener('click', () => closeBoard());
+
+    if (showWriteBtn) showWriteBtn.addEventListener('click', () => showWriteView());
+    if (cancelWriteBtn) cancelWriteBtn.addEventListener('click', () => showListView());
+    if (backToListBtn) backToListBtn.addEventListener('click', () => { showListView(); fetchInquiries(); });
+
+    if (inqForm) inqForm.addEventListener('submit', handleInquirySubmit);
+    if (commentForm) commentForm.addEventListener('submit', handleCommentSubmit);
+
+    // PIN modal
+    if (cancelPinBtn) cancelPinBtn.addEventListener('click', () => { pinModal.style.display = 'none'; });
+    if (confirmPinBtn) confirmPinBtn.addEventListener('click', handlePinConfirm);
+    const pinInput = document.getElementById('pinModalInput');
+    if (pinInput) {
+        pinInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handlePinConfirm();
+        });
+    }
+
+    // Admin login modal
+    if (boardAdminBtn) boardAdminBtn.addEventListener('click', () => {
+        if (adminAuthKey) {
+            if (confirm("관리자 모드가 이미 활성화되어 있습니다. 관리자 로그아웃 하시겠습니까?")) {
+                adminAuthKey = '';
+                sessionStorage.removeItem('admin_board_key');
+                alert("로그아웃 되었습니다.");
+                updateAdminUI();
+                fetchInquiries();
+            }
+        } else {
+            adminLoginModal.style.display = 'flex';
+            document.getElementById('adminKeyModalInput').value = '';
+            document.getElementById('adminKeyModalInput').focus();
+        }
+    });
+    if (cancelAdminBtn) cancelAdminBtn.addEventListener('click', () => { adminLoginModal.style.display = 'none'; });
+    if (confirmAdminBtn) confirmAdminBtn.addEventListener('click', handleAdminLogin);
+    const adminKeyInput = document.getElementById('adminKeyModalInput');
+    if (adminKeyInput) {
+        adminKeyInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleAdminLogin();
+        });
+    }
+
+    if (deleteInqBtn) deleteInqBtn.addEventListener('click', handleDeleteInquiry);
+    if (approveInqBtn) approveInqBtn.addEventListener('click', handleApproveUser);
+
+    updateAdminUI();
+}
+
+function updateAdminUI() {
+    const adminBtn = document.getElementById('boardAdminBtn');
+    const adminBadge = document.getElementById('adminBadgeIndicator');
+    const deleteBtn = document.getElementById('deleteInqBtn');
+    const approveBtn = document.getElementById('approveInqBtn');
+
+    if (adminAuthKey) {
+        if (adminBtn) adminBtn.innerHTML = '<i class="fa-solid fa-crown"></i> 관리자(ON)';
+        if (adminBadge) adminBadge.style.display = 'inline-block';
+        if (deleteBtn) deleteBtn.style.display = 'inline-block';
+        if (approveBtn && currentViewingInquiryData) {
+            approveBtn.style.display = 'inline-block';
+            if (currentViewingInquiryData.is_approved) {
+                approveBtn.innerHTML = '<i class="fa-solid fa-check"></i> 승인완료됨';
+                approveBtn.style.opacity = '0.6';
+                approveBtn.disabled = true;
+            } else {
+                approveBtn.innerHTML = '<i class="fa-solid fa-user-check"></i> 👑 회원 승인';
+                approveBtn.style.opacity = '1.0';
+                approveBtn.disabled = false;
+            }
+        }
+    } else {
+        if (adminBtn) adminBtn.innerHTML = '<i class="fa-solid fa-user-shield"></i> 관리자 로그인';
+        if (adminBadge) adminBadge.style.display = 'none';
+        if (deleteBtn) deleteBtn.style.display = 'none';
+        if (approveBtn) approveBtn.style.display = 'none';
+    }
+}
+
+function openBoard() {
+    const modal = document.getElementById('inquiryBoardModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        showListView();
+        fetchInquiries();
+    }
+}
+
+function closeBoard() {
+    const modal = document.getElementById('inquiryBoardModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function showListView() {
+    document.getElementById('boardListView').style.display = 'block';
+    document.getElementById('boardWriteView').style.display = 'none';
+    document.getElementById('boardDetailView').style.display = 'none';
+    currentViewingInquiryData = null;
+}
+
+function showWriteView() {
+    document.getElementById('boardListView').style.display = 'none';
+    document.getElementById('boardWriteView').style.display = 'block';
+    document.getElementById('boardDetailView').style.display = 'none';
+    document.getElementById('inquiryForm').reset();
+    document.getElementById('inqIsSecret').checked = true;
+}
+
+function showDetailView() {
+    document.getElementById('boardListView').style.display = 'none';
+    document.getElementById('boardWriteView').style.display = 'none';
+    document.getElementById('boardDetailView').style.display = 'block';
+}
+
+async function fetchInquiries() {
+    const tbody = document.getElementById('boardTableBody');
+    if (!tbody) return;
+
+    try {
+        const res = await fetch('/api/board/inquiries?limit=30');
+        const json = await res.json();
+
+        if (json.status === 'success') {
+            const items = json.data.items;
+            if (items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:35px; color:#94a3b8;">등록된 신청/문의글이 없습니다. 첫 번째 가입 신청을 남겨보세요!</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            items.forEach(item => {
+                let statusBadge = '<span class="board-badge badge-pending">대기중</span>';
+                if (item.is_approved) {
+                    statusBadge = '<span class="board-badge badge-approved"><i class="fa-solid fa-check"></i> 승인완료</span>';
+                } else if (item.has_admin_reply) {
+                    statusBadge = '<span class="board-badge badge-replied"><i class="fa-solid fa-check-double"></i> 답변완료</span>';
+                }
+                
+                const secretIcon = item.is_secret ? '<i class="fa-solid fa-lock" style="color:var(--neon-blue); margin-right:5px;"></i>' : '';
+                const dateStr = item.created_at ? item.created_at.substring(0, 10) : '-';
+
+                html += `
+                    <tr onclick="onInquiryRowClick(${item.id}, ${item.is_secret})" style="cursor:pointer;">
+                        <td>${statusBadge}</td>
+                        <td style="font-weight:500; color:#f8fafc;">${secretIcon}${item.title}</td>
+                        <td style="color:#94a3b8;">${item.author}</td>
+                        <td style="color:#64748b; font-size:0.85rem;">${dateStr}</td>
+                        <td style="text-align:center; color:var(--neon-blue); font-weight:bold;">${item.comment_count || 0}</td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        } else {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:#ef4444;">오류: ${json.message}</td></tr>`;
+        }
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:#ef4444;">게시글을 불러오는 중 네트워크 오류가 발생했습니다.</td></tr>`;
+    }
+}
+
+function onInquiryRowClick(id, isSecret) {
+    currentViewingInquiryId = id;
+
+    if (adminAuthKey || !isSecret || cachedPins[id]) {
+        loadInquiryDetail(id, cachedPins[id] || '');
+    } else {
+        currentPendingPinInquiryId = id;
+        document.getElementById('pinModal').style.display = 'flex';
+        document.getElementById('pinModalInput').value = '';
+        document.getElementById('pinModalInput').focus();
+    }
+}
+
+function handlePinConfirm() {
+    const pin = document.getElementById('pinModalInput').value.trim();
+    if (!pin) {
+        alert("비밀번호(PIN)를 입력해주세요.");
+        return;
+    }
+    document.getElementById('pinModal').style.display = 'none';
+    cachedPins[currentPendingPinInquiryId] = pin;
+    loadInquiryDetail(currentPendingPinInquiryId, pin);
+}
+
+async function loadInquiryDetail(id, pin) {
+    try {
+        const payload = { pin: pin || "", admin_key: adminAuthKey || "" };
+        const res = await fetch(`/api/board/inquiries/${id}/view`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+
+        if (json.status === 'success') {
+            const data = json.data;
+            currentViewingInquiryData = data;
+            showDetailView();
+
+            document.getElementById('detailTitle').innerText = data.title;
+            document.getElementById('detailAuthor').innerText = data.author;
+            document.getElementById('detailDate').innerText = data.created_at;
+            document.getElementById('detailContent').innerText = data.content;
+
+            const contactEl = document.getElementById('detailContact');
+            if (data.contact) {
+                contactEl.innerText = `(연락처: ${data.contact})`;
+            } else {
+                contactEl.innerText = '';
+            }
+
+            const badgeEl = document.getElementById('detailBadge');
+            if (data.is_approved) {
+                badgeEl.className = 'board-badge badge-approved';
+                badgeEl.innerHTML = '<i class="fa-solid fa-check"></i> 회원 승인완료';
+            } else if (data.comments.some(c => c.is_admin)) {
+                badgeEl.className = 'board-badge badge-replied';
+                badgeEl.innerHTML = '<i class="fa-solid fa-check-double"></i> 답변완료';
+            } else {
+                badgeEl.className = 'board-badge badge-pending';
+                badgeEl.innerHTML = '대기중';
+            }
+
+            // Comments
+            const commentList = document.getElementById('commentListContainer');
+            document.getElementById('commentCount').innerText = data.comments.length;
+
+            if (data.comments.length === 0) {
+                commentList.innerHTML = `<div style="text-align:center; padding:20px; color:#94a3b8; font-size:0.9rem;">등록된 답변이나 안내가 없습니다. 관리자 확인 후 승인 및 답변을 남깁니다.</div>`;
+            } else {
+                let cHtml = '';
+                data.comments.forEach(c => {
+                    const isAdminCard = c.is_admin ? 'admin-reply' : '';
+                    const adminTag = c.is_admin ? '<span class="board-badge badge-admin"><i class="fa-solid fa-crown"></i> 관리자 안내</span>' : '';
+                    cHtml += `
+                        <div class="comment-card ${isAdminCard}">
+                            <div class="comment-header">
+                                <div><b style="color:#fff;">${c.author}</b> ${adminTag}</div>
+                                <div>${c.created_at}</div>
+                            </div>
+                            <div class="comment-body">${c.content}</div>
+                        </div>
+                    `;
+                });
+                commentList.innerHTML = cHtml;
+            }
+
+            updateAdminUI();
+        } else {
+            if (json.is_secret) {
+                alert("비밀번호가 일치하지 않습니다. 다시 확인해주세요.");
+                delete cachedPins[id];
+            } else {
+                alert("오류: " + json.message);
+            }
+        }
+    } catch (e) {
+        alert("상세 조회를 가져오는 중 오류가 발생했습니다: " + e.message);
+    }
+}
+
+async function handleInquirySubmit(e) {
+    e.preventDefault();
+    const author = document.getElementById('inqAuthor').value.trim();
+    const pin = document.getElementById('inqPin').value.trim();
+    const contact = document.getElementById('inqContact').value.trim();
+    const title = document.getElementById('inqTitle').value.trim();
+    const content = document.getElementById('inqContent').value.trim();
+    const isSecret = document.getElementById('inqIsSecret').checked;
+
+    if (!author || !pin || !title || !content) {
+        alert("신청자명, 사용할 비밀번호(PIN), 제목, 신청 내용을 모두 입력해주세요.");
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/board/inquiries', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ author, pin, contact, title, content, is_secret: isSecret })
+        });
+        const json = await res.json();
+
+        if (json.status === 'success') {
+            alert("신청 및 문의글이 성공적으로 등록되었습니다!\n관리자가 확인 후 회원 승인을 진행하며, 승인 완료 시 등록하신 본인 비밀번호로 사이트에 바로 로그인하실 수 있습니다.");
+            cachedPins[json.id] = pin;
+            showListView();
+            fetchInquiries();
+        } else {
+            alert("등록 실패: " + json.message);
+        }
+    } catch (err) {
+        alert("등록 중 네트워크 오류가 발생했습니다.");
+    }
+}
+
+async function handleCommentSubmit(e) {
+    e.preventDefault();
+    if (!currentViewingInquiryId) return;
+
+    const content = document.getElementById('commentContentInput').value.trim();
+    if (!content) {
+        alert("댓글 내용을 입력해주세요.");
+        return;
+    }
+
+    const pin = cachedPins[currentViewingInquiryId] || "";
+    try {
+        const res = await fetch(`/api/board/inquiries/${currentViewingInquiryId}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                content,
+                pin,
+                admin_key: adminAuthKey || "",
+                is_secret: true
+            })
+        });
+        const json = await res.json();
+
+        if (json.status === 'success') {
+            document.getElementById('commentContentInput').value = '';
+            loadInquiryDetail(currentViewingInquiryId, pin);
+        } else {
+            alert("댓글 등록 실패: " + json.message);
+        }
+    } catch (err) {
+        alert("댓글 등록 중 네트워크 오류가 발생했습니다.");
+    }
+}
+
+async function handleAdminLogin() {
+    const key = document.getElementById('adminKeyModalInput').value.trim();
+    if (!key) {
+        alert("관리자 인증번호를 입력해주세요.");
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/board/admin/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admin_key: key })
+        });
+        const json = await res.json();
+
+        if (json.status === 'success') {
+            adminAuthKey = key;
+            sessionStorage.setItem('admin_board_key', key);
+            document.getElementById('adminLoginModal').style.display = 'none';
+            alert("관리자 인증이 완료되었습니다. 회원 가입 승인 및 모든 비밀글 열람/답변이 가능합니다.");
+            updateAdminUI();
+            if (currentViewingInquiryId) {
+                loadInquiryDetail(currentViewingInquiryId, '');
+            } else {
+                fetchInquiries();
+            }
+        } else {
+            alert("관리자 인증번호가 일치하지 않습니다. (고정키: h80494)");
+        }
+    } catch (err) {
+        alert("인증 처리 중 오류가 발생했습니다.");
+    }
+}
+
+async function handleApproveUser() {
+    if (!currentViewingInquiryId || !adminAuthKey) return;
+    if (!confirm(`'${currentViewingInquiryData?.author}' 회원의 가입을 승인하시겠습니까?\n승인 시 해당 회원이 설정한 비밀번호로 즉시 로그인이 가능해집니다.`)) return;
+
+    try {
+        const res = await fetch(`/api/board/inquiries/${currentViewingInquiryId}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admin_key: adminAuthKey })
+        });
+        const json = await res.json();
+
+        if (json.status === 'success') {
+            alert(json.message);
+            loadInquiryDetail(currentViewingInquiryId, '');
+        } else {
+            alert("승인 실패: " + json.message);
+        }
+    } catch (err) {
+        alert("승인 처리 중 오류가 발생했습니다: " + err.message);
+    }
+}
+
+async function handleDeleteInquiry() {
+    if (!currentViewingInquiryId) return;
+    if (!confirm("정말로 이 신청/문의글을 삭제하시겠습니까?")) return;
+
+    const pin = cachedPins[currentViewingInquiryId] || "";
+    try {
+        const res = await fetch(`/api/board/inquiries/${currentViewingInquiryId}?pin=${encodeURIComponent(pin)}&admin_key=${encodeURIComponent(adminAuthKey || '')}`, {
+            method: 'DELETE'
+        });
+        const json = await res.json();
+        if (json.status === 'success') {
+            alert("삭제되었습니다.");
+            showListView();
+            fetchInquiries();
+        } else {
+            alert("삭제 실패: " + json.message);
+        }
+    } catch (err) {
+        alert("삭제 처리 중 오류가 발생했습니다.");
+    }
+}
+

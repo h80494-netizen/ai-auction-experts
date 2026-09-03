@@ -2,6 +2,11 @@
 <html lang="ko">
 
 <head>
+    <script>
+        if (sessionStorage.getItem('auth_token') !== 'verified') {
+            window.location.href = '/index.html';
+        }
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Auction Map Sandbox - Professional</title>
@@ -4304,25 +4309,32 @@ let cachedRedevelopmentZonesData = null;
                     window.activeRealpriceHoverCircle = null;
                 }
                 layers.realpriceGrid.clearLayers();
+                cachedRealpriceData = null;
+                cachedRealpriceBounds = null;
             }
+
+            let isFetchingRealprice = false;
 
             async function fetchRealpriceGrids() {
                 const toggle = document.getElementById('toggle-realprice-grids');
                 if (!toggle || !toggle.checked) return;
                 
-                const minZoom = 14;
+                // Relax zoom restriction to allow wide regional view (zoom >= 9)
+                const minZoom = 9;
                 if (map.getZoom() < minZoom) {
-                    clearRealpriceGrids();
+                    // Do NOT clear layers if already loaded, keep existing grids on screen
                     return;
                 }
+                
+                if (isFetchingRealprice) return;
+                isFetchingRealprice = true;
                 
                 const bounds = map.getBounds();
                 const propType = document.getElementById('realprice-prop-type').value;
                 const indicator = document.getElementById('realprice-indicator').value;
                 const gridSizeVal = parseInt(document.getElementById('realprice-grid-size').value, 10) || 1000;
                 
-                const isCached = cachedRealpriceZoom === map.getZoom() && 
-                                 cachedRealpriceBounds && 
+                const isCached = cachedRealpriceBounds && 
                                  cachedRealpriceBounds.contains(bounds) && 
                                  cachedRealpricePropType === propType &&
                                  cachedRealpriceIndicator === indicator &&
@@ -4336,14 +4348,16 @@ let cachedRedevelopmentZonesData = null;
                     data = cachedRealpriceData;
                     lat_step = cachedRealpriceLatStep;
                     lng_step = cachedRealpriceLngStep;
+                    isFetchingRealprice = false;
                 } else {
                     const southWest = bounds.getSouthWest();
                     const northEast = bounds.getNorthEast();
-                    const latDiff = northEast.lat - southWest.lat;
-                    const lngDiff = northEast.lng - southWest.lng;
+                    const latDiff = Math.max(northEast.lat - southWest.lat, 0.02);
+                    const lngDiff = Math.max(northEast.lng - southWest.lng, 0.02);
                     
-                    const padLat = latDiff * 0.25;
-                    const padLng = lngDiff * 0.25;
+                    // Pad bounds by 50% to prevent frequent reload on slight pans
+                    const padLat = latDiff * 0.5;
+                    const padLng = lngDiff * 0.5;
                     
                     const paddedBounds = L.latLngBounds(
                         L.latLng(southWest.lat - padLat, southWest.lng - padLng),
@@ -4368,16 +4382,21 @@ let cachedRedevelopmentZonesData = null;
                             lat_step = cachedRealpriceLatStep;
                             lng_step = cachedRealpriceLngStep;
                         } else {
+                            isFetchingRealprice = false;
                             return;
                         }
                     } catch (err) {
                         console.error("Failed to fetch real price indicators:", err);
+                        isFetchingRealprice = false;
                         return;
                     }
+                    isFetchingRealprice = false;
                 }
                 
-                clearRealpriceGrids();
-                if (!data || data.length === 0) return;
+                if (!data || data.length === 0) {
+                    // Do not clear existing layer if new area has 0 data, keep what was visible
+                    return;
+                }
                 
                 // Calculate color scales based on value ranges
                 const vals = data.map(d => d.val).filter(v => v > 0).sort((a, b) => a - b);
@@ -4390,21 +4409,18 @@ let cachedRedevelopmentZonesData = null;
                     
                     // Color ramp depending on indicator type
                     if (indicator === 'jeonse_ratio') {
-                        // Jeonse ratio: green scale
                         if (percentile >= 0.8) return '#065f46';
                         if (percentile >= 0.6) return '#047857';
                         if (percentile >= 0.4) return '#10b981';
                         if (percentile >= 0.2) return '#34d399';
                         return '#a7f3d0';
                     } else if (indicator === 'transaction_count') {
-                        // Transaction count: blue scale
                         if (percentile >= 0.8) return '#1e3a8a';
                         if (percentile >= 0.6) return '#1d4ed8';
                         if (percentile >= 0.4) return '#3b82f6';
                         if (percentile >= 0.2) return '#60a5fa';
                         return '#93c5fd';
                     } else {
-                        // Prices and ratios: red/orange scale
                         if (percentile >= 0.8) return '#991b1b';
                         if (percentile >= 0.6) return '#dc2626';
                         if (percentile >= 0.4) return '#f97316';
@@ -4416,6 +4432,8 @@ let cachedRedevelopmentZonesData = null;
                 const halfLat = lat_step / 2;
                 const halfLng = lng_step / 2;
                 
+                const newLayerGroup = L.layerGroup();
+                
                 data.forEach(item => {
                     if (item.val <= 0) return;
                     const rectBounds = [
@@ -4424,6 +4442,13 @@ let cachedRedevelopmentZonesData = null;
                     ];
                     
                     const color = getGridColor(item.val);
+                    
+                    const formatChangeRate = (rate) => {
+                        if (rate == null || rate === 0) return '-';
+                        const absRate = Math.abs(rate).toFixed(1);
+                        if (rate > 0) return `<span style="color:#ef4444;">▲ ${absRate}%</span>`;
+                        return `<span style="color:#3b82f6;">▼ ${absRate}%</span>`;
+                    };
                     
                     // Formulate value labels
                     let valStr = '';
@@ -4461,13 +4486,6 @@ let cachedRedevelopmentZonesData = null;
                         fillColor: color,
                         fillOpacity: 0.4
                     });
-                    
-                    const formatChangeRate = (rate) => {
-                        if (rate == null || rate === 0) return '-';
-                        const absRate = Math.abs(rate).toFixed(1);
-                        if (rate > 0) return `<span style="color:#ef4444;">▲ ${absRate}%</span>`;
-                        return `<span style="color:#3b82f6;">▼ ${absRate}%</span>`;
-                    };
                     
                     const popupContent = `
                         <div style="font-family:'Noto Sans KR'; min-width:200px; padding: 5px;">
@@ -4527,8 +4545,12 @@ let cachedRedevelopmentZonesData = null;
                         }
                     });
 
-                    rect.addTo(layers.realpriceGrid);
+                    rect.addTo(newLayerGroup);
                 });
+
+                // Atomic layer swap: clear old and add new at the exact same moment to prevent flickering/disappearing
+                layers.realpriceGrid.clearLayers();
+                newLayerGroup.eachLayer(l => l.addTo(layers.realpriceGrid));
             }
 
             window.updateRealpriceGrids = function() {
@@ -5033,6 +5055,125 @@ let cachedRedevelopmentZonesData = null;
             }
 
             // --- Demand Side Panel JavaScript Helpers ---
+            function createCommercialStoresCardHtml(storesData) {
+                if (!storesData || storesData.status !== 'success' || !storesData.data) {
+                    return `
+                        <div class="demand-card" style="border-left: 4px solid #8b5cf6;">
+                            <div class="demand-card-title"><i class="fa-solid fa-store" style="color: #8b5cf6;"></i> 반경 200m 소상공인 상권 분석</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 15px 0;">주변 200m 이내 소상공인 점포 데이터를 분석 중입니다...</div>
+                        </div>
+                    `;
+                }
+
+                const data = storesData.data;
+                const totalCount = data.total_count || 0;
+                const largeDist = data.category_large_distribution || [];
+                const medTop = data.category_medium_top || [];
+                const stores = data.stores || [];
+
+                if (totalCount === 0) {
+                    return `
+                        <div class="demand-card" style="border-left: 4px solid #8b5cf6;">
+                            <div class="demand-card-title"><i class="fa-solid fa-store" style="color: #8b5cf6;"></i> 반경 200m 소상공인 상권 분석</div>
+                            <div style="font-size: 0.82rem; color: var(--text-muted); text-align: center; padding: 18px 0;">
+                                <i class="fa-solid fa-circle-info" style="color: #94a3b8; font-size: 1.2rem; margin-bottom: 6px;"></i><br>
+                                반경 200m 이내 등록된 소상공인 점포가 없습니다.<br><span style="font-size:0.75rem;">(순수 주거전용지, 농지 또는 미개발 구역)</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#6366f1', '#14b8a6', '#64748b'];
+                let largeDistHtml = largeDist.map((item, idx) => {
+                    const col = colors[idx % colors.length];
+                    return `
+                        <div style="margin-bottom: 6px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 2px;">
+                                <span style="font-weight: 600; color: #1e293b;">${item.category}</span>
+                                <span style="font-weight: 700; color: ${col};">${item.count}개 (${item.ratio}%)</span>
+                            </div>
+                            <div style="width: 100%; height: 7px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                                <div style="width: ${item.ratio}%; height: 100%; background: ${col}; border-radius: 4px;"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                let medTopHtml = medTop.slice(0, 8).map(m => {
+                    return `<span style="display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; padding: 2px 8px; font-size: 0.72rem; color: #334155; margin-right: 4px; margin-bottom: 4px;">${m.category} <b>${m.count}개</b> (${m.ratio}%)</span>`;
+                }).join('');
+
+                let storeRowsHtml = stores.map((s, idx) => {
+                    const floorStr = s.floor_info ? `<span style="color:#64748b; font-size:0.72rem;">(${s.floor_info})</span>` : '';
+                    const branchStr = s.branch ? ` <span style="color:#6366f1; font-size:0.72rem;">${s.branch}</span>` : '';
+                    return `
+                        <tr style="border-bottom: 1px solid #f1f5f9; font-size: 0.76rem;">
+                            <td style="padding: 6px 4px; font-weight: 600; color: #1e293b;">
+                                ${s.name}${branchStr} ${floorStr}
+                                <div style="font-size: 0.68rem; color: #64748b; font-weight: normal;">${s.road_addr || s.lot_addr || ''}</div>
+                            </td>
+                            <td style="padding: 6px 4px; text-align: center;">
+                                <span style="background: rgba(139,92,246,0.1); color: #7c3aed; padding: 1px 6px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap;">${s.cat_small || s.cat_medium}</span>
+                            </td>
+                            <td style="padding: 6px 4px; text-align: right; font-weight: bold; color: #0284c7; white-space: nowrap;">${s.distance}m</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                return `
+                    <!-- 200m Small Business Store Analytics Card -->
+                    <div class="demand-card" style="border-left: 4px solid #8b5cf6; background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                        <div class="demand-card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="color: #6d28d9; font-size: 0.92rem; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-store" style="color: #8b5cf6;"></i> 반경 200m 소상공인 상권 분석
+                            </span>
+                            <span style="background: #8b5cf6; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">
+                                총 ${totalCount}개 업체
+                            </span>
+                        </div>
+
+                        <!-- Category Distribution Ratio -->
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+                            <div style="font-size: 0.78rem; font-weight: bold; color: #475569; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
+                                <i class="fa-solid fa-chart-pie" style="color: #8b5cf6;"></i> 주요 업종별 점유율 비중 (%)
+                            </div>
+                            ${largeDistHtml}
+                        </div>
+
+                        <!-- Top Business Types -->
+                        <div style="margin-bottom: 12px;">
+                            <div style="font-size: 0.75rem; font-weight: bold; color: #64748b; margin-bottom: 6px;">주요 세부 업종 TOP</div>
+                            <div style="display: flex; flex-wrap: wrap;">
+                                ${medTopHtml}
+                            </div>
+                        </div>
+
+                        <!-- Store List Table with search filter -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-size: 0.78rem; font-weight: bold; color: #475569;">
+                                    <i class="fa-solid fa-list-ul"></i> 200m 입점 업체 리스트 (${stores.length}개)
+                                </span>
+                            </div>
+                            <div style="max-height: 220px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; background: #fafafa;">
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead style="background: #f1f5f9; position: sticky; top: 0; z-index: 1;">
+                                        <tr style="font-size: 0.72rem; color: #475569; text-align: left;">
+                                            <th style="padding: 6px 4px;">상호명 / 주소</th>
+                                            <th style="padding: 6px 4px; text-align: center; width: 70px;">업종</th>
+                                            <th style="padding: 6px 4px; text-align: right; width: 50px;">거리</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${storeRowsHtml}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
             function showDemandSkeleton() {
                 const content = document.getElementById('demand-panel-content');
                 if (!content) return;
@@ -5132,6 +5273,11 @@ let cachedRedevelopmentZonesData = null;
                 // 주택 여부 판별
                 const isRes = isResidential(propType);
 
+                // Fetch 200m small business stores in parallel
+                const storesPromise = fetch(`/api/map/commercial_stores?lat=${lat}&lng=${lng}&radius=200`)
+                    .then(res => res.json())
+                    .catch(err => { console.warn("Failed to fetch stores:", err); return { status: 'error' }; });
+
                 if (isRes) {
                     // 주택인 경우: 인구/지하철 분석과 실거래가 가격지표를 모두 패칭하여 융합 렌더링
                     try {
@@ -5149,9 +5295,7 @@ let cachedRedevelopmentZonesData = null;
                             demoUrl += `&property_type=${encodeURIComponent(propType)}`;
                         }
                         
-                        const demoRes = await fetch(demoUrl);
-                        if (!demoRes.ok) throw new Error('Demographics API request failed');
-                        const demoJson = await demoRes.json();
+                        const demoPromise = fetch(demoUrl).then(res => res.json());
                         
                         // 실거래가 가격지표 BBox 가져오기 (주변 250m 격자 포괄)
                         const minLat = lat - 0.003;
@@ -5169,19 +5313,14 @@ let cachedRedevelopmentZonesData = null;
                         }
                         
                         const priceUrl = `/api/map/realprice_indicators?min_lat=${minLat}&max_lat=${maxLat}&min_lng=${minLng}&max_lng=${maxLng}&property_type=${encodeURIComponent(normPropType)}&indicator_type=avg_price_per_pyeong`;
+                        const pricePromise = fetch(priceUrl).then(res => res.json());
                         
-                        const priceRes = await fetch(priceUrl);
-                        if (!priceRes.ok) throw new Error('Price indicators API request failed');
-                        const priceJson = await priceRes.json();
+                        const [demoJson, priceJson, storesJson] = await Promise.all([demoPromise, pricePromise, storesPromise]);
                         
-                        if (demoJson.status === 'success' && priceJson.status === 'success') {
-                            renderResidentialDemandData(demoJson, priceJson, caseNo, address, propType, lat, lng);
+                        if (demoJson.status === 'success') {
+                            renderResidentialDemandData(demoJson, priceJson, storesJson, caseNo, address, propType, lat, lng);
                         } else {
-                            if (demoJson.status === 'success') {
-                                renderResidentialDemandData(demoJson, { status: 'success', data: [] }, caseNo, address, propType, lat, lng);
-                            } else {
-                                throw new Error(demoJson.message || '인구 분석 데이터 오류');
-                            }
+                            throw new Error(demoJson.message || '인구 분석 데이터 오류');
                         }
                     } catch (err) {
                         console.error("Failed to load residential analytics:", err);
@@ -5209,18 +5348,17 @@ let cachedRedevelopmentZonesData = null;
                         if (propType) {
                             url += `&property_type=${encodeURIComponent(propType)}`;
                         }
-                        const res = await fetch(url);
-                        if (!res.ok) throw new Error('API request failed');
-                        const json = await res.json();
+                        const demoPromise = fetch(url).then(res => res.json());
+                        const [demoJson, storesJson] = await Promise.all([demoPromise, storesPromise]);
                         
-                        if (json.status === 'success') {
-                            renderDemandData(json, caseNo, address, propType);
+                        if (demoJson.status === 'success') {
+                            renderDemandData(demoJson, storesJson, caseNo, address, propType);
                         } else {
                             document.getElementById('demand-panel-content').innerHTML = `
                                 <div class="demand-card" style="text-align: center; padding: 25px; color: #ef4444;">
                                     <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; margin-bottom: 10px;"></i>
                                     <p style="font-weight: bold; margin: 0;">데이터 분석 실패</p>
-                                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">${json.message || '인구 통계 데이터를 가져오지 못했습니다.'}</p>
+                                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">${demoJson.message || '인구 통계 데이터를 가져오지 못했습니다.'}</p>
                                 </div>
                             `;
                         }
@@ -5237,7 +5375,7 @@ let cachedRedevelopmentZonesData = null;
                 }
             }
 
-            function renderDemandData(resData, caseNo, address, propType) {
+            function renderDemandData(resData, storesData, caseNo, address, propType) {
                 const content = document.getElementById('demand-panel-content');
                 if (!content) return;
 
@@ -5331,6 +5469,8 @@ let cachedRedevelopmentZonesData = null;
                 // Source description badge
                 const sourceBadge = `<span style="font-size: 0.65rem; color: #fff; background-color: ${demo.source.includes('SGIS') ? '#10b981' : '#6366f1'}; padding: 2px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px;">${demo.source}</span>`;
 
+                const commercialStoresHtml = createCommercialStoresCardHtml(storesData);
+
                 content.innerHTML = `
                     <!-- Address & Case Metadata -->
                     <div class="demand-card" style="border-left: 4px solid var(--primary-blue); background: rgba(255, 255, 255, 0.9);">
@@ -5341,9 +5481,12 @@ let cachedRedevelopmentZonesData = null;
                             ${address}
                         </div>
                         <div style="font-size: 0.7rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
-                            <i class="fa-solid fa-location-dot"></i> 반경 500m 배후수요 입지 분석 정보 ${sourceBadge}
+                            <i class="fa-solid fa-location-dot"></i> 반경 500m 배후수요 및 200m 상권 분석 정보 ${sourceBadge}
                         </div>
                     </div>
+
+                    <!-- 200m Small Business Commercial Stores Analytics -->
+                    ${commercialStoresHtml}
 
                     <!-- 500m Radius Circular Population & Households -->
                     <div class="demand-card">
@@ -5475,7 +5618,7 @@ let cachedRedevelopmentZonesData = null;
                        p.includes('기타주거용건물');
             }
 
-            function renderResidentialDemandData(resData, priceData, caseNo, address, propType, lat, lng) {
+            function renderResidentialDemandData(resData, priceData, storesData, caseNo, address, propType, lat, lng) {
                 const content = document.getElementById('demand-panel-content');
                 if (!content) return;
 
@@ -5549,8 +5692,6 @@ let cachedRedevelopmentZonesData = null;
                 if (matchedGrid) {
                     const avgPriceStr = matchedGrid.avg_price > 0 ? `${(matchedGrid.avg_price).toFixed(0).toLocaleString()}만원` : '정보없음';
                     const avgDepositStr = matchedGrid.avg_deposit > 0 ? `${(matchedGrid.avg_deposit).toFixed(0).toLocaleString()}만원` : '정보없음';
-                    const avgRentStr = matchedGrid.avg_rent > 0 ? `${(matchedGrid.avg_rent).toFixed(0).toLocaleString()}만원` : '정보없음';
-                    const jeonseRatioStr = matchedGrid.jeonse_ratio > 0 ? `${matchedGrid.jeonse_ratio.toFixed(1)}%` : '정보없음';
                     const txCount = matchedGrid.count || 0;
                     
                     // 전세가율 진단 및 게이지
@@ -5614,74 +5755,51 @@ let cachedRedevelopmentZonesData = null;
 
                     priceCardHtml = `
                         <!-- Realprice indicator stats -->
-                        <div class="demand-card">
-                            <div class="demand-card-title">
-                                <i class="fa-solid fa-coins" style="color: #eab308;"></i> 최근 1년 실거래 가격지표 (250m 격자)
+                        <div class="demand-card" style="border-left: 4px solid var(--neon-blue); background: #ffffff;">
+                            <div class="demand-card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <span style="color: var(--primary-blue); font-size: 0.92rem; font-weight: bold;">
+                                    <i class="fa-solid fa-chart-line"></i> 주변 실거래 및 임대 가격 지표 (250m)
+                                </span>
+                                <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal;">
+                                    수집거래: <b>${txCount}건</b>
+                                </span>
                             </div>
-                            <div class="demand-grid" style="margin-bottom: 12px;">
-                                <div class="demand-stat-item">
-                                    <div class="demand-stat-label">평당 매매가 (중앙값)</div>
-                                    <div class="demand-stat-value" style="color: #ef4444;">${avgPriceStr}/평</div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px;">
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">평균 매매 평당가</div>
+                                    <div style="font-size: 1rem; font-weight: 800; color: #0284c7;">${avgPriceStr}</div>
                                 </div>
-                                <div class="demand-stat-item">
-                                    <div class="demand-stat-label">평당 전세가 (중앙값/환산)</div>
-                                    <div class="demand-stat-value" style="color: #3b82f6;">${avgDepositStr}/평</div>
+                                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px;">
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">평균 전세 평당가</div>
+                                    <div style="font-size: 1rem; font-weight: 800; color: #16a34a;">${avgDepositStr}</div>
                                 </div>
                             </div>
-                            
-                            <!-- Detailed parameters -->
-                            <div style="font-size: 0.75rem; display: flex; flex-direction: column; gap: 8px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(226,232,240,0.5); padding-bottom: 4px;">
-                                    <span style="color: var(--text-muted);">월세 (중앙값)</span>
-                                    <span style="font-weight: bold; color: var(--text-dark);">${avgRentStr}</span>
+
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <span style="font-size: 0.75rem; font-weight: bold; color: var(--text-dark);">평균 전세가율</span>
+                                    <span style="font-size: 0.85rem; font-weight: 800; color: ${jeonseColor};">${jeonseRatioStr}</span>
                                 </div>
-                                
-                                <div style="display: flex; flex-direction: column; gap: 3px; border-bottom: 1px solid rgba(226,232,240,0.5); padding-bottom: 6px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="color: var(--text-muted);">전세가율</span>
-                                        <span style="font-weight: bold; color: ${jeonseColor};">${jeonseRatioStr} (${jeonseStatus})</span>
-                                    </div>
-                                    ${matchedGrid.jeonse_ratio > 0 ? `
-                                    <div style="height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; width: 100%;">
-                                        <div style="width: ${jeonseBarWidth}; height: 100%; background: ${jeonseColor}; border-radius: 3px;"></div>
-                                    </div>
-                                    ` : ''}
+                                <div style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-bottom: 4px;">
+                                    <div style="width: ${jeonseBarWidth}; height: 100%; background: ${jeonseColor}; border-radius: 3px;"></div>
                                 </div>
- 
+                                <div style="font-size: 0.7rem; color: ${jeonseColor}; font-weight: 600; text-align: right;">${jeonseStatus}</div>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.78rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(226,232,240,0.5); padding-bottom: 4px;">
-                                    <span style="color: var(--text-muted);">최근 1년 거래건수</span>
-                                    <span style="font-weight: bold; color: var(--text-dark);">매매 ${matchedGrid.sale_count || 0}건, 전월세 ${matchedGrid.rent_count || 0}건 (총 ${txCount}건) <span style="font-size:0.7rem; color:${txColor}; font-weight:bold;">(${txStatus})</span></span>
+                                    <span style="color: var(--text-muted);">거래 활성도</span>
+                                    <span style="font-weight: bold; color: ${txColor};">${txStatus}</span>
                                 </div>
- 
                                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(226,232,240,0.5); padding-bottom: 4px;">
-                                    <span style="color: var(--text-muted);">신축 프리미엄비율</span>
+                                    <span style="color: var(--text-muted);">신축 프리미엄</span>
                                     <span style="font-weight: bold; color: var(--text-dark);">${agePremStr}</span>
                                 </div>
- 
                                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(226,232,240,0.5); padding-bottom: 4px;">
                                     <span style="color: var(--text-muted);">로얄층 민감도</span>
                                     <span style="font-weight: bold; color: var(--text-dark);">${floorSensStr}</span>
                                 </div>
- 
-                                <div style="display: flex; flex-direction: column; gap: 4px; border-top: 1px solid rgba(226,232,240,0.5); padding-top: 6px; margin-top: 4px;">
-                                    <span style="font-weight: bold; color: var(--text-dark); margin-bottom: 2px;">평수대별 매매건수 분포 (총 ${matchedGrid.sale_count || 0}건)</span>
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 0.72rem;">
-                                        <div style="display: flex; justify-content: space-between;">
-                                            <span style="color: var(--text-muted);">10평 이하:</span>
-                                            <span style="font-weight: 600;">${matchedGrid.sales_under_10 || 0}건 (${matchedGrid.sale_count > 0 ? ((matchedGrid.sales_under_10 || 0)/matchedGrid.sale_count*100).toFixed(1) : 0}%)</span>
-                                        </div>
-                                        <div style="display: flex; justify-content: space-between;">
-                                            <span style="color: var(--text-muted);">20평 이하:</span>
-                                            <span style="font-weight: 600;">${matchedGrid.sales_10_to_20 || 0}건 (${matchedGrid.sale_count > 0 ? ((matchedGrid.sales_10_to_20 || 0)/matchedGrid.sale_count*100).toFixed(1) : 0}%)</span>
-                                        </div>
-                                        <div style="display: flex; justify-content: space-between;">
-                                            <span style="color: var(--text-muted);">30평 이하:</span>
-                                            <span style="font-weight: 600;">${matchedGrid.sales_20_to_30 || 0}건 (${matchedGrid.sale_count > 0 ? ((matchedGrid.sales_20_to_30 || 0)/matchedGrid.sale_count*100).toFixed(1) : 0}%)</span>
-                                        </div>
-                                        <div style="display: flex; justify-content: space-between;">
-                                            <span style="color: var(--text-muted);">30평 초과:</span>
-                                            <span style="font-weight: 600;">${matchedGrid.sales_over_30 || 0}건 (${matchedGrid.sale_count > 0 ? ((matchedGrid.sales_over_30 || 0)/matchedGrid.sale_count*100).toFixed(1) : 0}%)</span>
-                                        </div>
                                         <div style="display: flex; justify-content: space-between; grid-column: span 2; border-top: 1px dashed rgba(226,232,240,0.8); padding-top: 4px; margin-top: 2px;">
                                             <span style="color: var(--text-dark); font-weight: bold;">주거래평수대:</span>
                                             <span style="font-weight: bold; color: var(--primary-blue);">${matchedGrid.main_pyeong_type !== '-' ? `${matchedGrid.main_pyeong_type} (${matchedGrid.main_pyeong_ratio.toFixed(1)}%)` : '-'}</span>

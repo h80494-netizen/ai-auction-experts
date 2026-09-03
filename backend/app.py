@@ -7,6 +7,7 @@ import uvicorn
 import sys
 import asyncio
 import io
+from datetime import datetime, timezone, timedelta
 import pandas as pd
 
 downloads_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "downloads"))
@@ -74,10 +75,43 @@ class PasswordRequest(BaseModel):
 
 @app.post("/api/verify")
 async def verify_password(request: PasswordRequest):
-    if request.password == "1234":
-        return {"status": "success"}
-    else:
-        return {"status": "error"}
+    pw = request.password.strip()
+    kst = timezone(timedelta(hours=9))
+    current_pw = datetime.now(kst).strftime("%m%d")
+    
+    # 1. 관리자 고정 인증번호 (h80494)
+    if pw == "h80494":
+        return {"status": "success", "user_type": "admin", "message": "관리자로 로그인되었습니다."}
+        
+    # 2. 당일 월/일 4자리 초기 비밀번호 (예: 9월 3일 -> "0903")
+    if pw == current_pw:
+        return {"status": "success", "user_type": "guest", "message": "초기 비밀번호로 로그인되었습니다."}
+        
+    # 3. 관리자 승인을 받은 회원의 본인 비밀번호 (PIN 해시 대조)
+    import hashlib
+    pw_hash = hashlib.sha256(pw.encode('utf-8')).hexdigest()
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM approved_users WHERE pin_hash = ? AND status = 'active'", (pw_hash,))
+        user = cursor.fetchone()
+        
+        if not user:
+            cursor.execute("SELECT * FROM board_inquiries WHERE pin_hash = ? AND is_approved = 1", (pw_hash,))
+            user = cursor.fetchone()
+            
+        conn.close()
+        
+        if user:
+            author_name = user["username"] if "username" in user.keys() else user["author"]
+            return {"status": "success", "user_type": "member", "user_name": author_name, "message": f"{author_name}님 본인 비밀번호로 인증되었습니다."}
+    except Exception as e:
+        print(f"Error checking user auth: {e}")
+        
+    return {"status": "error", "message": "비밀번호가 일치하지 않습니다. 초기 비밀번호(당일 월일 4자리)를 이용하시거나 소통게시판에서 가입 승인을 요청해주세요."}
 
 
 @app.post("/api/search_cases")
@@ -3193,8 +3227,27 @@ def get_realprice_indicators(
         conn.close()
         return {"status": "error", "message": "Real price table not initialized yet."}
         
+    # Property type synonym mapping (e.g., 연립/다세대, 단독다가구, 공장창고등, 상업업무용)
+    prop_type_map = {
+        "연립/다세대": ["다세대", "연립다세대", "연립/다세대"],
+        "연립다세대": ["다세대", "연립다세대", "연립/다세대"],
+        "다세대": ["다세대", "연립다세대", "연립/다세대"],
+        "단독": ["단독", "단독다가구"],
+        "단독다가구": ["단독", "단독다가구"],
+        "공장창고등": ["공장창고(일반)", "공장창고(집합)", "공장창고등", "공장창고"],
+        "공장창고": ["공장창고(일반)", "공장창고(집합)", "공장창고등", "공장창고"],
+        "상업업무용": ["상가(일반)", "상가(집합)", "상업업무용", "상가"],
+        "상가": ["상가(일반)", "상가(집합)", "상업업무용", "상가"],
+        "아파트": ["아파트"],
+        "오피스텔": ["오피스텔"],
+        "토지": ["토지"],
+        "분양권": ["분양권"]
+    }
+    target_types = prop_type_map.get(property_type, [property_type])
+    placeholders = ','.join(['?'] * len(target_types))
+
     # Query within BBox with padding to catch boundary grids
-    query = '''
+    query = f'''
         SELECT lat_idx, lng_idx, lat, lng, 
                avg_price_per_pyeong, avg_deposit_per_pyeong, avg_rent, 
                jeonse_ratio, transaction_count, sale_count, rent_count, 
@@ -3204,11 +3257,12 @@ def get_realprice_indicators(
         FROM realprice_grids
         WHERE lat BETWEEN ? AND ? 
           AND lng BETWEEN ? AND ?
-          AND property_type = ?
+          AND property_type IN ({placeholders})
     '''
     pad_lat = lat_step
     pad_lng = lng_step
-    cursor.execute(query, (min_lat - pad_lat, max_lat + pad_lat, min_lng - pad_lng, max_lng + pad_lng, property_type))
+    params = [min_lat - pad_lat, max_lat + pad_lat, min_lng - pad_lng, max_lng + pad_lng] + target_types
+    cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
     
@@ -3374,9 +3428,476 @@ async def naver_price_analysis(req: NaverPriceRequest):
         return {"status": "error", "message": str(e)}
 
 
+import hashlib
+
+# ----------------- 소통/문의 게시판 (Inquiry & Secret Comment System) -----------------
+def init_board_db():
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS board_inquiries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            author TEXT NOT NULL,
+            pin_hash TEXT NOT NULL,
+            is_secret INTEGER DEFAULT 1,
+            contact TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at TEXT NOT NULL
+        )
+    """)
+    
+    # Check board_comments schema
+    cursor.execute("PRAGMA table_info(board_comments)")
+    cols = [col[1] for col in cursor.fetchall()]
+    if not cols:
+        cursor.execute("""
+            CREATE TABLE board_comments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                inquiry_id INTEGER NOT NULL,
+                author TEXT NOT NULL,
+                content TEXT NOT NULL,
+                is_admin INTEGER DEFAULT 0,
+                is_secret INTEGER DEFAULT 1,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (inquiry_id) REFERENCES board_inquiries(id) ON DELETE CASCADE
+            )
+        """)
+    else:
+        if "inquiry_id" not in cols or "is_admin" not in cols:
+            cursor.execute("DROP TABLE IF EXISTS board_comments")
+            cursor.execute("""
+                CREATE TABLE board_comments (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    inquiry_id INTEGER NOT NULL,
+                    author TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    is_admin INTEGER DEFAULT 0,
+                    is_secret INTEGER DEFAULT 1,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (inquiry_id) REFERENCES board_inquiries(id) ON DELETE CASCADE
+                )
+            """)
+            
+    # Migration checks for board_inquiries
+    cursor.execute("PRAGMA table_info(board_inquiries)")
+    b_cols = [col[1] for col in cursor.fetchall()]
+    if "is_approved" not in b_cols:
+        cursor.execute("ALTER TABLE board_inquiries ADD COLUMN is_approved INTEGER DEFAULT 0")
+    if "approved_at" not in b_cols:
+        cursor.execute("ALTER TABLE board_inquiries ADD COLUMN approved_at TEXT")
+        
+    # Table for approved custom members
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS approved_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            contact TEXT,
+            pin_hash TEXT NOT NULL,
+            inquiry_id INTEGER,
+            status TEXT DEFAULT 'active',
+            approved_at TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+try:
+    init_board_db()
+except Exception as e:
+    print(f"Board DB init warning: {e}")
+
+def hash_pin(pin: str) -> str:
+    return hashlib.sha256(pin.strip().encode('utf-8')).hexdigest()
+
+def verify_admin_key(key: str) -> bool:
+    if not key:
+        return False
+    return key.strip() == "h80494"
+
+class InquiryCreateRequest(BaseModel):
+    title: str
+    content: str
+    author: str
+    pin: str
+    is_secret: Optional[bool] = True
+    contact: Optional[str] = ""
+
+class InquiryViewRequest(BaseModel):
+    pin: Optional[str] = ""
+    admin_key: Optional[str] = ""
+
+class CommentCreateRequest(BaseModel):
+    author: Optional[str] = ""
+    content: str
+    pin: Optional[str] = ""
+    admin_key: Optional[str] = ""
+    is_secret: Optional[bool] = True
+
+class AdminLoginRequest(BaseModel):
+    admin_key: str
+
+class ApproveUserRequest(BaseModel):
+    admin_key: str
+    reply_message: Optional[str] = ""
+
+@app.get("/api/board/inquiries")
+async def get_inquiries(page: int = 1, limit: int = 20):
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    offset = max(0, (page - 1) * limit)
+    cursor.execute("""
+        SELECT i.id, i.title, i.author, i.is_secret, i.status, i.is_approved, i.approved_at, i.created_at,
+               COUNT(c.id) as comment_count,
+               MAX(c.is_admin) as has_admin_reply
+        FROM board_inquiries i
+        LEFT JOIN board_comments c ON i.id = c.inquiry_id
+        GROUP BY i.id
+        ORDER BY i.id DESC
+        LIMIT ? OFFSET ?
+    """, (limit, offset))
+    rows = cursor.fetchall()
+    
+    cursor.execute("SELECT COUNT(*) FROM board_inquiries")
+    total_count = cursor.fetchone()[0]
+    conn.close()
+    
+    items = []
+    for r in rows:
+        raw_author = r["author"] or "익명"
+        if len(raw_author) > 2:
+            masked_author = raw_author[0] + "*" * (len(raw_author) - 2) + raw_author[-1]
+        elif len(raw_author) == 2:
+            masked_author = raw_author[0] + "*"
+        else:
+            masked_author = raw_author
+            
+        display_title = r["title"]
+        if r["is_secret"]:
+            display_title = f"🔒 {display_title}" if not display_title.startswith("🔒") else display_title
+            
+        items.append({
+            "id": r["id"],
+            "title": display_title,
+            "author": masked_author,
+            "is_secret": bool(r["is_secret"]),
+            "status": r["status"],
+            "is_approved": bool(r["is_approved"]),
+            "approved_at": r["approved_at"],
+            "created_at": r["created_at"],
+            "comment_count": r["comment_count"] or 0,
+            "has_admin_reply": bool(r["has_admin_reply"])
+        })
+        
+    return {"status": "success", "data": {"items": items, "total": total_count, "page": page, "limit": limit}}
+
+@app.post("/api/board/inquiries")
+async def create_inquiry(req: InquiryCreateRequest):
+    if not req.pin or len(req.pin.strip()) < 2:
+        return {"status": "error", "message": "비밀번호(PIN)를 최소 2자리 이상 입력해주세요."}
+    if not req.title.strip() or not req.content.strip() or not req.author.strip():
+        return {"status": "error", "message": "작성자, 제목, 내용을 모두 입력해주세요."}
+        
+    kst = timezone(timedelta(hours=9))
+    now_str = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
+    pin_h = hash_pin(req.pin)
+    
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO board_inquiries (title, content, author, pin_hash, is_secret, contact, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (req.title.strip(), req.content.strip(), req.author.strip(), pin_h, 1 if req.is_secret else 0, req.contact or "", now_str))
+    new_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    
+    return {"status": "success", "message": "문의/신청글이 등록되었습니다.", "id": new_id}
+
+@app.post("/api/board/inquiries/{inquiry_id}/view")
+async def view_inquiry(inquiry_id: int, req: InquiryViewRequest):
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM board_inquiries WHERE id = ?", (inquiry_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return {"status": "error", "message": "존재하지 않는 게시글입니다."}
+        
+    is_admin = verify_admin_key(req.admin_key) if req.admin_key else False
+    pin_matched = (hash_pin(req.pin) == row["pin_hash"]) if req.pin else False
+    
+    if row["is_secret"] and not (is_admin or pin_matched):
+        conn.close()
+        return {"status": "error", "message": "비밀글입니다. 작성 시 입력한 비밀번호(PIN)를 입력해주세요.", "is_secret": True}
+        
+    cursor.execute("SELECT * FROM board_comments WHERE inquiry_id = ? ORDER BY id ASC", (inquiry_id,))
+    c_rows = cursor.fetchall()
+    conn.close()
+    
+    comments = []
+    for c in c_rows:
+        comments.append({
+            "id": c["id"],
+            "author": c["author"],
+            "content": c["content"],
+            "is_admin": bool(c["is_admin"]),
+            "is_secret": bool(c["is_secret"]),
+            "created_at": c["created_at"]
+        })
+        
+    return {
+        "status": "success",
+        "data": {
+            "id": row["id"],
+            "title": row["title"],
+            "content": row["content"],
+            "author": row["author"],
+            "contact": row["contact"] if (is_admin or pin_matched) else "",
+            "is_secret": bool(row["is_secret"]),
+            "status": row["status"],
+            "is_approved": bool(row["is_approved"]),
+            "approved_at": row["approved_at"],
+            "created_at": row["created_at"],
+            "comments": comments,
+            "is_admin_viewer": is_admin
+        }
+    }
+
+@app.post("/api/board/inquiries/{inquiry_id}/comments")
+async def add_comment(inquiry_id: int, req: CommentCreateRequest):
+    if not req.content.strip():
+        return {"status": "error", "message": "댓글 내용을 입력해주세요."}
+        
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM board_inquiries WHERE id = ?", (inquiry_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return {"status": "error", "message": "게시글을 찾을 수 없습니다."}
+        
+    is_admin = verify_admin_key(req.admin_key) if req.admin_key else False
+    pin_matched = (hash_pin(req.pin) == row["pin_hash"]) if req.pin else False
+    
+    if not (is_admin or pin_matched):
+        conn.close()
+        return {"status": "error", "message": "댓글 작성 권한이 없습니다. 비밀번호 또는 관리자 인증이 필요합니다."}
+        
+    kst = timezone(timedelta(hours=9))
+    now_str = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
+    author_name = "👑 관리자" if is_admin else (req.author or row["author"])
+    
+    cursor.execute("""
+        INSERT INTO board_comments (inquiry_id, author, content, is_admin, is_secret, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (inquiry_id, author_name, req.content.strip(), 1 if is_admin else 0, 1 if req.is_secret else 0, now_str))
+    
+    if is_admin:
+        cursor.execute("UPDATE board_inquiries SET status = 'replied' WHERE id = ?", (inquiry_id,))
+        
+    conn.commit()
+    conn.close()
+    
+    return {"status": "success", "message": "댓글이 등록되었습니다."}
+
+@app.post("/api/board/inquiries/{inquiry_id}/approve")
+async def approve_inquiry_user(inquiry_id: int, req: ApproveUserRequest):
+    if not verify_admin_key(req.admin_key):
+        return {"status": "error", "message": "관리자 인증번호가 일치하지 않습니다."}
+        
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM board_inquiries WHERE id = ?", (inquiry_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return {"status": "error", "message": "신청글을 찾을 수 없습니다."}
+        
+    kst = timezone(timedelta(hours=9))
+    now_str = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
+    
+    # 1. Update board_inquiries status & approval
+    cursor.execute("""
+        UPDATE board_inquiries 
+        SET is_approved = 1, approved_at = ?, status = 'approved'
+        WHERE id = ?
+    """, (now_str, inquiry_id))
+    
+    # 2. Insert into approved_users
+    cursor.execute("""
+        INSERT INTO approved_users (username, contact, pin_hash, inquiry_id, approved_at)
+        VALUES (?, ?, ?, ?, ?)
+    """, (row["author"], row["contact"] or "", row["pin_hash"], inquiry_id, now_str))
+    
+    # 3. Add auto reply comment
+    msg = req.reply_message.strip() if req.reply_message else "🎉 회원 가입 및 비밀번호 인증이 승인되었습니다! 설정하신 본인의 비밀번호로 언제든 사이트에 로그인하여 모든 기능을 이용하실 수 있습니다."
+    cursor.execute("""
+        INSERT INTO board_comments (inquiry_id, author, content, is_admin, is_secret, created_at)
+        VALUES (?, ?, ?, 1, 1, ?)
+    """, (inquiry_id, "👑 관리자", msg, now_str))
+    
+    conn.commit()
+    conn.close()
+    
+    return {"status": "success", "message": f"'{row['author']}'님의 가입이 정상 승인되었습니다. 이제 본인 비밀번호로 로그인이 가능합니다."}
+
+@app.post("/api/board/admin/verify")
+async def check_admin_login(req: AdminLoginRequest):
+    if verify_admin_key(req.admin_key):
+        return {"status": "success", "message": "관리자 인증 성공"}
+    else:
+        return {"status": "error", "message": "관리자 인증번호가 일치하지 않습니다."}
+
+@app.delete("/api/board/inquiries/{inquiry_id}")
+async def delete_inquiry(inquiry_id: int, pin: Optional[str] = None, admin_key: Optional[str] = None):
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM board_inquiries WHERE id = ?", (inquiry_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return {"status": "error", "message": "게시글이 존재하지 않습니다."}
+        
+    is_admin = verify_admin_key(admin_key) if admin_key else False
+    pin_matched = (hash_pin(pin) == row["pin_hash"]) if pin else False
+    
+    if not (is_admin or pin_matched):
+        conn.close()
+        return {"status": "error", "message": "삭제 권한이 없습니다."}
+        
+    cursor.execute("DELETE FROM board_comments WHERE inquiry_id = ?", (inquiry_id,))
+    cursor.execute("DELETE FROM board_inquiries WHERE id = ?", (inquiry_id,))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "삭제되었습니다."}
+
+
+# ----------------- 소상공인 200m 반경 상권 분석 API -----------------
+@app.get("/api/map/commercial_stores")
+async def get_commercial_stores_within_radius(
+    lat: float,
+    lng: float,
+    radius: float = 200.0,
+    limit: int = 300
+):
+    import math
+    
+    db_path = os.path.join(os.path.dirname(__file__), "data", "small_business.db")
+    if not os.path.exists(db_path):
+        return {"status": "error", "message": "소상공인 데이터베이스(small_business.db)가 아직 준비되지 않았습니다."}
+        
+    lat_diff = (radius + 150) / 111000.0
+    lng_diff = (radius + 150) / 88000.0
+    
+    min_lat, max_lat = lat - lat_diff, lat + lat_diff
+    min_lng, max_lng = lng - lng_diff, lng + lng_diff
+    
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT * FROM small_business
+        WHERE lat >= ? AND lat <= ? AND lng >= ? AND lng <= ?
+    """, (min_lat, max_lat, min_lng, max_lng))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    def calc_dist(lat1, lon1, lat2, lon2):
+        R = 6371000.0
+        p1 = math.radians(lat1)
+        p2 = math.radians(lat2)
+        dp = math.radians(lat2 - lat1)
+        dl = math.radians(lon2 - lon1)
+        a = math.sin(dp/2.0)**2 + math.cos(p1)*math.cos(p2)*math.sin(dl/2.0)**2
+        return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        
+    matched_stores = []
+    cat_large_counts = {}
+    cat_medium_counts = {}
+    cat_small_counts = {}
+    
+    for r in rows:
+        d = calc_dist(lat, lng, r["lat"], r["lng"])
+        if d <= radius:
+            c_large = r["cat_large_name"] or "기타"
+            c_med = r["cat_medium_name"] or "기타"
+            c_sml = r["cat_small_name"] or "기타"
+            
+            cat_large_counts[c_large] = cat_large_counts.get(c_large, 0) + 1
+            cat_medium_counts[c_med] = cat_medium_counts.get(c_med, 0) + 1
+            cat_small_counts[c_sml] = cat_small_counts.get(c_sml, 0) + 1
+            
+            floor_display = r["floor_info"] if r["floor_info"] else ""
+            if r["ho_info"]:
+                floor_display = f"{floor_display} {r['ho_info']}".strip()
+                
+            matched_stores.append({
+                "id": r["id"],
+                "bizes_id": r["bizes_id"],
+                "name": r["name"],
+                "branch": r["branch"],
+                "cat_large": c_large,
+                "cat_medium": c_med,
+                "cat_small": c_sml,
+                "inds_name": r["inds_name"],
+                "road_addr": r["road_addr"],
+                "lot_addr": r["lot_addr"],
+                "building_name": r["building_name"],
+                "floor_info": floor_display,
+                "lat": r["lat"],
+                "lng": r["lng"],
+                "distance": round(d, 1)
+            })
+            
+    matched_stores.sort(key=lambda x: x["distance"])
+    total_count = len(matched_stores)
+    
+    large_stats = []
+    for cat, cnt in sorted(cat_large_counts.items(), key=lambda x: x[1], reverse=True):
+        ratio = round((cnt / total_count * 100), 1) if total_count > 0 else 0
+        large_stats.append({"category": cat, "count": cnt, "ratio": ratio})
+        
+    medium_stats = []
+    for cat, cnt in sorted(cat_medium_counts.items(), key=lambda x: x[1], reverse=True)[:15]:
+        ratio = round((cnt / total_count * 100), 1) if total_count > 0 else 0
+        medium_stats.append({"category": cat, "count": cnt, "ratio": ratio})
+        
+    return {
+        "status": "success",
+        "data": {
+            "radius": radius,
+            "total_count": total_count,
+            "category_large_distribution": large_stats,
+            "category_medium_top": medium_stats,
+            "stores": matched_stores[:limit]
+        }
+    }
+
+
 public_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "public")
 if os.path.exists(public_dir):
     app.mount("/", StaticFiles(directory=public_dir, html=True), name="static")
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8001)
+

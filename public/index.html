@@ -19,11 +19,203 @@
 <body>
     <!-- Password Login Overlay -->
     <div id="loginOverlay">
-        <div class="login-box">
+        <div class="login-box" style="max-width: 420px; width: 90%;">
             <h1 class="login-title">Private Access</h1>
             <p class="login-subtitle">AI Auction Expert 2.0</p>
-            <input type="password" id="passwordInput" class="login-input" placeholder="비밀번호 입력">
+            
+            <div style="background: rgba(0, 240, 255, 0.08); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.85rem; line-height: 1.5; text-align: left; color: #e2e8f0;">
+                <div style="color: var(--neon-blue); font-weight: bold; margin-bottom: 4px;">
+                    <i class="fa-solid fa-circle-info"></i> 접속 비밀번호 안내
+                </div>
+                <div>• <b>초기 임시 비밀번호</b>: 오늘 날짜 4자리 (예: 9월 3일 ➔ <b>0903</b>)</div>
+                <div>• <b>정식 승인 회원</b>: 가입 신청 시 등록한 <b>본인의 비밀번호</b> 입력</div>
+            </div>
+
+            <input type="password" id="passwordInput" class="login-input" placeholder="비밀번호 입력 (월일 4자리 또는 본인 PIN)">
             <button id="loginBtn" class="login-btn">입장하기</button>
+            
+            <div style="display: flex; gap: 8px; margin-top: 15px;">
+                <button id="openSignupBtnLogin" type="button" style="flex: 1; background: rgba(187, 0, 255, 0.15); color: #d2a8ff; border: 1px solid rgba(187, 0, 255, 0.4); padding: 10px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease;">
+                    <i class="fa-solid fa-user-plus"></i> 가입/비밀번호 신청
+                </button>
+                <button id="openBoardBtnLogin" type="button" style="flex: 1; background: rgba(0, 240, 255, 0.1); color: var(--neon-blue); border: 1px solid rgba(0, 240, 255, 0.4); padding: 10px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease;">
+                    <i class="fa-solid fa-comments"></i> 소통 및 문의란
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inquiry Board Modal -->
+    <div id="inquiryBoardModal" class="board-modal-overlay">
+        <div class="board-modal">
+            <!-- Header -->
+            <div class="board-header">
+                <h2><i class="fa-solid fa-comments" style="color:var(--neon-blue);"></i> 소통 및 가입·비밀번호 신청 게시판</h2>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button id="boardAdminBtn" style="background:rgba(187, 0, 255, 0.15); color:#d2a8ff; border:1px solid rgba(187, 0, 255, 0.4); padding:6px 12px; border-radius:6px; font-size:0.85rem; cursor:pointer;">
+                        <i class="fa-solid fa-user-shield"></i> 관리자 로그인
+                    </button>
+                    <button id="closeBoardModalBtn" style="background:none; border:none; color:#94a3b8; font-size:1.4rem; cursor:pointer; padding:0 6px;">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 1. Board List View -->
+            <div id="boardListView" class="board-body">
+                <div style="background:rgba(0, 240, 255, 0.06); border:1px solid rgba(0, 240, 255, 0.2); border-radius:8px; padding:12px 16px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div style="font-size:0.88rem; color:#e2e8f0; line-height:1.5;">
+                        <span style="color:var(--neon-blue); font-weight:bold;"><i class="fa-solid fa-lightbulb"></i> 처음 가입하고자 하시나요?</span><br>
+                        [가입/비밀번호 신청]을 작성하시면 관리자 인증 후 <b>본인이 설정한 개인 비밀번호</b>로 언제든 로그인하실 수 있습니다.
+                    </div>
+                    <button id="showWriteFormBtn" class="primary-btn" style="background:var(--neon-blue); border-color:var(--neon-blue); font-size:0.9rem; padding:8px 18px; white-space:nowrap;">
+                        <i class="fa-solid fa-pen-to-square"></i> 가입 및 문의 신청
+                    </button>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="board-table">
+                        <thead>
+                            <tr>
+                                <th style="width:85px;">상태</th>
+                                <th>제목</th>
+                                <th style="width:110px;">신청/작성자</th>
+                                <th style="width:105px;">신청일</th>
+                                <th style="width:65px; text-align:center;">댓글</th>
+                            </tr>
+                        </thead>
+                        <tbody id="boardTableBody">
+                            <tr>
+                                <td colspan="5" style="text-align:center; padding:30px; color:#94a3b8;">
+                                    <div class="spinner" style="display:inline-block; width:24px; height:24px; border-width:3px;"></div>
+                                    <p style="margin-top:10px;">게시글을 불러오는 중입니다...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 2. Board Write View -->
+            <div id="boardWriteView" class="board-body" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+                    <h3 style="font-size:1.1rem; color:var(--neon-blue);"><i class="fa-solid fa-pen-nib"></i> 가입 신청 및 문의글 작성</h3>
+                    <button id="cancelWriteBtn" style="background:rgba(255,255,255,0.1); color:#fff; border:none; padding:6px 12px; border-radius:6px; font-size:0.85rem; cursor:pointer;">
+                        <i class="fa-solid fa-arrow-left"></i> 목록으로
+                    </button>
+                </div>
+                <form id="inquiryForm">
+                    <div style="display:flex; gap:15px;">
+                        <div class="board-form-group" style="flex:1;">
+                            <label><i class="fa-solid fa-user"></i> 신청자명 / 닉네임</label>
+                            <input type="text" id="inqAuthor" class="board-input" placeholder="이름 또는 닉네임" required>
+                        </div>
+                        <div class="board-form-group" style="flex:1;">
+                            <label><i class="fa-solid fa-lock"></i> 사용할 비밀번호 (본인 전용 PIN 4~8자리)</label>
+                            <input type="password" id="inqPin" class="board-input" placeholder="승인 후 로그인에 사용할 암호" maxlength="8" required>
+                        </div>
+                    </div>
+                    <div class="board-form-group">
+                        <label><i class="fa-solid fa-phone"></i> 연락처 / 이메일 (관리자 승인 확인용, 비밀보장)</label>
+                        <input type="text" id="inqContact" class="board-input" placeholder="연락처 (예: 010-1234-5678) 또는 이메일">
+                    </div>
+                    <div class="board-form-group">
+                        <label><i class="fa-solid fa-heading"></i> 제목</label>
+                        <input type="text" id="inqTitle" class="board-input" placeholder="예: 회원 가입 승인 및 비밀번호 신청합니다." required>
+                    </div>
+                    <div class="board-form-group">
+                        <label><i class="fa-solid fa-align-left"></i> 신청 및 문의 내용</label>
+                        <textarea id="inqContent" class="board-textarea" placeholder="신청 사유 또는 문의하실 내용을 입력해주세요. (예: 옥션 전문가 시스템 이용을 위해 가입 신청드립니다.)" required></textarea>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+                        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; color:#f1f5f9; font-size:0.95rem;">
+                            <input type="checkbox" id="inqIsSecret" checked style="width:18px; height:18px; accent-color:var(--neon-blue);">
+                            <i class="fa-solid fa-lock"></i> 비밀글로 등록 (본인과 관리자만 열람 가능)
+                        </label>
+                        <button type="submit" class="primary-btn" style="background:var(--neon-blue); border-color:var(--neon-blue); padding:10px 24px; font-size:1rem;">
+                            <i class="fa-solid fa-paper-plane"></i> 신청 등록하기
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 3. Board Detail View -->
+            <div id="boardDetailView" class="board-body" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <span id="detailBadge" class="board-badge badge-pending">대기중</span>
+                        <h3 id="detailTitle" style="font-size:1.15rem; color:#fff;">제목</h3>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button id="approveInqBtn" style="display:none; background:rgba(34, 197, 94, 0.2); color:#86efac; border:1px solid rgba(34, 197, 94, 0.5); padding:6px 14px; border-radius:6px; font-size:0.85rem; font-weight:bold; cursor:pointer;">
+                            <i class="fa-solid fa-user-check"></i> 👑 회원 승인
+                        </button>
+                        <button id="deleteInqBtn" style="display:none; background:rgba(239, 68, 68, 0.2); color:#fca5a5; border:1px solid rgba(239, 68, 68, 0.4); padding:6px 12px; border-radius:6px; font-size:0.85rem; cursor:pointer;">
+                            <i class="fa-solid fa-trash"></i> 삭제
+                        </button>
+                        <button id="backToListBtn" style="background:rgba(255,255,255,0.1); color:#fff; border:none; padding:6px 12px; border-radius:6px; font-size:0.85rem; cursor:pointer;">
+                            <i class="fa-solid fa-arrow-left"></i> 목록으로
+                        </button>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; color:var(--text-muted); font-size:0.85rem; margin-bottom:15px; padding-bottom:10px; border-bottom:1px dashed rgba(255,255,255,0.1);">
+                    <div>작성자: <span id="detailAuthor" style="color:#f1f5f9; font-weight:600;"></span> <span id="detailContact" style="color:var(--neon-blue); margin-left:10px;"></span></div>
+                    <div>신청일: <span id="detailDate"></span></div>
+                </div>
+
+                <div id="detailContent" style="font-size:0.98rem; line-height:1.7; color:#e2e8f0; min-height:80px; padding:15px; background:rgba(0,0,0,0.3); border-radius:8px; white-space:pre-wrap; word-break:break-word;">
+                </div>
+
+                <!-- Comments / Replies Section -->
+                <div style="margin-top:25px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
+                    <h4 style="color:var(--neon-blue); font-size:1rem; margin-bottom:12px;"><i class="fa-solid fa-comments"></i> 관리자 답변 및 안내 (<span id="commentCount">0</span>)</h4>
+                    <div id="commentListContainer" style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+                        <!-- Comments will be rendered here -->
+                    </div>
+
+                    <!-- Comment Input Form -->
+                    <form id="commentForm" style="display:flex; flex-direction:column; gap:10px; background:rgba(0,0,0,0.4); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span id="commentAuthorDisplay" style="font-size:0.9rem; font-weight:600; color:var(--neon-blue);"><i class="fa-solid fa-reply"></i> 답변 작성</span>
+                            <span id="adminBadgeIndicator" style="display:none;" class="board-badge badge-admin"><i class="fa-solid fa-crown"></i> 관리자 모드</span>
+                        </div>
+                        <textarea id="commentContentInput" class="board-textarea" placeholder="답변 또는 안내 내용을 입력하세요." style="min-height:70px;" required></textarea>
+                        <div style="display:flex; justify-content:flex-end;">
+                            <button type="submit" class="primary-btn" style="background:var(--neon-purple); border-color:var(--neon-purple); padding:8px 20px; font-size:0.9rem;">
+                                <i class="fa-solid fa-paper-plane"></i> 댓글 등록
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PIN Input Dialog Modal -->
+    <div id="pinModal" class="board-modal-overlay" style="z-index:10005;">
+        <div style="background:rgba(18, 24, 48, 0.98); border:1px solid var(--neon-blue); border-radius:14px; padding:24px; max-width:380px; width:100%; text-align:center; box-shadow:0 0 30px rgba(0,240,255,0.3);">
+            <i class="fa-solid fa-lock" style="font-size:2.5rem; color:var(--neon-blue); margin-bottom:15px;"></i>
+            <h3 style="font-size:1.15rem; color:#fff; margin-bottom:8px;">비밀글 열람</h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">작성 시 설정한 4자리 비밀번호(PIN)를 입력해주세요.</p>
+            <input type="password" id="pinModalInput" class="board-input" placeholder="비밀번호 4자리" maxlength="8" style="text-align:center; font-size:1.2rem; letter-spacing:5px; margin-bottom:15px;">
+            <div style="display:flex; gap:10px;">
+                <button id="cancelPinBtn" style="flex:1; background:rgba(255,255,255,0.1); color:#fff; border:none; padding:10px; border-radius:8px; cursor:pointer;">취소</button>
+                <button id="confirmPinBtn" class="primary-btn" style="flex:1; background:var(--neon-blue); border-color:var(--neon-blue); justify-content:center;">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Login Dialog Modal -->
+    <div id="adminLoginModal" class="board-modal-overlay" style="z-index:10005;">
+        <div style="background:rgba(18, 24, 48, 0.98); border:1px solid var(--neon-purple); border-radius:14px; padding:24px; max-width:380px; width:100%; text-align:center; box-shadow:0 0 30px rgba(187,0,255,0.3);">
+            <i class="fa-solid fa-shield-halved" style="font-size:2.5rem; color:var(--neon-purple); margin-bottom:15px;"></i>
+            <h3 style="font-size:1.15rem; color:#fff; margin-bottom:8px;">관리자 인증</h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">관리자 마스터 비밀번호를 입력해주세요.</p>
+            <input type="password" id="adminKeyModalInput" class="board-input" placeholder="관리자 암호" style="text-align:center; font-size:1.1rem; margin-bottom:15px;">
+            <div style="display:flex; gap:10px;">
+                <button id="cancelAdminBtn" style="flex:1; background:rgba(255,255,255,0.1); color:#fff; border:none; padding:10px; border-radius:8px; cursor:pointer;">취소</button>
+                <button id="confirmAdminBtn" class="primary-btn" style="flex:1; background:var(--neon-purple); border-color:var(--neon-purple); justify-content:center;">인증</button>
+            </div>
         </div>
     </div>
 
@@ -42,6 +234,9 @@
                     <p class="subtitle">20년 경력 실전 경매 전문가 사고모델 탑재</p>
                 </div>
                 <div style="display: flex; gap: 10px; align-items: center;">
+                    <button id="openBoardBtnHeader" class="primary-btn" style="background:rgba(0, 240, 255, 0.15); border-color:var(--neon-blue); color:var(--neon-blue); font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;">
+                        <i class="fa-solid fa-comments"></i> 소통 게시판
+                    </button>
                     <button onclick="window.open('/issues.html', '_blank')" class="primary-btn" style="background:var(--neon-purple); border-color:var(--neon-purple); font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;">
                         <i class="fa-solid fa-newspaper"></i> 이슈보기
                     </button>
