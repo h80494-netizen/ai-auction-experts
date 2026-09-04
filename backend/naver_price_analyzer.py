@@ -108,7 +108,13 @@ def get_cached_dataset(target_type):
     # Determine dataset key
     if "아파트" in target_type:
         cache_key = "아파트"
-        files = ["네이버부동산_서울_아파트_20260706.xlsx", "네이버부동산_경기도_성남시_아파트_20260805.xlsx"]
+        files = [
+            "네이버부동산_서울_아파트_20260706.xlsx",
+            "네이버부동산_경기도_성남시_아파트_20260805.xlsx",
+            "네이버부동산_경기도_아파트_Part1_(1~50000)_20260904.xlsx",
+            "네이버부동산_경기도_아파트_Part2_(50001~100000)_20260904.xlsx",
+            "네이버부동산_경기도_아파트_Part3_(100001~122613)_20260904.xlsx"
+        ]
     elif "빌라" in target_type or "다세대" in target_type or "연립" in target_type:
         cache_key = "빌라"
         files = ["네이버부동산_서울_빌라_20260706.xlsx"]
@@ -142,7 +148,10 @@ def get_cached_dataset(target_type):
         fp = os.path.join(data_dir, fn)
         if os.path.exists(fp):
             try:
-                sub_df = pd.read_excel(fp)
+                try:
+                    sub_df = pd.read_excel(fp, engine="calamine")
+                except Exception:
+                    sub_df = pd.read_excel(fp)
                 df_list.append(sub_df)
             except Exception as e:
                 print(f"Error loading {fn}: {e}")

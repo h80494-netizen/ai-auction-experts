@@ -1068,7 +1068,7 @@
         </div>
         <div class="panel-content">
         
-            <div class="layer-group-title" style="margin-top: 5px;">네이버 부동산 (서울 전용)</div>
+            <div class="layer-group-title" style="margin-top: 5px;">네이버 부동산 (서울/경기)</div>
             <div class="toggle-row" style="flex-direction: column; align-items: stretch; gap: 5px; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div class="toggle-label"><i class="fa-solid fa-building-circle-check" style="color: #00c73c;"></i> 매물 포함 표시</div>
@@ -1076,11 +1076,15 @@
                 </div>
                 <div id="naver-type-selector" style="display: none; margin-top: 10px;">
                     <select id="naver-type" onchange="fetchNaverRealEstate()" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
-                        <option value="아파트">아파트</option>
-                        <option value="오피스텔">오피스텔</option>
+                        <option value="아파트">아파트 (전체 - 서울/경기)</option>
+                        <option value="아파트_서울">아파트 (서울)</option>
+                        <option value="아파트_경기">아파트 (경기)</option>
+                        <option value="상가">상가 (전체 - 서울/경기)</option>
+                        <option value="상가_서울">상가 (서울)</option>
+                        <option value="상가_경기">상가 (경기)</option>
                         <option value="다세대/빌라">다세대/빌라</option>
                         <option value="단독주택">단독주택</option>
-                        <option value="상가">상가</option>
+                        <option value="오피스텔">오피스텔</option>
                     </select>
                 </div>
             </div>
@@ -6547,8 +6551,9 @@ async function fetchNaverRealEstate() {
                         `;
                     });
                 }
-                
-                const hoverContent = `<div style="font-family:'Noto Sans KR'; font-weight:bold; font-size:1rem;">${type} 총 ${item.total_count}건</div>`;
+                const currentSelect = document.getElementById('naver-type');
+                const selectedLabel = (currentSelect && currentSelect.selectedOptions && currentSelect.selectedOptions[0]) ? currentSelect.selectedOptions[0].text : type;
+                const hoverContent = `<div style="font-family:'Noto Sans KR'; font-weight:bold; font-size:1rem;">${selectedLabel} 총 ${item.total_count}건</div>`;
                 
                 const popupContent = `
                     <div style="font-family:'Noto Sans KR'; min-width: 480px; padding-bottom: 5px;">
@@ -6573,7 +6578,7 @@ async function fetchNaverRealEstate() {
                         <button onclick="window.open('https://new.land.naver.com/complexes?ms=${item.lat},${item.lng},18&a=APT:OPST:VL:OR:ONE:GO:CST:DDD:SG:HO:EN', '_blank')" style="display:block; box-sizing: border-box; width:100%; padding:8px; background:#00c73c; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:1rem; margin-top:5px;">
                             <i class="fa-solid fa-arrow-up-right-from-square"></i> 네이버 부동산 원문 보기
                         </button>
-                        <button onclick="showNaverDetails(${item.lat}, ${item.lng}, '${type}', '${item.address}')" style="display:block; box-sizing: border-box; width:100%; padding:8px; background:#475569; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:1rem; margin-top:5px;">
+                        <button onclick="showNaverDetails(${item.lat}, ${item.lng}, '${type}', '${(item.address || '').replace(/'/g, "\\'")}')" style="display:block; box-sizing: border-box; width:100%; padding:8px; background:#475569; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:1rem; margin-top:5px;">
                             <i class="fa-solid fa-list"></i> 세부 매물 리스트 보기
                         </button>
                     </div>

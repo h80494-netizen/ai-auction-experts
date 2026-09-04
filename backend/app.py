@@ -156,14 +156,26 @@ async def get_naver_realestate(
     if not cursor.fetchone():
         return {"status": "error", "message": "네이버 부동산 데이터가 DB에 없습니다. 스크립트를 실행해주세요."}
     
+    target_type = estate_type
+    target_region = None
+    if "_" in estate_type:
+        parts = estate_type.split("_", 1)
+        target_type = parts[0]
+        if parts[1] in ("서울", "경기"):
+            target_region = parts[1]
+            
     query = "SELECT * FROM naver_real_estate WHERE estate_type = ?"
-    params = [estate_type]
+    params = [target_type]
+    
+    if target_region:
+        query += " AND region = ?"
+        params.append(target_region)
     
     if min_lat is not None and max_lat is not None and min_lng is not None and max_lng is not None:
         query += " AND lat >= ? AND lat <= ? AND lng >= ? AND lng <= ?"
         params.extend([min_lat, max_lat, min_lng, max_lng])
         
-    query += " LIMIT 1000"
+    query += " LIMIT 2500"
     
     cursor.execute(query, params)
     rows = cursor.fetchall()
@@ -278,15 +290,27 @@ async def get_naver_realestate_details(
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
-    # We will query with a small tolerance for floating point matching
+    target_type = estate_type
+    target_region = None
+    if "_" in estate_type:
+        parts = estate_type.split("_", 1)
+        target_type = parts[0]
+        if parts[1] in ("서울", "경기"):
+            target_region = parts[1]
+
+    epsilon = 0.000001
     query = """
         SELECT * FROM naver_real_estate
         WHERE estate_type = ? 
         AND lat BETWEEN ? AND ?
         AND lng BETWEEN ? AND ?
     """
-    epsilon = 0.000001
-    cursor.execute(query, (estate_type, lat - epsilon, lat + epsilon, lng - epsilon, lng + epsilon))
+    params = [target_type, lat - epsilon, lat + epsilon, lng - epsilon, lng + epsilon]
+    if target_region:
+        query += " AND region = ?"
+        params.append(target_region)
+
+    cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
     
