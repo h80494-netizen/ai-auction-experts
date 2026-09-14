@@ -237,12 +237,14 @@ def generate_deep_research(data: dict) -> str:
                 err_msg = str(e)
                 if "429" in err_msg:
                     last_err_msg = "구글 Gemini API 무료 할당량(요청 수 제한)을 초과했습니다. 잠시 후 다시 시도해주세요."
-                    print(f"429 할당량 초과, 다음 키 시도: {current_api_key[:10]}...")
+                    print(f"[{current_api_key[:10]}...] 429 할당량 초과, 다음 키 시도.")
                     continue
-                elif "403" in err_msg and "denied access" in err_msg.lower():
-                    last_err_msg = "Google Gemini API 키가 차단되었거나 권한이 거부되었습니다 (403 Forbidden)."
-                    print(f"403 권한 거부, 다음 키 시도: {current_api_key[:10]}...")
+                elif "403" in err_msg or "빈 응답" in err_msg or "Empty" in err_msg:
+                    last_err_msg = "Google Gemini API 키가 차단되었거나 빈 응답을 반환했습니다. 다른 키를 시도합니다."
+                    print(f"[{current_api_key[:10]}...] 403 차단 또는 빈 응답, 다음 키 시도.")
                     continue
+                
+                # 그 외의 에러는 바로 중단 (예: prompt length exceed 등)
                 raise Exception(f"API 호출 오류: {err_msg}")
                 
         raise Exception(last_err_msg or "모든 API 키에 대해 호출이 실패했습니다. (할당량 초과 또는 권한 문제)")
