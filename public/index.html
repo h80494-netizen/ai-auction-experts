@@ -27,7 +27,6 @@
                 <div style="color: var(--neon-blue); font-weight: bold; margin-bottom: 4px;">
                     <i class="fa-solid fa-circle-info"></i> 접속 비밀번호 안내
                 </div>
-                <div>• <b>초기 임시 비밀번호</b>: 오늘 날짜 4자리 (예: 9월 3일 ➔ <b>0903</b>)</div>
                 <div>• <b>정식 승인 회원</b>: 가입 신청 시 등록한 <b>본인의 비밀번호</b> 입력</div>
             </div>
 
@@ -41,6 +40,44 @@
                 <button id="openBoardBtnLogin" type="button" style="flex: 1; background: rgba(0, 240, 255, 0.1); color: var(--neon-blue); border: 1px solid rgba(0, 240, 255, 0.4); padding: 10px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease;">
                     <i class="fa-solid fa-comments"></i> 소통 및 문의란
                 </button>
+            </div>
+            <div style="margin-top: 8px;">
+                <button id="openDonationBtn" type="button" style="width: 100%; background: rgba(255, 215, 0, 0.15); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.4); padding: 12px; border-radius: 8px; font-size: 0.9rem; font-weight: bold; cursor: pointer; transition: all 0.2s ease;">
+                    <i class="fa-solid fa-mug-hot"></i> 서버 운영 후원하기 (Donation)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Donation Modal -->
+    <div id="donationModal" class="board-modal-overlay">
+        <div class="board-modal" style="max-width: 450px;">
+            <div class="board-header">
+                <h2><i class="fa-solid fa-mug-hot" style="color:#ffd700;"></i> 서버 운영 후원하기</h2>
+                <button id="closeDonationModalBtn" style="background:none; border:none; color:#94a3b8; font-size:1.4rem; cursor:pointer; padding:0 6px;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="board-body">
+                <div style="background: rgba(255, 215, 0, 0.08); border: 1px solid rgba(255, 215, 0, 0.25); border-radius: 8px; padding: 15px; margin-bottom: 20px; font-size: 0.9rem; line-height: 1.6; color: #e2e8f0; text-align: left;">
+                    AI 경매 전문가 시스템은 지속적인 서버 운영 및 실시간 API(ChatGPT, 지도 등) 사용을 위해 매월 상당한 유지비용이 발생하고 있습니다.<br><br>
+                    본 프로그램이 투자에 유용하셨다면, 더 나은 서비스와 안정적인 운영을 위해 작은 후원이 큰 힘이 됩니다. 진심으로 감사드립니다.
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="https://qr.kakaopay.com/Fa9nS53Zs" target="_blank" style="display: inline-block; background: #FEE500; color: #000000; padding: 15px 30px; border-radius: 12px; text-decoration: none; font-weight: bold; font-size: 1.05rem; width: 100%; box-sizing: border-box; transition: transform 0.2s ease, box-shadow 0.2s ease; box-shadow: 0 4px 15px rgba(254, 229, 0, 0.2);">
+                        <i class="fa-solid fa-comment" style="margin-right: 5px;"></i> 카카오페이 간편 송금하기
+                    </a>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px;">
+                        <div style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 8px;"><i class="fa-solid fa-building-columns"></i> 카카오페이 오류 시 계좌이체 안내</div>
+                        <div style="font-size: 1.1rem; color: #e2e8f0; font-weight: bold; user-select: all; cursor: pointer;" title="클릭하여 복사">
+                            카카오뱅크 3333121210477
+                        </div>
+                    </div>
+                    
+                    <p style="margin-top: 15px; font-size: 0.85rem; color: #94a3b8;">PC에서는 띄워진 QR코드를 폰으로 스캔하시거나,<br>모바일에서는 위 버튼을 누르면 앱으로 자동 연결됩니다.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -219,6 +256,62 @@
         </div>
     </div>
 
+    <!-- Admin Notice Management Modal (관리자 공지 설정 모달) -->
+    <div id="noticeAdminModal" class="board-modal-overlay" style="z-index:10006; display:none;">
+        <div style="background:rgba(15, 23, 42, 0.98); border:1px solid #f59e0b; border-radius:16px; padding:24px; max-width:560px; width:92%; box-shadow:0 0 35px rgba(245, 158, 11, 0.25); text-align:left;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; border-bottom:1px solid rgba(245, 158, 11, 0.25); padding-bottom:12px;">
+                <h3 style="font-size:1.2rem; color:#fef08a; display:flex; align-items:center; gap:8px; margin:0;">
+                    <i class="fa-solid fa-bullhorn" style="color:#f59e0b;"></i> 전체 유저 공지 알림판 관리
+                </h3>
+                <button id="closeNoticeAdminModalBtn" style="background:none; border:none; color:#94a3b8; font-size:1.4rem; cursor:pointer; padding:2px 6px;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:14px;">
+                <div>
+                    <label style="font-size:0.85rem; color:#cbd5e1; font-weight:600; display:block; margin-bottom:6px;">
+                        공지 노출 상태 (전체 유저 표시 여부)
+                    </label>
+                    <div style="display:flex; align-items:center; gap:15px; background:rgba(255,255,255,0.05); padding:10px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.9rem; color:#86efac; font-weight:700;">
+                            <input type="radio" name="noticeActiveRadio" value="1" checked> 🟢 배너 노출 (ON)
+                        </label>
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.9rem; color:#94a3b8;">
+                            <input type="radio" name="noticeActiveRadio" value="0"> ⚪ 공지 내리기 (OFF)
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label style="font-size:0.85rem; color:#cbd5e1; font-weight:600; display:block; margin-bottom:6px;">공지 유형 (스타일)</label>
+                    <select id="adminNoticeType" class="board-input" style="width:100%; background:rgba(30, 41, 59, 0.9); color:#fff; border:1px solid rgba(255,255,255,0.2); padding:8px 12px; border-radius:8px;">
+                        <option value="warning">⚠️ 주의 및 일시 제한 (주황/앰버)</option>
+                        <option value="urgent">🚨 긴급 안내 (레드)</option>
+                        <option value="info">ℹ️ 일반 공지사항 (네온블루)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="font-size:0.85rem; color:#cbd5e1; font-weight:600; display:block; margin-bottom:6px;">공지 제목</label>
+                    <input type="text" id="adminNoticeTitle" class="board-input" placeholder="예: [긴급] 권리분석 일시 이용 자제 요청" style="width:100%; box-sizing:border-box;">
+                </div>
+
+                <div>
+                    <label style="font-size:0.85rem; color:#cbd5e1; font-weight:600; display:block; margin-bottom:6px;">공지 상세 내용</label>
+                    <textarea id="adminNoticeContent" class="board-input" rows="4" placeholder="유저들에게 전달할 상세 안내 메시지를 입력하세요." style="width:100%; box-sizing:border-box; line-height:1.5; resize:vertical;"></textarea>
+                </div>
+
+                <div style="display:flex; gap:10px; margin-top:8px;">
+                    <button id="cancelNoticeAdminBtn" style="flex:1; background:rgba(255,255,255,0.1); color:#fff; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:600;">취소</button>
+                    <button id="saveNoticeAdminBtn" class="primary-btn" style="flex:2; background:#f59e0b; border-color:#f59e0b; color:#000; justify-content:center; font-weight:bold;">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> 저장 및 즉시 반영
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="background-effects">
         <div class="glow-orb orb-1"></div>
         <div class="glow-orb orb-2"></div>
@@ -226,14 +319,47 @@
     </div>
 
     <main class="dashboard-container">
+        <!-- Admin Urgent Notice Banner (관리자 유저 공지 배너) -->
+        <div id="adminNoticeBanner" style="display:none; background: linear-gradient(135deg, rgba(234, 179, 8, 0.16), rgba(239, 68, 68, 0.18)); border: 1px solid rgba(245, 158, 11, 0.5); border-radius: 12px; padding: 14px 20px; margin-bottom: 20px; backdrop-filter: blur(10px); box-shadow: 0 4px 20px rgba(245, 158, 11, 0.15);">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 280px;">
+                    <div id="noticeBannerIcon" style="background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fbbf24; font-size: 1.15rem;">
+                        <i class="fa-solid fa-bullhorn"></i>
+                    </div>
+                    <div>
+                        <div id="noticeBannerTitle" style="font-weight: 800; font-size: 1rem; color: #fef08a; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                            공지 안내
+                        </div>
+                        <div id="noticeBannerContent" style="font-size: 0.88rem; color: #f8fafc; line-height: 1.5; word-break: keep-all;">
+                            공지 내용 로딩 중...
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                    <button id="noticeAdminManageBtn" style="display: none; background: rgba(187, 0, 255, 0.25); border: 1px solid var(--neon-purple); color: #e9d5ff; padding: 7px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                        <i class="fa-solid fa-gear"></i> 공지 관리
+                    </button>
+                    <button id="closeNoticeBannerBtn" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: #cbd5e1; padding: 7px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;">
+                        닫기 <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Header & Search -->
         <header class="header">
             <div style="display:flex; justify-content: space-between; align-items: center;">
                 <div>
                     <h1 class="title">AI Auction <span class="neon-text">Expert 2.0</span></h1>
                     <p class="subtitle">20년 경력 실전 경매 전문가 사고모델 탑재</p>
+                    <div id="visitorCountDisplay" style="font-size: 0.85rem; color: #94a3b8; margin-top: 5px; font-weight: 500;">
+                        <i class="fa-solid fa-users" style="color: var(--neon-blue);"></i> 당일 현재 접속자 수: <span id="visitorCountValue" style="color: #fff; font-weight: 700; background: rgba(0, 240, 255, 0.15); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(0, 240, 255, 0.3);">-</span> 명
+                    </div>
                 </div>
                 <div style="display: flex; gap: 10px; align-items: center;">
+                    <button id="openNoticeBtnHeader" class="primary-btn" style="background:rgba(245, 158, 11, 0.15); border-color:#f59e0b; color:#fbbf24; font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;">
+                        <i class="fa-solid fa-bullhorn"></i> 공지 알림
+                    </button>
                     <button id="openBoardBtnHeader" class="primary-btn" style="background:rgba(0, 240, 255, 0.15); border-color:var(--neon-blue); color:var(--neon-blue); font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;">
                         <i class="fa-solid fa-comments"></i> 소통 게시판
                     </button>
@@ -461,6 +587,6 @@
         </section>
     </main>
 
-    <script src="script.js?v=12"></script>
+    <script src="script.js?v=13"></script>
 </body>
 </html>

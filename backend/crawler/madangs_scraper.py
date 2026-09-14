@@ -27,13 +27,51 @@ async def search_madangs_list(case_number: str):
             
             html = await page.content()
             soup = BeautifulSoup(html, 'html.parser')
-            
+            def parse_korean_money(text):
+                text = text.replace(" ", "").replace(",", "").replace("원", "")
+                if text.isdigit(): return text
+                total = 0
+                import re
+                eok = re.search(r'(\d+)억', text)
+                man = re.search(r'(\d+)만', text)
+                if eok: total += int(eok.group(1)) * 100000000
+                if man: total += int(man.group(1)) * 10000
+                return str(total) if total > 0 else text
+
             # 주소 추출
             address = ""
+            appraised_value = ""
+            minimum_value = ""
+            property_type = ""
+            
             addr_elem = soup.select_one("span.top_main_address.after")
             if addr_elem:
                 address = addr_elem.get_text(strip=True)
-            elif soup.find(string=lambda t: t and "서울특별시" in t):
+
+            meta_desc = soup.find("meta", property="og:description")
+            if meta_desc:
+                content = meta_desc.get("content", "")
+                if "근린생활시설" in content: property_type = "근린생활시설"
+                elif "아파트" in content: property_type = "아파트"
+                elif "다세대" in content or "빌라" in content: property_type = "다세대/빌라"
+                
+                if not address and "소재지 " in content:
+                    try: address = content.split("소재지 ")[1].split(",")[0].strip()
+                    except: pass
+                
+                if "감정가" in content:
+                    try:
+                        val = content.split("감정가 ")[1].split(",")[0].strip()
+                        appraised_value = parse_korean_money(val)
+                    except: pass
+                    
+                if "최저입찰가" in content:
+                    try:
+                        val = content.split("최저입찰가 ")[1].split(",")[0].strip()
+                        minimum_value = parse_korean_money(val)
+                    except: pass
+
+            if not address and soup.find(string=lambda t: t and "서울특별시" in t):
                 # Fallback for address
                 for tag in soup.find_all(string=lambda t: t and "서울특별시" in t):
                     if len(tag) > 10:
@@ -53,12 +91,13 @@ async def search_madangs_list(case_number: str):
                     if elem.text and ("유찰" in elem.text or "진행" in elem.text):
                         status = elem.text.strip()
                         break
+            if not status:
+                for text in ["수의계약가능", "수의계약", "유찰", "진행", "개찰", "신건"]:
+                    if soup.find(string=lambda t: t and text in t):
+                        status = text
+                        break
 
             # 감정가, 최저가 추출
-            appraised_value = ""
-            minimum_value = ""
-            
-            # 텍스트 노드 순회하며 찾기
             text_nodes = soup.find_all(string=True)
             for i, text in enumerate(text_nodes):
                 t = text.strip()
@@ -67,14 +106,14 @@ async def search_madangs_list(case_number: str):
                         if i + j < len(text_nodes):
                             val = text_nodes[i + j].strip()
                             if "원" in val:
-                                appraised_value = val
+                                appraised_value = val.replace(",", "").replace("원", "")
                                 break
                 if "최저가" in t and not minimum_value:
                     for j in range(1, 10):
                         if i + j < len(text_nodes):
                             val = text_nodes[i + j].strip()
                             if "원" in val:
-                                minimum_value = val
+                                minimum_value = val.replace(",", "").replace("원", "")
                                 break
             
             items = []
@@ -86,7 +125,7 @@ async def search_madangs_list(case_number: str):
                     "appraised_value": appraised_value.replace(" ", ""),
                     "minimum_value": minimum_value.replace(" ", ""),
                     "approval_date": "",
-                    "property_type": ""
+                    "property_type": property_type
                 })
                 return {"success": True, "items": items}
             else:

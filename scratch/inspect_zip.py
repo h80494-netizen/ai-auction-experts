@@ -1,23 +1,24 @@
+import sys
+import io
 import zipfile
-import os
+import xml.etree.ElementTree as ET
+import re
 
-data_dir = r"c:\Users\llll\Documents\두인경매\바이브코딩\data"
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-zips = [
-    "UQ111_용도지역(도시지역)_202602.zip",
-    "UQ120_도시계획사업(서울플랜+)_202602 (1).zip"
-]
+sale_0903 = 'data/실거래가/부동산_실거래가_매매_분석_20260903_101751.xlsx'
 
-for z_name in zips:
-    z_path = os.path.join(data_dir, z_name)
-    if os.path.exists(z_path):
-        print(f"\n--- Contents of {z_name} ---")
-        with zipfile.ZipFile(z_path, 'r') as zip_ref:
-            names = zip_ref.namelist()
-            print(f"Total files: {len(names)}")
-            for name in names[:20]:
-                print("  ", name)
-            if len(names) > 20:
-                print("   ...")
-    else:
-        print(f"\nFile {z_name} not found in {data_dir}!")
+with zipfile.ZipFile(sale_0903, 'r') as z:
+    print("Files in xlsx:")
+    for f in z.infolist():
+        if f.filename.startswith('xl/worksheets/'):
+            print(f"  {f.filename}: size={f.file_size/1024/1024:.2f} MB")
+            
+    # Read sheet1.xml (종합매매) and sheet8.xml (아파트매매_1 or similar)
+    # Get sheet names mapping from workbook.xml
+    wb_xml = ET.fromstring(z.read('xl/workbook.xml'))
+    sheets = wb_xml.findall('{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheets/{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheet')
+    for s in sheets:
+        name = s.attrib['name']
+        rId = s.attrib['{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id']
+        print(f"Sheet name: {name} -> rId: {rId}")

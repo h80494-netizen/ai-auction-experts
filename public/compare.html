@@ -708,6 +708,16 @@
     <div style="background:var(--card-bg, white); padding:20px; border-radius:10px; width:90%; max-width:400px; box-shadow:0 4px 15px rgba(0,0,0,0.5); color:var(--text-main, #333); border: 1px solid var(--border-color, #ccc);">
         <h3 style="margin-top:0; margin-bottom:15px; font-size:1.2rem; color:var(--text-main, #333);">권리분석 설정</h3>
         
+        <div style="margin-bottom:15px;" id="houseCountContainer">
+            <label style="display:block; font-weight:bold; margin-bottom:5px; color:var(--text-muted, #555);">주택 보유 수 (주택인 경우)</label>
+            <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                <label><input type="radio" name="houseCount" value="0" checked> 무주택자</label>
+                <label><input type="radio" name="houseCount" value="1"> 1주택자</label>
+                <label><input type="radio" name="houseCount" value="2"> 2주택자</label>
+                <label><input type="radio" name="houseCount" value="3"> 3주택자 이상</label>
+            </div>
+        </div>
+
         <div style="margin-bottom:15px;">
             <label style="display:block; font-weight:bold; margin-bottom:5px; color:var(--text-muted, #555);">투자자 유형</label>
             <div style="display:flex; gap:10px;">
@@ -759,10 +769,13 @@ function confirmAnalysisModal() {
     const targetYield = document.getElementById('targetYield').value;
     const investTerm = document.querySelector('input[name="investTerm"]:checked').value;
     const isRegulated = document.querySelector('input[name="isRegulated"]:checked').value;
+    const houseCountEl = document.querySelector('input[name="houseCount"]:checked');
+    const houseCount = houseCountEl ? houseCountEl.value : '0';
     
     closeAnalysisModal();
     
-    const url = `/?case=${encodeURIComponent(currentAnalysisCaseNo)}&investorType=${investorType}&targetYield=${targetYield}&investTerm=${investTerm}&isRegulated=${isRegulated}`;
+    // Redirect to analysis page with parameters
+    const url = `/?case=${encodeURIComponent(currentAnalysisCaseNo)}&investorType=${investorType}&targetYield=${targetYield}&investTerm=${investTerm}&isRegulated=${isRegulated}&houseCount=${houseCount}`;
     
     if (window.innerWidth <= 768) {
         window.location.href = url;

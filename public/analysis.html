@@ -454,6 +454,8 @@
                 color: #000000 !important;
                 box-shadow: none !important;
                 backdrop-filter: none !important;
+            }
+            .stat-card, .best-card, tr, .analysis-item {
                 page-break-inside: avoid;
             }
             .stat-card i, .best-card i {
@@ -601,6 +603,16 @@
     <div onclick="event.stopPropagation()" style="background:#ffffff; color:#1e293b; padding:22px 24px; border-radius:12px; width:90%; max-width:380px; box-shadow:0 10px 30px rgba(0,0,0,0.4); font-family:'Noto Sans KR', sans-serif;">
         <h3 style="margin-top:0; margin-bottom:18px; font-size:1.2rem; font-weight:700; color:#1e293b;">권리분석 설정</h3>
         
+        <div style="margin-bottom:16px;" id="houseCountContainer">
+            <label style="display:block; font-weight:700; margin-bottom:6px; color:#334155; font-size:0.9rem;">주택 보유 수 (주택인 경우)</label>
+            <div style="display:flex; flex-wrap:wrap; gap:12px; font-size:0.88rem; color:#1e293b;">
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="radio" name="houseCount" value="0" checked> 무주택자</label>
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="radio" name="houseCount" value="1"> 1주택자</label>
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="radio" name="houseCount" value="2"> 2주택자</label>
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="radio" name="houseCount" value="3"> 3주택자 이상</label>
+            </div>
+        </div>
+
         <div style="margin-bottom:16px;">
             <label style="display:block; font-weight:700; margin-bottom:6px; color:#334155; font-size:0.9rem;">투자자 유형</label>
             <div style="display:flex; gap:12px; font-size:0.88rem; color:#1e293b;">
@@ -657,6 +669,8 @@
     window.confirmAnalysisModal = function() {
         const investorTypeEl = document.querySelector('input[name="investorType"]:checked');
         const investorType = investorTypeEl ? investorTypeEl.value : 'individual';
+        const houseCountEl = document.querySelector('input[name="houseCount"]:checked');
+        const houseCount = houseCountEl ? houseCountEl.value : '0';
         const targetYield = document.getElementById('targetYield') ? document.getElementById('targetYield').value : '10';
         const investTermEl = document.querySelector('input[name="investTerm"]:checked');
         const investTerm = investTermEl ? investTermEl.value : 'short';
@@ -665,7 +679,7 @@
         
         window.closeAnalysisModal();
         
-        const url = `/?case=${encodeURIComponent(currentAnalysisCaseNo)}&investorType=${investorType}&targetYield=${targetYield}&investTerm=${investTerm}&isRegulated=${isRegulated}`;
+        const url = `/?case=${encodeURIComponent(currentAnalysisCaseNo)}&investorType=${investorType}&targetYield=${targetYield}&investTerm=${investTerm}&isRegulated=${isRegulated}&houseCount=${houseCount}`;
         
         if (window.innerWidth <= 768) {
             window.location.href = url;

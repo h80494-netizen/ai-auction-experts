@@ -1024,6 +1024,9 @@
         <div class="top-brand" style="cursor:pointer; margin-left: 10px; color: var(--neon-purple);" onclick="window.open('/issues.html', '_blank')" title="전국 이슈 스캐너 보기">
             <i class="fa-solid fa-newspaper"></i> 이슈보기
         </div>
+        <div class="top-brand" style="cursor:pointer; margin-left: 10px; color: #f59e0b;" onclick="toggleMapNotice()" title="공지 알림 확인">
+            <i class="fa-solid fa-bullhorn"></i> <span style="font-weight:bold;">공지알림</span>
+        </div>
 
         <div class="top-center">
             <div class="sale-type-toggles">
@@ -1058,6 +1061,24 @@
             <div class="icon-btn" id="btn-highlighter" title="형광펜 켜기/끄기 (필터와 중첩된 물건 강조)" style="color: #94a3b8;"><i class="fa-solid fa-highlighter"></i></div>
             
             <div class="icon-btn" title="경공매 필터 설정" onclick="toggleRightPanel()"><i class="fa-solid fa-filter" style="color: var(--primary-blue);"></i></div>
+        </div>
+    </div>
+
+    <!-- Floating Admin Notice Banner for Map (지도 상단 공지 배너) -->
+    <div id="mapNoticeBanner" style="display:none; position:fixed; top:72px; left:50%; transform:translateX(-50%); z-index:2100; max-width:850px; width:92%; background:rgba(15, 23, 42, 0.95); border:1px solid #f59e0b; border-radius:10px; padding:10px 16px; box-shadow:0 10px 30px rgba(0,0,0,0.35); backdrop-filter:blur(10px); color:#fff; font-family:'Noto Sans KR', sans-serif;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
+                <span id="mapNoticeIcon" style="color:#fbbf24; font-size:1.1rem; flex-shrink:0;"><i class="fa-solid fa-bullhorn"></i></span>
+                <div style="font-size:0.83rem; line-height:1.4; color:#f8fafc; overflow:hidden; text-overflow:ellipsis;">
+                    <strong id="mapNoticeTitle" style="color:#fef08a; margin-right:6px;"></strong>
+                    <span id="mapNoticeContent"></span>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                <button onclick="document.getElementById('mapNoticeBanner').style.display='none'" style="background:rgba(255,255,255,0.15); border:none; color:#cbd5e1; border-radius:4px; padding:4px 8px; font-size:0.75rem; cursor:pointer;">
+                    닫기 <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -4150,6 +4171,10 @@ let cachedRedevelopmentZonesData = null;
                     let cleanNotes = d.special_notes ? d.special_notes.replace(/0|#|A|미해당/gi, '').replace(/,/g, ' ').replace(/\s+/g, ' ').trim() : '';
                     let escapedAddress = (d.address || '').replace(/'/g, "\\'");
 
+                    let isResType = isResidential(d.property_type);
+                    let demandBtnIcon = isResType ? 'fa-location-dot' : 'fa-store';
+                    let demandBtnText = isResType ? '입지분석' : '상권분석';
+
                     return `
                         <div style="font-family:'Noto Sans KR'; min-width: 220px; padding-bottom: 5px;">
                             <div style="font-size:1.1rem;">${typeLabel} <b>${d.case_no}</b></div>
@@ -4165,7 +4190,7 @@ let cachedRedevelopmentZonesData = null;
                             </table>
                             <button onclick="window.openBasicInfo('${d.case_no}')" style="width:100%; background:#0ea5e9; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; touch-action:manipulation; margin-bottom: 8px;"><i class="fa-solid fa-circle-info"></i> 기본정보 보기</button>
                             <button onclick="openAnalysisModal('${d.case_no}')" style="width:100%; background:var(--primary-blue); color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; touch-action:manipulation;"><i class="fa-solid fa-scale-balanced"></i> 권리분석 리포트</button>
-                            <button onclick="openDemandPanel(${d.lat}, ${d.lng}, '${d.case_no}', '${escapedAddress}', '${d.property_type}', ${d.area_size || 0}); map.closePopup();" style="width:100%; background:#8b5cf6; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; margin-top: 8px; touch-action:manipulation;"><i class="fa-solid fa-store"></i> 상권분석</button>
+                            <button onclick="openDemandPanel(${d.lat}, ${d.lng}, '${d.case_no}', '${escapedAddress}', '${d.property_type}', ${d.area_size || 0}); map.closePopup();" style="width:100%; background:#8b5cf6; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; margin-top: 8px; touch-action:manipulation;"><i class="fa-solid ${demandBtnIcon}"></i> ${demandBtnText}</button>
                             <button onclick="openNaverPriceModal('${d.case_no}', ${d.lat}, ${d.lng}, '${d.property_type}', ${d.area_size || 0});" style="width:100%; background:#f59e0b; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; margin-top: 8px; touch-action:manipulation;"><i class="fa-solid fa-chart-line"></i> 네이버 시세 분석</button>
 
                         </div>
@@ -5141,12 +5166,16 @@ let cachedRedevelopmentZonesData = null;
                     const branchStr = s.branch ? ` <span style="color:#6366f1; font-size:0.72rem;">${s.branch}</span>` : '';
                     return `
                         <tr style="border-bottom: 1px solid #f1f5f9; font-size: 0.76rem;">
-                            <td style="padding: 6px 4px; font-weight: 600; color: #1e293b;">
-                                ${s.name}${branchStr} ${floorStr}
-                                <div style="font-size: 0.68rem; color: #64748b; font-weight: normal;">${s.road_addr || s.lot_addr || ''}</div>
+                            <td style="padding: 6px 4px; font-weight: 600; color: #1e293b; overflow: hidden;">
+                                <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
+                                    ${s.name}${branchStr} ${floorStr}
+                                </div>
+                                <div style="font-size: 0.68rem; color: #64748b; font-weight: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;" title="${s.road_addr || s.lot_addr || ''}">
+                                    ${s.road_addr || s.lot_addr || ''}
+                                </div>
                             </td>
                             <td style="padding: 6px 4px; text-align: center;">
-                                <span style="background: rgba(139,92,246,0.1); color: #7c3aed; padding: 1px 6px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap;">${s.cat_small || s.cat_medium}</span>
+                                <span style="background: rgba(139,92,246,0.1); color: #7c3aed; padding: 1px 6px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 100%;">${s.cat_small || s.cat_medium}</span>
                             </td>
                             <td style="padding: 6px 4px; text-align: right; font-weight: bold; color: #0284c7; white-space: nowrap;">${s.distance}m</td>
                         </tr>
@@ -5189,12 +5218,12 @@ let cachedRedevelopmentZonesData = null;
                                 </span>
                             </div>
                             <div style="max-height: 220px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; background: #fafafa;">
-                                <table style="width: 100%; border-collapse: collapse;">
+                                <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
                                     <thead style="background: #f1f5f9; position: sticky; top: 0; z-index: 1;">
                                         <tr style="font-size: 0.72rem; color: #475569; text-align: left;">
-                                            <th style="padding: 6px 4px;">상호명 / 주소</th>
-                                            <th style="padding: 6px 4px; text-align: center; width: 70px;">업종</th>
-                                            <th style="padding: 6px 4px; text-align: right; width: 50px;">거리</th>
+                                            <th style="padding: 6px 4px; width: 60%;">상호명 / 주소</th>
+                                            <th style="padding: 6px 4px; text-align: center; width: 25%;">업종</th>
+                                            <th style="padding: 6px 4px; text-align: right; width: 15%;">거리</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -5306,13 +5335,14 @@ let cachedRedevelopmentZonesData = null;
                 // 주택 여부 판별
                 const isRes = isResidential(propType);
 
-                // Fetch 200m small business stores in parallel
-                const storesPromise = fetch(`/api/map/commercial_stores?lat=${lat}&lng=${lng}&radius=200`)
-                    .then(res => res.json())
-                    .catch(err => { console.warn("Failed to fetch stores:", err); return { status: 'error' }; });
+                // 상단 타이틀 동적 반영
+                const drawerTitleEl = document.querySelector('.demand-drawer-title span');
+                if (drawerTitleEl) {
+                    drawerTitleEl.innerText = isRes ? '배후수요 & 주거 입지 분석' : '배후수요 & 상권 분석';
+                }
 
                 if (isRes) {
-                    // 주택인 경우: 인구/지하철 분석과 실거래가 가격지표를 모두 패칭하여 융합 렌더링
+                    // 주택인 경우: 인구/지하철 분석과 실거래가 가격지표를 패칭하여 융합 렌더링
                     try {
                         let demoUrl = `/api/map/demographics?lat=${lat}&lng=${lng}`;
                         if (caseNo) {
@@ -5346,12 +5376,15 @@ let cachedRedevelopmentZonesData = null;
                         }
                         
                         const priceUrl = `/api/map/realprice_indicators?min_lat=${minLat}&max_lat=${maxLat}&min_lng=${minLng}&max_lng=${maxLng}&property_type=${encodeURIComponent(normPropType)}&indicator_type=avg_price_per_pyeong`;
-                        const pricePromise = fetch(priceUrl).then(res => res.json());
+                        const pricePromise = fetch(priceUrl).then(res => res.json()).catch(err => {
+                            console.warn("실거래가 지표 로드 실패 (무시 가능):", err);
+                            return { status: 'error' };
+                        });
                         
-                        const [demoJson, priceJson, storesJson] = await Promise.all([demoPromise, pricePromise, storesPromise]);
+                        const [demoJson, priceJson] = await Promise.all([demoPromise, pricePromise]);
                         
                         if (demoJson.status === 'success') {
-                            renderResidentialDemandData(demoJson, priceJson, storesJson, caseNo, address, propType, lat, lng);
+                            renderResidentialDemandData(demoJson, priceJson, null, caseNo, address, propType, lat, lng);
                         } else {
                             throw new Error(demoJson.message || '인구 분석 데이터 오류');
                         }
@@ -5361,12 +5394,12 @@ let cachedRedevelopmentZonesData = null;
                             <div class="demand-card" style="text-align: center; padding: 25px; color: #ef4444;">
                                 <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; margin-bottom: 10px;"></i>
                                 <p style="font-weight: bold; margin: 0;">네트워크 및 데이터 분석 오류</p>
-                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">백엔드 서버로부터 정보를 가져올 수 없습니다.</p>
+                                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">백엔드 서버로부터 정보를 가져올 수 없습니다. (${err.message})</p>
                             </div>
                         `;
                     }
                 } else {
-                    // 비주택(구분상가, 건물, 지식산업센터 등)인 경우: 기존 배후수요 및 인구분석 사용
+                    // 비주택(구분상가, 건물, 지식산업센터 등)인 경우: 배후수요 및 인구분석 사용
                     try {
                         let url = `/api/map/demographics?lat=${lat}&lng=${lng}`;
                         if (caseNo) {
@@ -5382,10 +5415,17 @@ let cachedRedevelopmentZonesData = null;
                             url += `&property_type=${encodeURIComponent(propType)}`;
                         }
                         const demoPromise = fetch(url).then(res => res.json());
-                        const [demoJson, storesJson] = await Promise.all([demoPromise, storesPromise]);
+                        
+                        let storesPromise = Promise.resolve(null);
+                        if (propType === '상가(집합)' || propType === '상가(일반)' || propType === '집합' || propType === '일반') {
+                            const storeUrl = `/api/map/commercial_stores?lat=${lat}&lng=${lng}&radius=200`;
+                            storesPromise = fetch(storeUrl).then(res => res.json()).catch(err => null);
+                        }
+                        
+                        const [demoJson, storesData] = await Promise.all([demoPromise, storesPromise]);
                         
                         if (demoJson.status === 'success') {
-                            renderDemandData(demoJson, storesJson, caseNo, address, propType);
+                            renderDemandData(demoJson, storesData, caseNo, address, propType);
                         } else {
                             document.getElementById('demand-panel-content').innerHTML = `
                                 <div class="demand-card" style="text-align: center; padding: 25px; color: #ef4444;">
@@ -5514,12 +5554,9 @@ let cachedRedevelopmentZonesData = null;
                             ${address}
                         </div>
                         <div style="font-size: 0.7rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
-                            <i class="fa-solid fa-location-dot"></i> 반경 500m 배후수요 및 200m 상권 분석 정보 ${sourceBadge}
+                            <i class="fa-solid fa-location-dot"></i> 반경 500m 배후수요 및 상권 분석 정보 ${sourceBadge}
                         </div>
                     </div>
-
-                    <!-- 200m Small Business Commercial Stores Analytics -->
-                    ${commercialStoresHtml}
 
                     <!-- 500m Radius Circular Population & Households -->
                     <div class="demand-card">
@@ -5635,6 +5672,9 @@ let cachedRedevelopmentZonesData = null;
                         </div>
                     </div>
                     ` : ''}
+
+                    <!-- Commercial Stores Info -->
+                    ${commercialStoresHtml}
                 `;
             }
 
@@ -5731,7 +5771,9 @@ let cachedRedevelopmentZonesData = null;
                     let jeonseStatus = "정보없음";
                     let jeonseColor = "var(--text-muted)";
                     let jeonseBarWidth = "0%";
+                    let jeonseRatioStr = "정보없음";
                     if (matchedGrid.jeonse_ratio > 0) {
+                        jeonseRatioStr = `${matchedGrid.jeonse_ratio.toFixed(1)}%`;
                         jeonseBarWidth = `${Math.min(100, matchedGrid.jeonse_ratio)}%`;
                         if (matchedGrid.jeonse_ratio >= 80) {
                             jeonseStatus = "⚠️ 매우 높음 (깡통유의/갭투자용이)";
@@ -5791,7 +5833,7 @@ let cachedRedevelopmentZonesData = null;
                         <div class="demand-card" style="border-left: 4px solid var(--neon-blue); background: #ffffff;">
                             <div class="demand-card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                 <span style="color: var(--primary-blue); font-size: 0.92rem; font-weight: bold;">
-                                    <i class="fa-solid fa-chart-line"></i> 주변 실거래 및 임대 가격 지표 (250m)
+                                    <i class="fa-solid fa-chart-line"></i> 주변 실거래 및 임대 가격 지표 (250m 격자)
                                 </span>
                                 <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal;">
                                     수집거래: <b>${txCount}건</b>
@@ -5833,11 +5875,9 @@ let cachedRedevelopmentZonesData = null;
                                     <span style="color: var(--text-muted);">로얄층 민감도</span>
                                     <span style="font-weight: bold; color: var(--text-dark);">${floorSensStr}</span>
                                 </div>
-                                        <div style="display: flex; justify-content: space-between; grid-column: span 2; border-top: 1px dashed rgba(226,232,240,0.8); padding-top: 4px; margin-top: 2px;">
-                                            <span style="color: var(--text-dark); font-weight: bold;">주거래평수대:</span>
-                                            <span style="font-weight: bold; color: var(--primary-blue);">${matchedGrid.main_pyeong_type !== '-' ? `${matchedGrid.main_pyeong_type} (${matchedGrid.main_pyeong_ratio.toFixed(1)}%)` : '-'}</span>
-                                        </div>
-                                    </div>
+                                <div style="display: flex; justify-content: space-between; padding-top: 4px; margin-top: 2px;">
+                                    <span style="color: var(--text-dark); font-weight: bold;">주거래평수대:</span>
+                                    <span style="font-weight: bold; color: var(--primary-blue);">${matchedGrid.main_pyeong_type && matchedGrid.main_pyeong_type !== '-' ? `${matchedGrid.main_pyeong_type} (${matchedGrid.main_pyeong_ratio ? matchedGrid.main_pyeong_ratio.toFixed(1) : 0}%)` : '-'}</span>
                                 </div>
                             </div>
                         </div>
@@ -5899,9 +5939,86 @@ let cachedRedevelopmentZonesData = null;
                     `;
                 }
 
-                // 주거 인구 정보 요약도 함께 보여줌
+                // 주거 인구, 일자리 및 연령대 분포
                 const resPop = demo.residential_population || 0;
                 const house = demo.households || 0;
+                const workPop = demo.workplace_population || 0;
+                const companies = demo.companies || 0;
+
+                // 연령대 계산
+                const age = demo.age_distribution || {};
+                const totalAgePop = (age.under_20s || 0) + (age.twenties || 0) + (age.thirties || 0) + (age.forties || 0) + (age.fifties || 0) + (age.sixties_plus || 0);
+                const getAgePct = (val) => {
+                    if (!totalAgePop) return 0;
+                    return ((val / totalAgePop) * 100).toFixed(1);
+                };
+
+                const ageChartHtml = `
+                    <div class="demand-age-bar">
+                        <span class="demand-age-label">20대 이하</span>
+                        <div class="demand-age-track">
+                            <div class="demand-age-fill" style="width: ${getAgePct((age.under_20s || 0) + (age.twenties || 0))}%;"></div>
+                        </div>
+                        <span class="demand-age-val">${getAgePct((age.under_20s || 0) + (age.twenties || 0))}%</span>
+                    </div>
+                    <div class="demand-age-bar">
+                        <span class="demand-age-label">30·40대</span>
+                        <div class="demand-age-track">
+                            <div class="demand-age-fill" style="width: ${getAgePct((age.thirties || 0) + (age.forties || 0))}%; background: #0ea5e9;"></div>
+                        </div>
+                        <span class="demand-age-val">${getAgePct((age.thirties || 0) + (age.forties || 0))}%</span>
+                    </div>
+                    <div class="demand-age-bar">
+                        <span class="demand-age-label">50대</span>
+                        <div class="demand-age-track">
+                            <div class="demand-age-fill" style="width: ${getAgePct(age.fifties || 0)}%; background: #f59e0b;"></div>
+                        </div>
+                        <span class="demand-age-val">${getAgePct(age.fifties || 0)}%</span>
+                    </div>
+                    <div class="demand-age-bar">
+                        <span class="demand-age-label">60대 이상</span>
+                        <div class="demand-age-track">
+                            <div class="demand-age-fill" style="width: ${getAgePct(age.sixties_plus || 0)}%; background: #64748b;"></div>
+                        </div>
+                        <span class="demand-age-val">${getAgePct(age.sixties_plus || 0)}%</span>
+                    </div>
+                `;
+
+                // 유동인구 (250m)
+                let floatingHtml = "";
+                if (demo.floating_population_250) {
+                    floatingHtml = `
+                        <div id="demand-floating-box" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed rgba(37, 99, 235, 0.2);">
+                            <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-dark); margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+                                <i class="fa-solid fa-fire" style="color: #ef4444;"></i> 반경 250m 유동인구 세부 특징
+                            </div>
+                            <div class="floating-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <div class="floating-item" style="background: rgba(255, 255, 255, 0.8); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(226, 232, 240, 0.8);">
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">주중 일평균</div>
+                                    <div style="font-size: 0.85rem; font-weight: bold; color: #1e293b;">${Number(demo.floating_population_250.weekday || 0).toLocaleString()}명</div>
+                                </div>
+                                <div class="floating-item" style="background: rgba(255, 255, 255, 0.8); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(226, 232, 240, 0.8);">
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">주말 일평균</div>
+                                    <div style="font-size: 0.85rem; font-weight: bold; color: #ea580c;">${Number(demo.floating_population_250.weekend || 0).toLocaleString()}명</div>
+                                </div>
+                                <div class="floating-item" style="background: rgba(255, 255, 255, 0.8); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(226, 232, 240, 0.8);">
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">점심 (11~14시)</div>
+                                    <div style="font-size: 0.85rem; font-weight: bold; color: #0284c7;">${Number(demo.floating_population_250.lunch || 0).toLocaleString()}명</div>
+                                </div>
+                                <div class="floating-item" style="background: rgba(255, 255, 255, 0.8); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(226, 232, 240, 0.8);">
+                                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px;">저녁 (18~21시)</div>
+                                    <div style="font-size: 0.85rem; font-weight: bold; color: #4f46e5;">${Number(demo.floating_population_250.dinner || 0).toLocaleString()}명</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // AI 종합평가
+                let evalDetail = eval.detail || "";
+                if (eval.recom_biz && evalDetail.includes('[입지 기반 추천 업종]')) {
+                    evalDetail = evalDetail.split('[입지 기반 추천 업종]')[0].trim();
+                }
 
                 content.innerHTML = `
                     <!-- Address & Case Metadata -->
@@ -5913,7 +6030,7 @@ let cachedRedevelopmentZonesData = null;
                             ${address}
                         </div>
                         <div style="font-size: 0.7rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
-                            <i class="fa-solid fa-house"></i> 주택 입지 및 거래/임대지표 분석 정보
+                            <i class="fa-solid fa-house"></i> 주택 입지 및 거래·임대 지표 분석 정보
                         </div>
                     </div>
 
@@ -5949,6 +6066,48 @@ let cachedRedevelopmentZonesData = null;
                                 <div class="demand-stat-value">${Number(house).toLocaleString()}<span style="font-size: 0.75rem; font-weight: normal; margin-left: 2px;">세대</span></div>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Workplace Population & Companies -->
+                    <div class="demand-card">
+                        <div class="demand-card-title">
+                            <i class="fa-solid fa-building" style="color: #6366f1;"></i> 반경 500m 직장인 및 일자리 배후수요
+                        </div>
+                        <div class="demand-grid">
+                            <div class="demand-stat-item">
+                                <div class="demand-stat-label">직장인구</div>
+                                <div class="demand-stat-value" style="color: #6366f1;">${Number(workPop).toLocaleString()}<span style="font-size: 0.75rem; font-weight: normal; margin-left: 2px;">명</span></div>
+                            </div>
+                            <div class="demand-stat-item">
+                                <div class="demand-stat-label">등록업체수</div>
+                                <div class="demand-stat-value">${Number(companies).toLocaleString()}<span style="font-size: 0.75rem; font-weight: normal; margin-left: 2px;">개</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Age Distribution -->
+                    <div class="demand-card">
+                        <div class="demand-card-title">
+                            <i class="fa-solid fa-chart-column" style="color: #8b5cf6;"></i> 연령대별 인구 분포
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            ${ageChartHtml}
+                        </div>
+                    </div>
+
+                    <!-- AI Expert Evaluation -->
+                    <div class="demand-card" style="background: rgba(37, 99, 235, 0.05); border: 1px dashed rgba(37, 99, 235, 0.3);">
+                        <div class="demand-card-title" style="color: var(--primary-blue); font-size: 0.9rem; margin-bottom: 5px;">
+                            <i class="fa-solid fa-ribbon"></i> AI 입지 종합 평가
+                        </div>
+                        <div class="demand-eval-grade">
+                            <i class="fa-solid fa-circle-check" style="color: var(--primary-blue);"></i>
+                            <span>${eval.class || '입지 평가 분석 완료'}</span>
+                        </div>
+                        <div class="demand-eval-detail" style="line-height: 1.5; font-size: 0.8rem; color: #334155;">
+                            ${evalDetail ? evalDetail.replace(/\n/g, '<br>') : '인근 대중교통 및 주거 인프라가 양호하게 형성된 주거 적합 지역입니다.'}
+                        </div>
+                        ${floatingHtml}
                     </div>
 
                     <!-- Property Specs Comparison -->
@@ -6694,6 +6853,16 @@ async function showNaverDetails(lat, lng, estateType, address) {
     <div style="background:white; padding:20px; border-radius:10px; width:90%; max-width:400px; box-shadow:0 4px 15px rgba(0,0,0,0.2);">
         <h3 style="margin-top:0; margin-bottom:15px; font-size:1.2rem; color:#333;">권리분석 설정</h3>
         
+        <div style="margin-bottom:15px;" id="houseCountContainer">
+            <label style="display:block; font-weight:bold; margin-bottom:5px; color:#555;">주택 보유 수 (주택인 경우)</label>
+            <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                <label><input type="radio" name="houseCount" value="0" checked> 무주택자</label>
+                <label><input type="radio" name="houseCount" value="1"> 1주택자</label>
+                <label><input type="radio" name="houseCount" value="2"> 2주택자</label>
+                <label><input type="radio" name="houseCount" value="3"> 3주택자 이상</label>
+            </div>
+        </div>
+
         <div style="margin-bottom:15px;">
             <label style="display:block; font-weight:bold; margin-bottom:5px; color:#555;">투자자 유형</label>
             <div style="display:flex; gap:10px;">
@@ -6764,6 +6933,7 @@ function confirmAnalysisModal() {
     const targetYield = document.getElementById('targetYield').value;
     const investTerm = document.querySelector('input[name="investTerm"]:checked').value;
     const isRegulated = document.querySelector('input[name="isRegulated"]:checked').value;
+    const houseCount = document.querySelector('input[name="houseCount"]:checked') ? document.querySelector('input[name="houseCount"]:checked').value : '0';
     
     closeAnalysisModal();
     
@@ -6780,6 +6950,43 @@ function confirmAnalysisModal() {
         }
     }
 }
+
+// --- 공지 알림 배너 연동 ---
+let currentMapNotice = null;
+async function checkMapNotice() {
+    try {
+        const res = await fetch('/api/notice');
+        const json = await res.json();
+        if (json.status === 'success' && json.notice && json.notice.is_active) {
+            currentMapNotice = json.notice;
+            const banner = document.getElementById('mapNoticeBanner');
+            const title = document.getElementById('mapNoticeTitle');
+            const content = document.getElementById('mapNoticeContent');
+            if (banner && title && content) {
+                title.innerText = json.notice.title;
+                content.innerText = json.notice.content;
+                banner.style.display = 'block';
+            }
+        }
+    } catch(e) {
+        console.warn("지도 공지 불러오기 실패:", e);
+    }
+}
+
+function toggleMapNotice() {
+    const banner = document.getElementById('mapNoticeBanner');
+    if (!banner) return;
+    if (banner.style.display === 'none') {
+        if (currentMapNotice && currentMapNotice.is_active) {
+            banner.style.display = 'block';
+        } else {
+            alert("📢 현재 등록된 진행 중인 공지사항이 없습니다.");
+        }
+    } else {
+        banner.style.display = 'none';
+    }
+}
+window.addEventListener('DOMContentLoaded', checkMapNotice);
 </script>
 </body>
 </html>

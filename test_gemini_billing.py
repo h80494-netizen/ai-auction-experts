@@ -14,7 +14,7 @@ genai.configure(api_key=api_key)
 
 async def make_request(i):
     try:
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-3.6-flash")
         response = await model.generate_content_async(f"Say hello {i}")
         print(f"Req {i}: SUCCESS")
         return True

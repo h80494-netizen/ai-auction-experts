@@ -87,7 +87,7 @@ def main():
 
     # 3. 원격 서버에서 압축 해제 및 서비스 재시작
     print(f"\n[3/4] 원격 서버 적용 및 서비스 무중단 재시작 중...")
-    remote_script = f"cd {AWS_REMOTE_DIR} && tar -xzf ~/{tar_filename} && rm -f ~/{tar_filename} && pkill -f 'ai-auction-experts/venv/bin/python' || true; sleep 1; cd {AWS_REMOTE_DIR}/backend && nohup ../venv/bin/python app.py > server.log 2>&1 &"
+    remote_script = f"cd {AWS_REMOTE_DIR} && tar -xzf ~/{tar_filename} && rm -f ~/{tar_filename} && pkill -f 'python app.py' || true; sleep 1; bash -c 'cd {AWS_REMOTE_DIR}/backend && nohup ../venv/bin/python app.py > server.log 2>&1 < /dev/null & disown -a; sleep 3'"
     res = run_ssh(remote_script)
     print("  서버 프로세스 재가동 완료!")
 

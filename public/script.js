@@ -8,6 +8,18 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.classList.add('hidden');
     }
 
+    // Fetch and display daily visitor count
+    fetch('/api/visitor_count')
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === 'success') {
+                const el = document.getElementById('visitorCountValue');
+                if(el) el.innerText = data.count;
+            }
+        })
+        .catch(err => console.error("Failed to fetch visitor count:", err));
+
+
     const attemptLogin = async () => {
         const pwd = pwdInput.value.trim();
         if (!pwd) return;
@@ -24,6 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 sessionStorage.setItem('auth_token', 'verified');
                 if (data.user_type === 'admin') {
                     sessionStorage.setItem('admin_board_key', 'h80494');
+                    adminAuthKey = 'h80494';
+                    if (typeof updateAdminUI === 'function') updateAdminUI();
                 }
                 overlay.classList.add('hidden');
                 if (data.message && (data.user_type === 'member' || data.user_type === 'admin')) {
@@ -375,10 +389,16 @@ startBtn.addEventListener('click', async () => {
                 imgMap.onerror = onError;
                 imgStruct.onerror = onError;
 
-
-                imgPhoto.src = `/api/download_photo/${encodeURIComponent(safeCaseNum)}?t=${new Date().getTime()}`;
-                imgMap.src = `/api/download_map/${encodeURIComponent(safeCaseNum)}?t=${new Date().getTime()}`;
-                imgStruct.src = `/api/download_structure/${encodeURIComponent(safeCaseNum)}?t=${new Date().getTime()}`;
+                if (safeCaseNum.includes('-')) {
+                    const photos = data.data.photos || [];
+                    imgPhoto.src = photos[0] || `/api/download_photo/${encodeURIComponent(safeCaseNum)}?t=${new Date().getTime()}`;
+                    imgMap.src = photos[1] || photos[0] || `/api/download_map/${encodeURIComponent(safeCaseNum)}?t=${new Date().getTime()}`;
+                    imgStruct.src = photos[2] || photos[0] || `/api/download_structure/${encodeURIComponent(safeCaseNum)}?t=${new Date().getTime()}`;
+                } else {
+                    imgPhoto.src = `/api/download_photo/${encodeURIComponent(safeCaseNum)}?t=${new Date().getTime()}`;
+                    imgMap.src = `/api/download_map/${encodeURIComponent(safeCaseNum)}?t=${new Date().getTime()}`;
+                    imgStruct.src = `/api/download_structure/${encodeURIComponent(safeCaseNum)}?t=${new Date().getTime()}`;
+                }
             }
 
 
@@ -386,7 +406,12 @@ startBtn.addEventListener('click', async () => {
             const structureEl = document.getElementById('structureImage');
             const structurePlaceholder = document.getElementById('structurePlaceholder');
             if (structureEl && structurePlaceholder) {
-                structureEl.src = `/api/download_structure/${encodeURIComponent(safeCaseNum)}?t=${new Date().getTime()}`;
+                if (safeCaseNum.includes('-')) {
+                    const photos = data.data.photos || [];
+                    structureEl.src = photos[2] || photos[0] || `/api/download_structure/${encodeURIComponent(safeCaseNum)}?t=${new Date().getTime()}`;
+                } else {
+                    structureEl.src = `/api/download_structure/${encodeURIComponent(safeCaseNum)}?t=${new Date().getTime()}`;
+                }
                 structureEl.onload = () => {
                     structureEl.style.display = 'block';
                     structurePlaceholder.style.display = 'none';
@@ -538,22 +563,25 @@ function renderFinalReport(markdownText, caseData = null) {
     
     // 파싱을 위한 편의 함수 (모든 레벨의 마크다운 헤딩 `#`, `##`, `###` 및 번호 형태 지원)
     const extractSection = (num, text) => {
-        // 정규식 1: # 1. 요약 (가장 표준적인 마크다운)
-        let regex = new RegExp(`(?:^|\\n)#{1,6}\\s*${num}\\.\\s*[^\\n]*\\n([\\s\\S]*?)(?=(?:^|\\n)#{1,6}\\s*\\d+\\.\\s*|$)`, 'i');
-        let match = text.match(regex);
-        if(match) return match[1].trim();
-
-        // 정규식 2: 1. 요약 (# 기호가 없는 경우)
-        regex = new RegExp(`(?:^|\\n)${num}\\.\\s*[^\\n]*\\n([\\s\\S]*?)(?=(?:^|\\n)\\d+\\.\\s*|$)`, 'i');
-        match = text.match(regex);
-        if(match) return match[1].trim();
+        const romanMap = ["", "I|Ⅰ", "II|Ⅱ", "III|Ⅲ", "IV|Ⅳ", "V|Ⅴ", "VI|Ⅵ", "VII|Ⅶ", "VIII|Ⅷ", "IX|Ⅸ", "X|Ⅹ"];
+        const numStr = `(?:${num}|${romanMap[num]})`;
         
-        // 정규식 3: **1. 요약** 등 마크다운 기호가 혼재된 경우
-        regex = new RegExp(`(?:^|\\n)[#\\*\\s]*${num}\\.\\s*[^\\n]*\\n([\\s\\S]*?)(?=(?:^|\\n)[#\\*\\s]*\\d+\\.\\s*|$)`, 'i');
-        match = text.match(regex);
-        if(match) return match[1].trim();
+        // 1. '# 1. 요약' 등 헤딩(#)이 명확히 있는 경우 (다음 '#' 헤딩 전까지 추출)
+        const regex = new RegExp(`(?:^|\\n)#+\\s*${numStr}\\.\\s*[^\\n]*\\n([\\s\\S]*?)(?=(?:^|\\n)#+\\s*\\d+|(?:^|\\n)#+\\s*[Ⅰ-ⅩIVX]+\\.|$)`, 'i');
+        const match = text.match(regex);
+        if (match && match[1].trim() !== '') {
+            return match[1].trim();
+        }
         
-        return null; // 추출 실패
+        // 2. Fallback: AI가 '#' 기호를 빼먹고 '1. 요약' 형태로만 출력한 경우 (키워드 검사로 일반 번호매기기와 구분)
+        const keywords = "(?:요약|기본|물리|권리|시세|수익|입지|추천|출구|대출|절세|최종|결론)";
+        const fallbackRegex = new RegExp(`(?:^|\\n)${numStr}\\.\\s*${keywords}[^\\n]*\\n([\\s\\S]*?)(?=(?:^|\\n)\\d+\\.\\s*${keywords}|(?:^|\\n)[Ⅰ-ⅩIVX]+\\.\\s*${keywords}|$)`, 'i');
+        const fallbackMatch = text.match(fallbackRegex);
+        if (fallbackMatch && fallbackMatch[1].trim() !== '') {
+            return fallbackMatch[1].trim();
+        }
+        
+        return null;
     };
 
     // API 에러 처리
@@ -885,6 +913,16 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    const houseCountParam = params.get('houseCount');
+    if (houseCountParam && document.getElementById('houseCount')) {
+        let valToSet = '무주택';
+        if (houseCountParam === '1') valToSet = '1주택';
+        else if (houseCountParam === '2') valToSet = '2주택';
+        else if (houseCountParam === '3') valToSet = '3주택 이상';
+        
+        document.getElementById('houseCount').value = valToSet;
+    }
+
     const isRegulatedParam = params.get('isRegulated');
     if (isRegulatedParam && document.getElementById('isRegulatedArea')) {
         const isReg = (isRegulatedParam === 'yes' || isRegulatedParam === 'true');
@@ -908,6 +946,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Initialize Inquiry Board Listeners
     initInquiryBoard();
+    initNoticeSystem();
 });
 
 /* ----------------- Inquiry Board Interactive Logic ----------------- */
@@ -1021,6 +1060,9 @@ function updateAdminUI() {
         if (adminBadge) adminBadge.style.display = 'none';
         if (deleteBtn) deleteBtn.style.display = 'none';
         if (approveBtn) approveBtn.style.display = 'none';
+    }
+    if (typeof updateNoticeAdminBtnVisibility === 'function') {
+        updateNoticeAdminBtnVisibility();
     }
 }
 
@@ -1354,4 +1396,247 @@ async function handleDeleteInquiry() {
         alert("삭제 처리 중 오류가 발생했습니다.");
     }
 }
+
+// Donation Modal Logic
+const openDonationBtn = document.getElementById('openDonationBtn');
+const closeDonationModalBtn = document.getElementById('closeDonationModalBtn');
+const donationModal = document.getElementById('donationModal');
+
+if (openDonationBtn) {
+    openDonationBtn.addEventListener('click', () => {
+        if (donationModal) donationModal.style.display = 'flex';
+    });
+}
+if (closeDonationModalBtn) {
+    closeDonationModalBtn.addEventListener('click', () => {
+        if (donationModal) donationModal.style.display = 'none';
+    });
+}
+if (donationModal) {
+    donationModal.addEventListener('click', (e) => {
+        if (e.target === donationModal) {
+            donationModal.style.display = 'none';
+        }
+    });
+}
+
+
+/* ----------------- Admin Notice Banner & Modal Logic (유저 공지 알림판 시스템) ----------------- */
+let currentNoticeData = null;
+
+async function fetchActiveNotice() {
+    try {
+        const res = await fetch('/api/notice');
+        const json = await res.json();
+        if (json.status === 'success' && json.notice && json.notice.is_active) {
+            currentNoticeData = json.notice;
+            renderNoticeBanner(json.notice);
+        } else {
+            currentNoticeData = null;
+            const banner = document.getElementById('adminNoticeBanner');
+            if (banner) banner.style.display = 'none';
+        }
+    } catch (e) {
+        console.warn("공지 불러오기 실패:", e);
+    }
+}
+
+function renderNoticeBanner(notice) {
+    const banner = document.getElementById('adminNoticeBanner');
+    const titleEl = document.getElementById('noticeBannerTitle');
+    const contentEl = document.getElementById('noticeBannerContent');
+    const iconEl = document.getElementById('noticeBannerIcon');
+    
+    if (!banner || !titleEl || !contentEl) return;
+
+    titleEl.innerText = notice.title;
+    contentEl.innerText = notice.content;
+
+    // 공지 유형별 맞춤형 네온 스타일 적용
+    if (notice.notice_type === 'urgent') {
+        banner.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(185, 28, 28, 0.25))';
+        banner.style.borderColor = '#ef4444';
+        if (iconEl) {
+            iconEl.style.borderColor = '#ef4444';
+            iconEl.style.background = 'rgba(239, 68, 68, 0.25)';
+            iconEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="color:#f87171;"></i>';
+        }
+        titleEl.style.color = '#fca5a5';
+    } else if (notice.notice_type === 'info') {
+        banner.style.background = 'linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(59, 130, 246, 0.2))';
+        banner.style.borderColor = '#0284c7';
+        if (iconEl) {
+            iconEl.style.borderColor = '#38bdf8';
+            iconEl.style.background = 'rgba(14, 165, 233, 0.2)';
+            iconEl.innerHTML = '<i class="fa-solid fa-circle-info" style="color:#38bdf8;"></i>';
+        }
+        titleEl.style.color = '#bae6fd';
+    } else { // warning
+        banner.style.background = 'linear-gradient(135deg, rgba(234, 179, 8, 0.16), rgba(239, 68, 68, 0.18))';
+        banner.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+        if (iconEl) {
+            iconEl.style.borderColor = '#f59e0b';
+            iconEl.style.background = 'rgba(245, 158, 11, 0.2)';
+            iconEl.innerHTML = '<i class="fa-solid fa-bullhorn" style="color:#fbbf24;"></i>';
+        }
+        titleEl.style.color = '#fef08a';
+    }
+
+    banner.style.display = 'block';
+    updateNoticeAdminBtnVisibility();
+}
+
+function updateNoticeAdminBtnVisibility() {
+    const manageBtn = document.getElementById('noticeAdminManageBtn');
+    const isAdmin = (adminAuthKey === 'h80494' || sessionStorage.getItem('admin_board_key') === 'h80494');
+    if (manageBtn) {
+        manageBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+    }
+}
+
+function openNoticeAdminModal() {
+    const isAdmin = (adminAuthKey === 'h80494' || sessionStorage.getItem('admin_board_key') === 'h80494');
+    if (!isAdmin) {
+        const adminLoginModal = document.getElementById('adminLoginModal');
+        if (adminLoginModal) {
+            adminLoginModal.style.display = 'flex';
+            const adminInput = document.getElementById('adminKeyModalInput');
+            if (adminInput) {
+                adminInput.value = '';
+                adminInput.focus();
+            }
+            alert("공지 관리는 관리자 전용 기능입니다. 관리자 인증번호를 먼저 입력해주세요.");
+        }
+        return;
+    }
+
+    const modal = document.getElementById('noticeAdminModal');
+    if (!modal) return;
+
+    const titleInput = document.getElementById('adminNoticeTitle');
+    const contentInput = document.getElementById('adminNoticeContent');
+    const typeSelect = document.getElementById('adminNoticeType');
+    const radios = document.getElementsByName('noticeActiveRadio');
+
+    if (currentNoticeData) {
+        titleInput.value = currentNoticeData.title || '';
+        contentInput.value = currentNoticeData.content || '';
+        if (typeSelect) typeSelect.value = currentNoticeData.notice_type || 'warning';
+        for (const r of radios) {
+            r.checked = (r.value === (currentNoticeData.is_active ? '1' : '0'));
+        }
+    } else {
+        titleInput.value = '🚨 [긴급 안내] 구글 AI 할당량 초과에 따른 권리분석 일시 이용 자제 안내';
+        contentInput.value = '현재 구글 AI API 사용량 할당 초과(429 Quota Exceeded)로 인해 권리분석 생성에 제한이 발생하고 있습니다. 안정적인 서비스 정상화 및 쿼터 리셋을 위해 금일(하루 동안) 권리분석 기능 사용을 잠시 자제해 주시기를 부탁드립니다. (※ 지도 검색 및 기본 물건 분석은 정상 이용 가능합니다)';
+        if (typeSelect) typeSelect.value = 'warning';
+        for (const r of radios) {
+            r.checked = (r.value === '1');
+        }
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closeNoticeAdminModal() {
+    const modal = document.getElementById('noticeAdminModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function handleSaveNoticeAdmin() {
+    const effectiveKey = adminAuthKey || sessionStorage.getItem('admin_board_key');
+    if (!effectiveKey || effectiveKey !== 'h80494') {
+        alert("관리자 권한이 없습니다.");
+        return;
+    }
+
+    const title = document.getElementById('adminNoticeTitle').value.trim();
+    const content = document.getElementById('adminNoticeContent').value.trim();
+    const notice_type = document.getElementById('adminNoticeType').value;
+    const radios = document.getElementsByName('noticeActiveRadio');
+    let is_active = true;
+    for (const r of radios) {
+        if (r.checked) is_active = (r.value === '1');
+    }
+
+    if (!title) {
+        alert("공지 제목을 입력해주세요.");
+        return;
+    }
+    if (!content) {
+        alert("공지 상세 내용을 입력해주세요.");
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/admin/notice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                admin_key: effectiveKey,
+                title,
+                content,
+                notice_type,
+                is_active
+            })
+        });
+        const json = await res.json();
+        if (json.status === 'success') {
+            alert("공지가 성공적으로 저장 및 반영되었습니다!");
+            closeNoticeAdminModal();
+            fetchActiveNotice();
+        } else {
+            alert("공지 저장 실패: " + json.message);
+        }
+    } catch (e) {
+        alert("공지 저장 중 네트워크 오류가 발생했습니다: " + e.message);
+    }
+}
+
+function initNoticeSystem() {
+    const closeBannerBtn = document.getElementById('closeNoticeBannerBtn');
+    if (closeBannerBtn) {
+        closeBannerBtn.addEventListener('click', () => {
+            const banner = document.getElementById('adminNoticeBanner');
+            if (banner) banner.style.display = 'none';
+        });
+    }
+
+    const openNoticeBtnHeader = document.getElementById('openNoticeBtnHeader');
+    if (openNoticeBtnHeader) {
+        openNoticeBtnHeader.addEventListener('click', () => {
+            const isAdmin = (adminAuthKey === 'h80494' || sessionStorage.getItem('admin_board_key') === 'h80494');
+            if (isAdmin) {
+                openNoticeAdminModal();
+            } else {
+                if (currentNoticeData && currentNoticeData.is_active) {
+                    const banner = document.getElementById('adminNoticeBanner');
+                    if (banner) {
+                        banner.style.display = 'block';
+                        banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                    alert(`📢 [공지 안내]\n\n제목: ${currentNoticeData.title}\n\n${currentNoticeData.content}`);
+                } else {
+                    alert("📢 현재 등록된 진행 중인 공지사항이 없습니다.");
+                }
+            }
+        });
+    }
+
+    const manageBtn = document.getElementById('noticeAdminManageBtn');
+    if (manageBtn) {
+        manageBtn.addEventListener('click', () => openNoticeAdminModal());
+    }
+
+    const closeAdminModalBtn = document.getElementById('closeNoticeAdminModalBtn');
+    if (closeAdminModalBtn) closeAdminModalBtn.addEventListener('click', closeNoticeAdminModal);
+
+    const cancelAdminModalBtn = document.getElementById('cancelNoticeAdminBtn');
+    if (cancelAdminModalBtn) cancelAdminModalBtn.addEventListener('click', closeNoticeAdminModal);
+
+    const saveAdminBtn = document.getElementById('saveNoticeAdminBtn');
+    if (saveAdminBtn) saveAdminBtn.addEventListener('click', handleSaveNoticeAdmin);
+
+    fetchActiveNotice();
+}
+
 

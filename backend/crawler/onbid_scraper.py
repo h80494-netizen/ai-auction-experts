@@ -1,29 +1,93 @@
-# -*- coding: utf-8 -*-
-import requests
-from bs4 import BeautifulSoup
-import re
-import urllib.parse
+import asyncio
+import os
+import urllib.request
+import urllib.error
+import json
 
-def scrape_onbid_case(case_number: str) -> dict:
-    """
-    공매(Onbid) 관리번호를 기반으로 기본 권리 정보(조세채권, 당해세, 선순위여부 등)를 가져옵니다.
-    실제 온비드 크롤링에는 복잡한 세션 및 자바스크립트 우회가 필요하므로,
-    본 모듈에서는 요청된 관리번호를 기준으로 필수 정보를 모의(Mock) 혹은 제한적 추출하여 반환합니다.
-    """
-    print(f"온비드(Onbid) 공매 물건 조회 중... (관리번호: {case_number})")
-    
-    # 예시 모의 데이터 구조 반환
-    # 향후 Playwright를 통한 실제 스크래핑 로직으로 치환 가능
-    
-    mock_data = {
-        "case_number": case_number,
-        "is_onbid": True,
-        "tax_claims": "조세채권(국세/지방세) 2건 확인됨",
-        "priority_tax": "당해세(종합부동산세 등) 발생 이력 있음 (주의 요망)",
-        "senior_tenant": "선순위 전입 임차인 미상 (공매재산명세서 상세 확인 필요)",
-        "agency": "한국자산관리공사(KAMCO)",
-        "bidding_method": "전자입찰",
-        "special_notes": "체납처분비 우선 배분 후 남은 금액으로 조세채권 충당. 임차인 보증금 미회수 위험 존재."
+ONBID_ID = "h80494"
+ONBID_PW = "spring11!!"
+
+def _fetch_auctionmsg_sync(case_number: str, download_dir: str):
+    url = f"https://map.auctionmsg.com/server/api/?c=Gongme&m=getGongme&id={case_number}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Referer": f"https://map.auctionmsg.com/gongme/detail/{case_number}"
     }
     
-    return mock_data
+    parsed_data = {
+        "address": "",
+        "status": "",
+        "appraised_value": "",
+        "minimum_value": "",
+        "property_type": "",
+        "downloaded_pdfs": [],
+        "images": []
+    }
+    
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as response:
+            if response.status != 200:
+                return {"success": False, "message": f"경매알리미 API 호출 실패: {response.status}"}
+            
+            result = json.loads(response.read().decode('utf-8'))
+            
+        if not result or 'data' not in result or not result['data']:
+            return {"success": False, "message": "검색 결과에서 물건을 찾을 수 없습니다."}
+            
+        data = result['data']
+        
+        # 기본 정보 매핑
+        parsed_data["address"] = data.get("address", "")
+        parsed_data["status"] = data.get("status", "")
+        
+        # 감정가, 최저가는 getGongme에서는 minprice만 존재. 감정가는 기본적으로 첫 입찰가이거나 없는 경우 예외 처리
+        parsed_data["minimum_value"] = str(data.get("minprice") or "")
+        parsed_data["appraised_value"] = str(data.get("frstBidPrc") or data.get("minprice") or "")
+        
+        parsed_data["property_type"] = data.get("category", "") or data.get("cltrUsgLclsCtgrNm", "")
+        
+        # 이미지 (옵션)
+        img_url = data.get("image")
+        if img_url:
+            parsed_data["images"].append(img_url)
+            # 권리분석보고서(Word) 생성을 위해 로컬 다운로드 폴더에 사진 저장
+            if download_dir:
+                photo_path = os.path.join(download_dir, "photo.jpg")
+                map_path = os.path.join(download_dir, "map.jpg")
+                structure_path = os.path.join(download_dir, "structure.jpg")
+                try:
+                    img_req = urllib.request.Request(img_url, headers=headers)
+                    with urllib.request.urlopen(img_req, timeout=10) as img_res:
+                        img_data = img_res.read()
+                        with open(photo_path, "wb") as f:
+                            f.write(img_data)
+                        # 공매는 사진이 1개뿐인 경우가 많으므로 동일한 사진을 복사하여 배치
+                        with open(map_path, "wb") as f:
+                            f.write(img_data)
+                        with open(structure_path, "wb") as f:
+                            f.write(img_data)
+                except Exception as e:
+                    print(f"[{case_number}] 사진 다운로드 실패: {e}")
+        
+        print(f"[{case_number}] 데이터 추출 완료: {parsed_data['address']}")
+        return {"success": True, "data": parsed_data}
+        
+    except Exception as e:
+        print(f"[{case_number}] 데이터 추출 중 에러: {e}")
+        return {"success": False, "message": str(e)}
+
+async def scrape_onbid_case_async(case_number: str):
+    print(f"[{case_number}] 경매알리미 기반 크롤링 시작...")
+    
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    download_dir = os.path.join(project_root, "downloads", case_number)
+    os.makedirs(download_dir, exist_ok=True)
+    
+    # Run requests synchronously in a thread pool to avoid blocking asyncio
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(None, _fetch_auctionmsg_sync, case_number, download_dir)
+    return result
+
+def scrape_onbid_case(case_number: str, address_hint: str = "") -> dict:
+    return asyncio.run(scrape_onbid_case_async(case_number))

@@ -11,6 +11,32 @@ from datetime import datetime, timezone, timedelta
 import pandas as pd
 
 downloads_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "downloads"))
+visitors_file = os.path.join(os.path.dirname(__file__), "data", "visitors.json")
+
+import json
+def get_daily_visitors(ip: str = None) -> int:
+    try:
+        with open(visitors_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except:
+        data = {}
+    today = datetime.now().strftime("%Y-%m-%d")
+    if today not in data:
+        data = {today: []}
+    
+    updated = False
+    if ip and ip not in data[today]:
+        data[today].append(ip)
+        updated = True
+        
+    if updated or not os.path.exists(visitors_file):
+        try:
+            with open(visitors_file, "w", encoding="utf-8") as f:
+                json.dump({today: data[today]}, f)
+        except:
+            pass
+            
+    return len(data[today])
 
 # Windows 환경에서 Playwright와 Uvicorn 비동기 루프 충돌 방지
 if sys.platform == "win32":
@@ -28,6 +54,16 @@ app = FastAPI(title="AI Auction Analyst Backend")
 
 @app.middleware("http")
 async def log_requests(request, call_next):
+    # 접속자 카운트 (실제 클라이언트 IP 추출)
+    client_ip = request.headers.get("CF-Connecting-IP") or request.headers.get("X-Forwarded-For")
+    if not client_ip:
+        client_ip = request.client.host if request.client else "unknown"
+    if "," in client_ip:
+        client_ip = client_ip.split(",")[0].strip()
+        
+    if request.url.path == "/" or request.url.path == "/index.html":
+        get_daily_visitors(client_ip)
+        
     logging.info(f"Incoming request: {request.method} {request.url}")
     try:
         response = await call_next(request)
@@ -36,6 +72,11 @@ async def log_requests(request, call_next):
     except Exception as e:
         logging.error(f"Request failed with exception: {str(e)}", exc_info=True)
         raise
+
+@app.get("/api/visitor_count")
+def api_visitor_count():
+    count = get_daily_visitors()
+    return {"status": "success", "count": count}
 
 # CORS 설정 (프론트엔드 HTML에서 호출 허용)
 app.add_middleware(
@@ -355,8 +396,8 @@ async def _background_analyze(task_id: str, request: AnalyzeRequest):
     def _run_scraper(c_num, a_hint):
         import asyncio
         if "-" in c_num:
-            from crawler.madangs_scraper import scrape_madangs_case
-            return asyncio.run(scrape_madangs_case(c_num, a_hint))
+            from crawler.onbid_scraper import scrape_onbid_case
+            return scrape_onbid_case(c_num, a_hint)
         else:
             from crawler.myauction_scraper import scrape_myauction_case
             return asyncio.run(scrape_myauction_case(c_num, a_hint))
@@ -376,6 +417,7 @@ async def _background_analyze(task_id: str, request: AnalyzeRequest):
                 print(f"마당스 사진 교체 실패: {e}")
                 
         if result["success"]:
+            result["data"]["case_number"] = case_number
             result["data"]["property_type"] = request.property_type
             result["data"]["house_count"] = request.house_count
             result["data"]["investor_type"] = request.investor_type
@@ -384,9 +426,31 @@ async def _background_analyze(task_id: str, request: AnalyzeRequest):
             result["data"]["repair_condition"] = request.repair_condition
             result["data"]["is_regulated_area"] = request.is_regulated_area
             
-            result["data"]["appraised_value"] = result["data"].get("appraised_value", "3800000000") 
-            result["data"]["minimum_value"] = result["data"].get("minimum_value", "3000000000") 
-            result["data"]["address"] = result["data"].get("address", "경기도 성남시 수정구 신흥동 2465-7 신흥역하늘채랜더스원")
+            if "-" in case_number and not result["data"].get("appraised_value"):
+                try:
+                    def _run_madangs_fallback(c_num):
+                        import asyncio
+                        from crawler.madangs_scraper import search_madangs_list
+                        return asyncio.run(search_madangs_list(c_num))
+                    
+                    print(f"[{case_number}] 온비드 스크래퍼 필수 데이터 누락 감지, 마당스 데이터로 폴백 시도...")
+                    from fastapi.concurrency import run_in_threadpool
+                    fallback_res = await run_in_threadpool(_run_madangs_fallback, case_number)
+                    if fallback_res.get("success") and fallback_res.get("items"):
+                        item = fallback_res["items"][0]
+                        result["data"]["address"] = item.get("address", result["data"].get("address", ""))
+                        result["data"]["appraised_value"] = item.get("appraised_value", "")
+                        result["data"]["minimum_value"] = item.get("minimum_value", "")
+                        if not result["data"].get("status"):
+                            result["data"]["status"] = item.get("status", "")
+                        print(f"[{case_number}] 온비드 스크래퍼 누락 데이터를 마당스 데이터로 보완 성공.")
+                except Exception as e:
+                    print(f"마당스 폴백 실패: {e}")
+
+            # Remove hardcoded values; rely on scraped data or AI extraction
+            result["data"]["appraised_value"] = result["data"].get("appraised_value", "") 
+            result["data"]["minimum_value"] = result["data"].get("minimum_value", "") 
+            result["data"]["address"] = result["data"].get("address", "")
             result["data"]["risks"] = result["data"].get("risks", [])
 
             try:
@@ -432,7 +496,7 @@ async def _background_analyze(task_id: str, request: AnalyzeRequest):
         else:
             analysis_tasks[task_id] = {
                 "status": "error",
-                "message": f"크롤링 실패: {result.get('error')}"
+                "message": f"크롤링 실패: {result.get('error') or result.get('message') or '알 수 없는 오류'}"
             }
     except Exception as e:
         analysis_tasks[task_id] = {
@@ -3554,6 +3618,34 @@ def init_board_db():
             approved_at TEXT NOT NULL
         )
     """)
+
+    # Table for admin notices (알림판)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS admin_notices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            notice_type TEXT DEFAULT 'warning',
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT
+        )
+    """)
+    
+    # Seed default urgent notice if none exist
+    cursor.execute("SELECT COUNT(*) FROM admin_notices")
+    if cursor.fetchone()[0] == 0:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("""
+            INSERT INTO admin_notices (title, content, notice_type, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, 1, ?, ?)
+        """, (
+            "🚨 [긴급 안내] 구글 AI 할당량 초과에 따른 권리분석 일시 이용 자제 안내",
+            "현재 구글 AI API 사용량 할당 초과(429 Quota Exceeded)로 인해 권리분석 생성에 제한이 발생하고 있습니다. 안정적인 서비스 정상화 및 쿼터 리셋을 위해 금일(하루 동안) 권리분석 기능 사용을 잠시 자제해 주시기를 부탁드립니다. (※ 지도 검색 및 기본 물건 분석은 정상 이용 가능합니다)",
+            "warning",
+            now_str,
+            now_str
+        ))
     conn.commit()
     conn.close()
 
@@ -3841,6 +3933,110 @@ async def delete_inquiry(inquiry_id: int, pin: Optional[str] = None, admin_key: 
     conn.commit()
     conn.close()
     return {"status": "success", "message": "삭제되었습니다."}
+
+
+# ----------------- 관리자 공지 알림판 API (Admin Notice System) -----------------
+class AdminNoticeRequest(BaseModel):
+    admin_key: str
+    title: str
+    content: str
+    notice_type: Optional[str] = "warning"
+    is_active: Optional[bool] = True
+
+class AdminNoticeToggleRequest(BaseModel):
+    admin_key: str
+    notice_id: int
+    is_active: bool
+
+@app.get("/api/notice")
+async def get_active_notice():
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    if not os.path.exists(db_path):
+        return {"status": "success", "notice": None}
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM admin_notices WHERE is_active = 1 ORDER BY id DESC LIMIT 1")
+        row = cursor.fetchone()
+        if not row:
+            return {"status": "success", "notice": None}
+        return {
+            "status": "success",
+            "notice": {
+                "id": row["id"],
+                "title": row["title"],
+                "content": row["content"],
+                "notice_type": row["notice_type"],
+                "is_active": bool(row["is_active"]),
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"]
+            }
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    finally:
+        conn.close()
+
+@app.get("/api/admin/notices")
+async def get_all_admin_notices(admin_key: str):
+    if not verify_admin_key(admin_key):
+        return {"status": "error", "message": "관리자 인증번호가 일치하지 않습니다."}
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM admin_notices ORDER BY id DESC")
+        rows = cursor.fetchall()
+        return {"status": "success", "notices": [dict(r) for r in rows]}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    finally:
+        conn.close()
+
+@app.post("/api/admin/notice")
+async def create_or_update_notice(req: AdminNoticeRequest):
+    if not verify_admin_key(req.admin_key):
+        return {"status": "error", "message": "관리자 인증번호가 일치하지 않습니다."}
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        if req.is_active:
+            cursor.execute("UPDATE admin_notices SET is_active = 0 WHERE is_active = 1")
+        cursor.execute("""
+            INSERT INTO admin_notices (title, content, notice_type, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (req.title, req.content, req.notice_type, 1 if req.is_active else 0, now_str, now_str))
+        conn.commit()
+        return {"status": "success", "message": "새로운 공지가 성공적으로 등록 및 반영되었습니다."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    finally:
+        conn.close()
+
+@app.post("/api/admin/notice/toggle")
+async def toggle_notice(req: AdminNoticeToggleRequest):
+    if not verify_admin_key(req.admin_key):
+        return {"status": "error", "message": "관리자 인증번호가 일치하지 않습니다."}
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        if req.is_active:
+            cursor.execute("UPDATE admin_notices SET is_active = 0 WHERE is_active = 1")
+        cursor.execute("UPDATE admin_notices SET is_active = ?, updated_at = ? WHERE id = ?",
+                       (1 if req.is_active else 0, now_str, req.notice_id))
+        conn.commit()
+        state_str = "활성화" if req.is_active else "비활성화(숨김)"
+        return {"status": "success", "message": f"공지가 {state_str} 상태로 변경되었습니다."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    finally:
+        conn.close()
 
 
 # ----------------- 소상공인 200m 반경 상권 분석 API -----------------
