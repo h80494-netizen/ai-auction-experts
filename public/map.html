@@ -1035,10 +1035,15 @@
             </div>
 
             
-            <div id="center-address-box" style="display: flex; align-items: center; justify-content: center; background: #fff; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color); font-weight: bold; color: var(--text-dark); cursor: pointer; min-width: 250px; text-align: center; margin: 0 15px;" onclick="addCenterMarker()">
+            <div id="center-address-box" style="display: flex; align-items: center; justify-content: center; background: #fff; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color); font-weight: bold; color: var(--text-dark); cursor: pointer; min-width: 250px; text-align: center; margin: 0 5px;" onclick="addCenterMarker()" title="중심 위치 마커 추가">
                 <i class="fa-solid fa-location-crosshairs" style="color: #ef4444; margin-right: 8px;"></i>
                 <span id="center-address-text">위치 불러오는 중...</span>
             </div>
+
+            <!-- 현재 주소 분석 버튼 -->
+            <button onclick="const addr=document.getElementById('center-address-text').innerText; if(addr && addr !== '위치 불러오는 중...') openAddressAnalysisModal(encodeURIComponent(addr)); else alert('위치를 불러오는 중입니다.');" style="display:flex; align-items:center; gap:6px; background:linear-gradient(135deg, #2563eb, #1d4ed8); color:#fff; border:none; border-radius:8px; padding:6px 12px; font-weight:700; font-size:0.82rem; cursor:pointer; white-space:nowrap; box-shadow:0 2px 4px rgba(37,99,235,0.2);" title="현재 주소 상권·입지·네이버시세 분석 보기">
+                <i class="fa-solid fa-chart-pie"></i> 상권·입지·시세 분석
+            </button>
 
             <!-- 지명 명소 검색창 (방법 C 및 지명 입력 요구사항) -->
             <div class="search-place-box" style="display: flex; align-items: center; background: #fff; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color); width: 260px; margin: 0 10px; transition: border-color 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
@@ -4678,6 +4683,7 @@ let cachedRedevelopmentZonesData = null;
                     const place = data.documents[0];
                     const lat = parseFloat(place.y);
                     const lng = parseFloat(place.x);
+                    const addr = place.road_address_name || place.address_name || query;
                     
                     // 기존 검색 마커가 있다면 제거
                     if (placeMarker) {
@@ -4699,12 +4705,17 @@ let cachedRedevelopmentZonesData = null;
                     
                     // 명소 팝업 피드백 바인딩 및 즉시 표시
                     placeMarker.bindPopup(`
-                        <div style="font-family:'Noto Sans KR', sans-serif; padding:6px 12px; min-width:180px;">
+                        <div style="font-family:'Noto Sans KR', sans-serif; padding:8px 12px; min-width:220px;">
                             <strong style="color:var(--primary-blue); font-size:1.05rem; display:block; margin-bottom:4px;">${place.place_name}</strong>
-                            <div style="font-size:0.8rem; color:#64748b; line-height:1.3; margin-bottom:2px;">지명 검색 결과</div>
-                            <div style="font-size:0.85rem; color:#334155; font-weight:500;">${place.road_address_name || place.address_name}</div>
+                            <div style="font-size:0.8rem; color:#64748b; line-height:1.3; margin-bottom:4px;">${addr}</div>
+                            <button onclick="openAddressAnalysisModal('${encodeURIComponent(addr)}', ${lat}, ${lng})" style="width:100%; margin-top:8px; padding:7px 10px; background:linear-gradient(135deg, #2563eb, #1d4ed8); color:#fff; border:none; border-radius:6px; font-weight:bold; font-size:0.82rem; cursor:pointer; box-shadow:0 2px 4px rgba(37,99,235,0.25);">
+                                <i class="fa-solid fa-chart-line" style="margin-right:4px;"></i> 상권·입지·네이버시세 분석
+                            </button>
                         </div>
                     `).openPopup();
+
+                    // 자동으로 상권/입지/네이버시세 통합 분석 모달 호출
+                    openAddressAnalysisModal(addr, lat, lng);
                 } else {
                     alert('검색 결과를 찾을 수 없습니다. 지명을 좀 더 정확하게 입력해주세요. (예: 잠실야구장)');
                 }
@@ -6989,6 +7000,310 @@ function toggleMapNotice() {
     }
 }
 window.addEventListener('DOMContentLoaded', checkMapNotice);
+</script>
+
+<!-- 주소 기반 상권 / 입지 / 네이버 시세 통합 분석 모달 -->
+<div id="addressAnalysisModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15, 23, 42, 0.7); backdrop-filter:blur(6px); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:#ffffff; border-radius:16px; width:92%; max-width:860px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); overflow:hidden; font-family:'Noto Sans KR', sans-serif; border:1px solid #e2e8f0;">
+        
+        <!-- Modal Header -->
+        <div style="background:linear-gradient(135deg, #1e293b, #0f172a); color:#ffffff; padding:18px 24px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="background:#2563eb; color:#fff; font-size:0.75rem; font-weight:bold; padding:3px 8px; border-radius:4px;">통합 리포트</span>
+                    <h3 id="addrModalTitle" style="margin:0; font-size:1.25rem; font-weight:700; color:#f8fafc;">주소 상권 · 입지 · 시세 분석</h3>
+                </div>
+                <div id="addrModalSubtitle" style="font-size:0.85rem; color:#94a3b8; margin-top:4px;">조회 주소: 데이터 불러오는 중...</div>
+            </div>
+            <button onclick="closeAddressAnalysisModal()" style="background:transparent; border:none; color:#94a3b8; font-size:1.5rem; cursor:pointer; padding:4px 8px; transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Tab Navigation Bar -->
+        <div style="display:flex; background:#f1f5f9; border-bottom:1px solid #e2e8f0; padding:0 24px; gap:10px;">
+            <button id="tabBtnLocation" onclick="switchAddrTab('location')" style="padding:14px 18px; border:none; background:transparent; font-weight:700; font-size:0.92rem; color:#2563eb; border-bottom:3px solid #2563eb; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-compass"></i> 입지 분석
+            </button>
+            <button id="tabBtnCommercial" onclick="switchAddrTab('commercial')" style="padding:14px 18px; border:none; background:transparent; font-weight:600; font-size:0.92rem; color:#64748b; border-bottom:3px solid transparent; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-store"></i> 상권 분석
+            </button>
+            <button id="tabBtnNaver" onclick="switchAddrTab('naver')" style="padding:14px 18px; border:none; background:transparent; font-weight:600; font-size:0.92rem; color:#64748b; border-bottom:3px solid transparent; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-building"></i> 네이버 시세 비교
+            </button>
+        </div>
+
+        <!-- Modal Body Content -->
+        <div style="padding:24px; overflow-y:auto; flex:1; background:#f8fafc;">
+            
+            <!-- Loading Indicator -->
+            <div id="addrLoadingSpinner" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 0;">
+                <div style="width:48px; height:48px; border:4px solid #e2e8f0; border-top:4px solid #2563eb; border-radius:50%; animation:spin 1s linear infinite;"></div>
+                <div style="margin-top:16px; font-weight:600; color:#475569;">입지·상권 및 네이버 시세 실시간 분석 중...</div>
+                <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+            </div>
+
+            <!-- Tab 1: 입지 분석 (Location) -->
+            <div id="tabContentLocation" style="display:none; flex-direction:column; gap:18px;">
+                <div style="background:#fff; border-radius:12px; padding:20px; border:1px solid #e2e8f0; box-shadow:0 2px 4px rgba(0,0,0,0.03); display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:0.85rem; color:#64748b; font-weight:600;">입지 종합 평가 점수</div>
+                        <div style="font-size:2rem; font-weight:900; color:#1e293b; margin-top:2px;" id="locScoreText">85점 <span style="font-size:0.9rem; font-weight:600; color:#10b981;">(우수)</span></div>
+                    </div>
+                    <div id="locTagsContainer" style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <!-- Tags inserted dynamically -->
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div style="background:#fff; border-radius:12px; padding:18px; border:1px solid #e2e8f0;">
+                        <div style="font-weight:700; color:#1e293b; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                            <i class="fa-solid fa-subway" style="color:#2563eb;"></i> 지하철 & 대중교통
+                        </div>
+                        <div id="locSubwayText" style="font-size:0.9rem; color:#334155; margin-bottom:8px;">신림역 (2호선, 신림선) 약 450m (도보 6분)</div>
+                        <div id="locBusText" style="font-size:0.85rem; color:#64748b;">인근 버스정류장 약 60m 이내</div>
+                    </div>
+
+                    <div style="background:#fff; border-radius:12px; padding:18px; border:1px solid #e2e8f0;">
+                        <div style="font-weight:700; color:#1e293b; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                            <i class="fa-solid fa-graduation-cap" style="color:#8b5cf6;"></i> 학군 & 생활 인프라
+                        </div>
+                        <div id="locSchoolText" style="font-size:0.9rem; color:#334155; margin-bottom:8px;">초·중·고 학군 형성지역 (도보권 초등학교 보유)</div>
+                        <div id="locInfraText" style="font-size:0.85rem; color:#64748b;">은행, 병원, 대형마트 및 주거 편의시설 양호</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: 상권 분석 (Commercial) -->
+            <div id="tabContentCommercial" style="display:none; flex-direction:column; gap:18px;">
+                <div style="background:#fff; border-radius:12px; padding:20px; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:0.85rem; color:#64748b; font-weight:600;">반경 500m 상권 유형</div>
+                        <div id="commDistrictType" style="font-size:1.3rem; font-weight:800; color:#2563eb; margin-top:2px;">근린 상업지역 / 생활상권</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.85rem; color:#64748b;">총 점포 수</div>
+                        <div id="commStoreCount" style="font-size:1.4rem; font-weight:800; color:#1e293b;">142개</div>
+                    </div>
+                </div>
+
+                <div style="background:#fff; border-radius:12px; padding:20px; border:1px solid #e2e8f0;">
+                    <div style="font-weight:700; color:#1e293b; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-chart-pie" style="color:#059669;"></i> 주요 업종 분포 (Top 5)
+                    </div>
+                    <div id="commCategoryList" style="display:flex; flex-direction:column; gap:10px;">
+                        <!-- Progress bars rendered dynamically -->
+                    </div>
+                </div>
+
+                <div style="background:#eff6ff; border-radius:12px; padding:16px; border:1px solid #bfdbfe; color:#1e3a8a; font-size:0.9rem; line-height:1.5;">
+                    <i class="fa-solid fa-circle-info" style="margin-right:6px;"></i>
+                    <span id="commSummaryText">주거 인근 생활밀착형 상권으로 안정적인 유동인구 기반이 형성되어 있습니다.</span>
+                </div>
+            </div>
+
+            <!-- Tab 3: 네이버 시세 비교 (Naver Price) -->
+            <div id="tabContentNaver" style="display:none; flex-direction:column; gap:18px;">
+                <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px;">
+                    <div style="background:#fff; border-radius:12px; padding:16px; border:1px solid #e2e8f0; text-align:center;">
+                        <div style="font-size:0.8rem; color:#64748b;">분석 매물 수</div>
+                        <div id="navMatchedCount" style="font-size:1.3rem; font-weight:800; color:#1e293b; margin-top:4px;">0건</div>
+                    </div>
+                    <div style="background:#fff; border-radius:12px; padding:16px; border:1px solid #e2e8f0; text-align:center;">
+                        <div style="font-size:0.8rem; color:#64748b;">중위 매매 시세</div>
+                        <div id="navMedianPrice" style="font-size:1.3rem; font-weight:800; color:#2563eb; margin-top:4px;">0억</div>
+                    </div>
+                    <div style="background:#fff; border-radius:12px; padding:16px; border:1px solid #e2e8f0; text-align:center;">
+                        <div style="font-size:0.8rem; color:#64748b;">평균 매매 시세</div>
+                        <div id="navAvgPrice" style="font-size:1.3rem; font-weight:800; color:#059669; margin-top:4px;">0억</div>
+                    </div>
+                    <div style="background:#fff; border-radius:12px; padding:16px; border:1px solid #e2e8f0; text-align:center;">
+                        <div style="font-size:0.8rem; color:#64748b;">평당 평균 시세</div>
+                        <div id="navPyeongPrice" style="font-size:1.3rem; font-weight:800; color:#7c3aed; margin-top:4px;">0만원/평</div>
+                    </div>
+                </div>
+
+                <div style="background:#fff; border-radius:12px; padding:20px; border:1px solid #e2e8f0;">
+                    <div style="font-weight:700; color:#1e293b; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between;">
+                        <span><i class="fa-solid fa-list-check" style="color:#3b82f6; margin-right:6px;"></i> 인근 네이버 등록 매물 샘플</span>
+                        <span style="font-size:0.8rem; color:#94a3b8;">반경 500m 내 기준</span>
+                    </div>
+                    <div id="navSampleList" style="display:flex; flex-direction:column; gap:8px;">
+                        <!-- Sample properties dynamically rendered -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Modal Footer -->
+        <div style="background:#fff; padding:14px 24px; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end;">
+            <button onclick="closeAddressAnalysisModal()" style="padding:8px 20px; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; border-radius:8px; font-weight:700; cursor:pointer;">닫기</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentAddrSummaryData = null;
+
+async function openAddressAnalysisModal(address, lat = null, lng = null) {
+    address = decodeURIComponent(address);
+    const modal = document.getElementById('addressAnalysisModal');
+    if (!modal) return;
+
+    modal.style.display = 'flex';
+    document.getElementById('addrLoadingSpinner').style.display = 'flex';
+    document.getElementById('tabContentLocation').style.display = 'none';
+    document.getElementById('tabContentCommercial').style.display = 'none';
+    document.getElementById('tabContentNaver').style.display = 'none';
+
+    document.getElementById('addrModalTitle').innerText = '주소 상권 · 입지 · 시세 분석';
+    document.getElementById('addrModalSubtitle').innerText = `조회 주소: ${address}`;
+
+    // Reset tabs
+    switchAddrTab('location');
+
+    try {
+        const res = await fetch('/api/analyze/address_summary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address: address, lat: lat, lng: lng })
+        });
+        const json = await res.json();
+
+        document.getElementById('addrLoadingSpinner').style.display = 'none';
+
+        if (json.status === 'success' && json.data) {
+            currentAddrSummaryData = json.data;
+            renderAddressSummaryData(json.data);
+        } else {
+            alert('주소 분석 데이터를 불러오는 데 실패했습니다.');
+        }
+    } catch(err) {
+        console.error('Failed to analyze address summary:', err);
+        document.getElementById('addrLoadingSpinner').style.display = 'none';
+        alert('분석 도중 통신 오류가 발생했습니다.');
+    }
+}
+
+function closeAddressAnalysisModal() {
+    const modal = document.getElementById('addressAnalysisModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function switchAddrTab(tabName) {
+    const locContent = document.getElementById('tabContentLocation');
+    const commContent = document.getElementById('tabContentCommercial');
+    const navContent = document.getElementById('tabContentNaver');
+
+    const btnLoc = document.getElementById('tabBtnLocation');
+    const btnComm = document.getElementById('tabBtnCommercial');
+    const btnNav = document.getElementById('tabBtnNaver');
+
+    const spinner = document.getElementById('addrLoadingSpinner');
+
+    // Default styles reset
+    [btnLoc, btnComm, btnNav].forEach(b => {
+        if (b) {
+            b.style.color = '#64748b';
+            b.style.borderBottom = '3px solid transparent';
+            b.style.fontWeight = '600';
+        }
+    });
+
+    if (locContent) locContent.style.display = 'none';
+    if (commContent) commContent.style.display = 'none';
+    if (navContent) navContent.style.display = 'none';
+
+    if (spinner && spinner.style.display !== 'none') return;
+
+    if (tabName === 'location') {
+        if (locContent) locContent.style.display = 'flex';
+        if (btnLoc) { btnLoc.style.color = '#2563eb'; btnLoc.style.borderBottom = '3px solid #2563eb'; btnLoc.style.fontWeight = '700'; }
+    } else if (tabName === 'commercial') {
+        if (commContent) commContent.style.display = 'flex';
+        if (btnComm) { btnComm.style.color = '#2563eb'; btnComm.style.borderBottom = '3px solid #2563eb'; btnComm.style.fontWeight = '700'; }
+    } else if (tabName === 'naver') {
+        if (navContent) navContent.style.display = 'flex';
+        if (btnNav) { btnNav.style.color = '#2563eb'; btnNav.style.borderBottom = '3px solid #2563eb'; btnNav.style.fontWeight = '700'; }
+    }
+}
+
+function renderAddressSummaryData(data) {
+    document.getElementById('addrModalSubtitle').innerText = `조회 주소: ${data.resolved_address || data.query}`;
+
+    // 1. 입지 분석 Render
+    const loc = data.location_analysis || {};
+    document.getElementById('locScoreText').innerHTML = `${loc.score || 85}점 <span style="font-size:0.9rem; font-weight:600; color:#10b981;">(우수)</span>`;
+    document.getElementById('locSubwayText').innerText = loc.subway_info || '-';
+    document.getElementById('locBusText').innerText = loc.bus_info || '-';
+    document.getElementById('locSchoolText').innerText = loc.school_info || '-';
+    document.getElementById('locInfraText').innerText = loc.infra_summary || '-';
+
+    const tagsContainer = document.getElementById('locTagsContainer');
+    if (tagsContainer) {
+        tagsContainer.innerHTML = (loc.tags || ['역세권', '생활편의']).map(t => 
+            `<span style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; font-size:0.75rem; font-weight:700; padding:4px 10px; border-radius:12px;">#${t}</span>`
+        ).join('');
+    }
+
+    // 2. 상권 분석 Render
+    const comm = data.commercial_analysis || {};
+    document.getElementById('commDistrictType').innerText = comm.district_type || '주거지 밀집 상권';
+    document.getElementById('commStoreCount').innerText = `${comm.store_count || 0}개`;
+    document.getElementById('commSummaryText').innerText = comm.summary || '-';
+
+    const catList = document.getElementById('commCategoryList');
+    if (catList) {
+        const topCats = comm.top_categories || [];
+        if (topCats.length > 0) {
+            catList.innerHTML = topCats.map(c => `
+                <div>
+                    <div style="display:flex; justify-space-between; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:4px;">
+                        <span>${c.category}</span>
+                        <span>${c.count}개 (${c.ratio}%)</span>
+                    </div>
+                    <div style="width:100%; background:#e2e8f0; height:8px; border-radius:4px; overflow:hidden;">
+                        <div style="width:${c.ratio}%; background:#059669; height:100%; border-radius:4px;"></div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            catList.innerHTML = '<div style="font-size:0.85rem; color:#64748b;">주변 상가 데이터 조회 완료 (주거 위주 지역)</div>';
+        }
+    }
+
+    // 3. 네이버 시세 비교 Render
+    const nav = data.naver_price_analysis || {};
+    document.getElementById('navMatchedCount').innerText = `${nav.matched_count || 0}건`;
+    document.getElementById('navMedianPrice').innerText = nav.median_price_eon ? `${nav.median_price_eon}억` : '시세정보 없음';
+    document.getElementById('navAvgPrice').innerText = nav.avg_price_eon ? `${nav.avg_price_eon}억` : '시세정보 없음';
+    document.getElementById('navPyeongPrice').innerText = nav.avg_pyeong_price_man ? `${nav.avg_pyeong_price_man.toLocaleString()}만원/평` : '-';
+
+    const sampleList = document.getElementById('navSampleList');
+    if (sampleList) {
+        const samples = nav.sample_properties || [];
+        if (samples.length > 0) {
+            sampleList.innerHTML = samples.map(s => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+                    <div>
+                        <strong style="color:#1e293b; font-size:0.9rem;">${s.name}</strong>
+                        <span style="font-size:0.8rem; color:#64748b; margin-left:8px;">${s.area} · ${s.floor}층</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <strong style="color:#2563eb; font-size:0.95rem;">${s.price}</strong>
+                        <div style="font-size:0.75rem; color:#94a3b8;">약 ${s.distance_m}m 인근</div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            sampleList.innerHTML = '<div style="font-size:0.85rem; color:#64748b; text-align:center; padding:12px;">주변 반경 내 동일 평형 네이버 매물 정보 탐색 완료</div>';
+        }
+    }
+
+    // Show initial location tab
+    switchAddrTab('location');
+}
 </script>
 </body>
 </html>
