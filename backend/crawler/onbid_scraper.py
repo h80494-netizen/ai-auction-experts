@@ -41,9 +41,19 @@ def _fetch_auctionmsg_sync(case_number: str, download_dir: str):
         parsed_data["address"] = data.get("address", "")
         parsed_data["status"] = data.get("status", "")
         
-        # 감정가, 최저가는 getGongme에서는 minprice만 존재. 감정가는 기본적으로 첫 입찰가이거나 없는 경우 예외 처리
+        # 감정가, 최저가 추출 (1순위: 감정가, 2순위: 1회차 입찰시작가, 3순위: 가장 빠른 입찰가/최저가)
+        appraised = data.get("estimatedprice")
+        if not appraised or str(appraised) == "0":
+            appraised = data.get("frstBidPrc")
+        if not appraised or str(appraised) == "0":
+            appraised = data.get("minprice")
+            
+        parsed_data["appraised_value"] = str(appraised or "")
         parsed_data["minimum_value"] = str(data.get("minprice") or "")
-        parsed_data["appraised_value"] = str(data.get("frstBidPrc") or data.get("minprice") or "")
+        
+        # 공매 재산종류 (압류재산, 신탁재산, 국유재산, 수의계약 등)
+        prpt_div = data.get("prptDivNm", "")
+        parsed_data["gongme_type"] = prpt_div if prpt_div else "기타일반재산(신탁 등)"
         
         parsed_data["property_type"] = data.get("category", "") or data.get("cltrUsgLclsCtgrNm", "")
         

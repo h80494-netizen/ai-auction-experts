@@ -122,8 +122,42 @@ searchCaseBtn.addEventListener('click', async () => {
             if (results && results.length > 0) {
                 renderAddressList(results);
                 secondaryInputScreen.style.display = 'flex';
-                // 첫 번째 물건 자동 선택
-                addressListContainer.querySelector('.address-btn').click();
+                
+                let targetBtn = null;
+                const btns = addressListContainer.querySelectorAll('.address-btn');
+                
+                if (typeof isAutoAnalyze !== 'undefined' && isAutoAnalyze && window.addressHintParam) {
+                    const hintTokens = window.addressHintParam.split(' ').slice(0, 3); // 주요 지역명 매칭을 위해 앞 3단어 추출
+                    let bestMatchIndex = 0;
+                    let maxMatches = -1;
+                    
+                    for (let i = 0; i < results.length; i++) {
+                        let matches = 0;
+                        const addr = results[i].address || "";
+                        const raw = results[i].raw_text || "";
+                        for (let t of hintTokens) {
+                            if (t && (addr.includes(t) || raw.includes(t))) matches++;
+                        }
+                        if (matches > maxMatches) {
+                            maxMatches = matches;
+                            bestMatchIndex = i;
+                        }
+                    }
+                    if (maxMatches > 0) {
+                        targetBtn = btns[bestMatchIndex];
+                    }
+                }
+                
+                if (isAutoAnalyze && !targetBtn && btns.length > 0) {
+                    targetBtn = btns[0];
+                }
+                
+                if (targetBtn) {
+                    targetBtn.click();
+                } else if (!isAutoAnalyze && results.length === 1) {
+                    // 수동 검색이고 결과가 1개일 때만 자동 선택
+                    btns[0].click();
+                }
                 
                 // 자동 권리분석 실행 연동
                 console.log("[Auto-Analyze] results loaded, isAutoAnalyze =", isAutoAnalyze);
@@ -887,6 +921,10 @@ function createWaterfallRow(label, value, maxVal, colorClass) {
 window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const caseParam = params.get('case');
+    const addressHintParam = params.get('addressHint');
+    if (addressHintParam) {
+        window.addressHintParam = addressHintParam;
+    }
     const investorTypeParam = params.get('investorType');
 
     if (investorTypeParam && document.getElementById('investorType')) {

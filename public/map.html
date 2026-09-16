@@ -4189,7 +4189,7 @@ let cachedRedevelopmentZonesData = null;
                                 ${cleanNotes ? `<tr><td style="color:#ef4444; padding:3px 0; font-weight:bold;">특수권리</td><td style="text-align:right; font-size:0.8rem; color:#ef4444; word-break:keep-all;">${cleanNotes}</td></tr>` : ''}
                             </table>
                             <button onclick="window.openBasicInfo('${d.case_no}')" style="width:100%; background:#0ea5e9; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; touch-action:manipulation; margin-bottom: 8px;"><i class="fa-solid fa-circle-info"></i> 기본정보 보기</button>
-                            <button onclick="openAnalysisModal('${d.case_no}')" style="width:100%; background:var(--primary-blue); color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; touch-action:manipulation;"><i class="fa-solid fa-scale-balanced"></i> 권리분석 리포트</button>
+                            <button onclick="openAnalysisModal('${d.case_no}', '${escapedAddress}')" style="width:100%; background:var(--primary-blue); color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; touch-action:manipulation;"><i class="fa-solid fa-scale-balanced"></i> 권리분석 리포트</button>
                             <button onclick="openDemandPanel(${d.lat}, ${d.lng}, '${d.case_no}', '${escapedAddress}', '${d.property_type}', ${d.area_size || 0}); map.closePopup();" style="width:100%; background:#8b5cf6; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; margin-top: 8px; touch-action:manipulation;"><i class="fa-solid ${demandBtnIcon}"></i> ${demandBtnText}</button>
                             <button onclick="openNaverPriceModal('${d.case_no}', ${d.lat}, ${d.lng}, '${d.property_type}', ${d.area_size || 0});" style="width:100%; background:#f59e0b; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; margin-top: 8px; touch-action:manipulation;"><i class="fa-solid fa-chart-line"></i> 네이버 시세 분석</button>
 
@@ -6921,8 +6921,10 @@ window.openBasicInfo = function(caseNo) {
     }
 }
 
-function openAnalysisModal(caseNo) {
+let currentAnalysisAddress = '';
+function openAnalysisModal(caseNo, address = '') {
     currentAnalysisCaseNo = caseNo;
+    currentAnalysisAddress = address;
     document.getElementById('analysisConditionModal').style.display = 'flex';
 }
 function closeAnalysisModal() {
@@ -6937,7 +6939,7 @@ function confirmAnalysisModal() {
     
     closeAnalysisModal();
     
-    const url = `/?case=${currentAnalysisCaseNo}&investorType=${investorType}&targetYield=${targetYield}&investTerm=${investTerm}&isRegulated=${isRegulated}`;
+    const url = `/?case=${currentAnalysisCaseNo}&addressHint=${encodeURIComponent(currentAnalysisAddress)}&investorType=${investorType}&targetYield=${targetYield}&investTerm=${investTerm}&isRegulated=${isRegulated}`;
     
     if (window.innerWidth <= 768) {
         window.location.href = url;
