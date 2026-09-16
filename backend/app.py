@@ -4343,24 +4343,26 @@ async def api_address_summary(req: AddressSummaryRequest):
             target_senior_debt=0
         )
         if res and "error" not in res:
-            matched_props = res.get("matched_properties", [])
-            naver_summary["matched_count"] = res.get("total_matched", len(matched_props))
-            naver_summary["median_price_eon"] = round(res.get("median_price", 0), 2)
-            naver_summary["avg_price_eon"] = round(res.get("avg_price", 0), 2)
-            naver_summary["min_price_eon"] = round(res.get("min_price", 0), 2)
+            matched_props = res.get("properties", [])
+            m_prices = res.get("market_prices", {})
+            
+            naver_summary["matched_count"] = res.get("matched_count", len(matched_props))
+            naver_summary["median_price_eon"] = round(m_prices.get("median_price", 0), 2)
+            naver_summary["avg_price_eon"] = round(m_prices.get("avg_price", 0), 2)
+            naver_summary["min_price_eon"] = round(m_prices.get("min_price", 0), 2)
             
             if matched_props:
-                prices = [p.get("price_total", 0) for p in matched_props if p.get("price_total", 0) > 0]
+                prices = [p.get("price", 0) for p in matched_props if p.get("price", 0) > 0]
                 if prices:
                     naver_summary["max_price_eon"] = round(max(prices), 2)
                 
                 samples = []
                 for p in matched_props[:8]:
                     samples.append({
-                        "name": p.get("title") or p.get("building_name") or f"네이버 매물 ({prop_type})",
-                        "price": f"{round(p.get('price_total', 0), 2)}억",
-                        "area": f"{p.get('area_pyeong', '25')}평",
-                        "floor": p.get("floor", "-"),
+                        "name": p.get("address") or f"네이버 매물 ({prop_type})",
+                        "price": f"{round(p.get('price', 0), 2)}억",
+                        "area": f"{p.get('pyeong', '25')}평",
+                        "floor": p.get("floor_display", "-"),
                         "distance_m": round(p.get("distance", 0))
                     })
                 naver_summary["sample_properties"] = samples
