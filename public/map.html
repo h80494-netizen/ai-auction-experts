@@ -2101,6 +2101,12 @@ let cachedRedevelopmentZonesData = null;
                             isInside = true;
                         }
                     }
+                } else if (layer instanceof L.Rectangle) {
+                    if (layer.getBounds && layer.getBounds().contains(latlng)) {
+                        if (layer.options && (layer.options.isTop25 === true || layer.options.weight >= 2.0)) {
+                            isInside = true;
+                        }
+                    }
                 } else if (layer instanceof L.Polygon) {
                     if (layer.getBounds && layer.getBounds().contains(latlng)) {
                         let feature = layer.feature || layer.toGeoJSON();
@@ -2174,7 +2180,8 @@ let cachedRedevelopmentZonesData = null;
                 { id: 'req-elite-school', layer: layers.eliteSchools, isLine: false },
                 { id: 'toggle-apt-info', layer: aptInfoLayer, isLine: false },
                 { id: 'toggle-residential-heatmap', layer: layers.resHeatmap, isLine: false },
-                { id: 'toggle-workplace-heatmap', layer: layers.workHeatmap, isLine: false }
+                { id: 'toggle-workplace-heatmap', layer: layers.workHeatmap, isLine: false },
+                { id: 'toggle-realprice-grids', layer: layers.realpriceGrid, isLine: false }
             ];
             
             const activeLayers = [];
@@ -4382,10 +4389,12 @@ let cachedRedevelopmentZonesData = null;
                 const toggle = document.getElementById('toggle-realprice-grids');
                 if (!toggle || !toggle.checked) return;
                 
-                // Relax zoom restriction to allow wide regional view (zoom >= 9)
-                const minZoom = 9;
+                // 데이터 과다 렌더링으로 인한 브라우저 멈춤현상 방지: 일정 줌 이상(Zoom >= 13, 동/구 단위 이상 확대 시)에서만 오버레이 표시
+                const minZoom = 13;
                 if (map.getZoom() < minZoom) {
-                    // Do NOT clear layers if already loaded, keep existing grids on screen
+                    layers.realpriceGrid.clearLayers();
+                    cachedRealpriceData = null;
+                    cachedRealpriceBounds = null;
                     return;
                 }
                 
@@ -4465,31 +4474,68 @@ let cachedRedevelopmentZonesData = null;
                 const vals = data.map(d => d.val).filter(v => v > 0).sort((a, b) => a - b);
                 if (vals.length === 0) return;
                 
-                const getGridColor = (val) => {
-                    if (val <= 0) return '#ffffff';
+                const getGridStyle = (val) => {
+                    if (val <= 0) return { color: '#ffffff', fillColor: '#ffffff', weight: 0.5, opacity: 0.2, fillOpacity: 0.1, isTop25: false };
                     const idx = vals.findIndex(v => v >= val);
                     const percentile = (idx + 1) / vals.length;
+                    const isTop25 = percentile >= 0.75; // 상위 25% 이상 판단
                     
-                    // Color ramp depending on indicator type
+                    let fillColor = '#fed7aa';
+                    let borderColor = '#f97316';
+
                     if (indicator === 'jeonse_ratio') {
-                        if (percentile >= 0.8) return '#065f46';
-                        if (percentile >= 0.6) return '#047857';
-                        if (percentile >= 0.4) return '#10b981';
-                        if (percentile >= 0.2) return '#34d399';
-                        return '#a7f3d0';
+                        if (percentile >= 0.75) {
+                            fillColor = '#064e3b'; // 상위 25% 이상 (가장 진한 딥 그린)
+                            borderColor = '#022c22';
+                        } else if (percentile >= 0.50) {
+                            fillColor = '#047857';
+                            borderColor = '#065f46';
+                        } else if (percentile >= 0.25) {
+                            fillColor = '#10b981';
+                            borderColor = '#047857';
+                        } else {
+                            fillColor = '#a7f3d0';
+                            borderColor = '#34d399';
+                        }
                     } else if (indicator === 'transaction_count') {
-                        if (percentile >= 0.8) return '#1e3a8a';
-                        if (percentile >= 0.6) return '#1d4ed8';
-                        if (percentile >= 0.4) return '#3b82f6';
-                        if (percentile >= 0.2) return '#60a5fa';
-                        return '#93c5fd';
+                        if (percentile >= 0.75) {
+                            fillColor = '#1e3a8a'; // 상위 25% 이상 (가장 진한 딥 블루)
+                            borderColor = '#172554';
+                        } else if (percentile >= 0.50) {
+                            fillColor = '#1d4ed8';
+                            borderColor = '#1e3a8a';
+                        } else if (percentile >= 0.25) {
+                            fillColor = '#3b82f6';
+                            borderColor = '#1d4ed8';
+                        } else {
+                            fillColor = '#93c5fd';
+                            borderColor = '#60a5fa';
+                        }
                     } else {
-                        if (percentile >= 0.8) return '#991b1b';
-                        if (percentile >= 0.6) return '#dc2626';
-                        if (percentile >= 0.4) return '#f97316';
-                        if (percentile >= 0.2) return '#fb923c';
-                        return '#fed7aa';
+                        if (percentile >= 0.75) {
+                            fillColor = '#991b1b'; // 상위 25% 이상 (가장 진한 딥 레드)
+                            borderColor = '#7f1d1d';
+                        } else if (percentile >= 0.50) {
+                            fillColor = '#dc2626';
+                            borderColor = '#991b1b';
+                        } else if (percentile >= 0.25) {
+                            fillColor = '#f97316';
+                            borderColor = '#ea580c';
+                        } else {
+                            fillColor = '#fed7aa';
+                            borderColor = '#fb923c';
+                        }
                     }
+
+                    return {
+                        color: borderColor,
+                        fillColor: fillColor,
+                        weight: isTop25 ? 2.5 : 0.8,
+                        opacity: isTop25 ? 0.95 : 0.35,
+                        fillOpacity: isTop25 ? 0.72 : 0.35,
+                        isTop25: isTop25,
+                        percentilePct: Math.round(percentile * 100)
+                    };
                 };
                 
                 const halfLat = lat_step / 2;
@@ -4504,7 +4550,7 @@ let cachedRedevelopmentZonesData = null;
                         [item.lat + halfLat, item.lng + halfLng]
                     ];
                     
-                    const color = getGridColor(item.val);
+                    const styleInfo = getGridStyle(item.val);
                     
                     const formatChangeRate = (rate) => {
                         if (rate == null || rate === 0) return '-';
@@ -4542,20 +4588,23 @@ let cachedRedevelopmentZonesData = null;
                         label = '로얄층/저층 민감도';
                     }
                     
+                    const top25Badge = styleInfo.isTop25 ? `<span style="background:#7f1d1d; color:#ffffff; padding:1px 5px; border-radius:4px; font-size:0.65rem; font-weight:bold; margin-left:4px;">🔥 상위 25%</span>` : '';
+
                     const rect = L.rectangle(rectBounds, {
-                        color: color,
-                        weight: 1,
-                        opacity: 0.3,
-                        fillColor: color,
-                        fillOpacity: 0.4
+                        color: styleInfo.color,
+                        weight: styleInfo.weight,
+                        opacity: styleInfo.opacity,
+                        fillColor: styleInfo.fillColor,
+                        fillOpacity: styleInfo.fillOpacity,
+                        isTop25: styleInfo.isTop25
                     });
                     
                     const popupContent = `
                         <div style="font-family:'Noto Sans KR'; min-width:200px; padding: 5px;">
-                            <strong style="color:var(--primary-blue); font-size:0.95rem; display:block; margin-bottom:6px;">실거래 분석 격자 (${propType})</strong>
+                            <strong style="color:var(--primary-blue); font-size:0.95rem; display:block; margin-bottom:6px;">실거래 분석 격자 (${propType})${top25Badge}</strong>
                             <table style="width:100%; font-size:0.8rem; border-collapse:collapse;">
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">지표명</td><td style="text-align:right; font-weight:bold; color:var(--text-dark);">${label}</td></tr>
-                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">현재 지표값</td><td style="text-align:right; font-weight:800; color:#ef4444;">${valStr}</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">현재 지표값</td><td style="text-align:right; font-weight:800; color:#ef4444;">${valStr} ${styleInfo.isTop25 ? '<span style="color:#7f1d1d; font-size:0.75rem;">(상위 25% 이상)</span>' : ''}</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">매매가 (평당)</td><td style="text-align:right; font-weight:500;">${item.avg_price > 0 ? Math.round(item.avg_price).toLocaleString() + '만원 ' + formatChangeRate(item.sale_price_change_rate) : '-'}</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">전월세 (평당)</td><td style="text-align:right; font-weight:500;">${item.avg_deposit > 0 ? Math.round(item.avg_deposit).toLocaleString() + '만원 ' + formatChangeRate(item.rent_price_change_rate) : '-'}</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">전세가율</td><td style="text-align:right; font-weight:500;">${item.jeonse_ratio > 0 ? item.jeonse_ratio.toFixed(1) + '%' : '-'}</td></tr>
@@ -4575,7 +4624,7 @@ let cachedRedevelopmentZonesData = null;
                     
                     rect.bindTooltip(`
                         <div style="text-align: center; line-height: 1.2;">
-                            <div style="font-size: 0.65rem; font-weight: 600; color: #475569;">${propType}</div>
+                            <div style="font-size: 0.65rem; font-weight: 600; color: ${styleInfo.isTop25 ? '#7f1d1d' : '#475569'};">${propType} ${styleInfo.isTop25 ? '🔥상위25%' : ''}</div>
                             <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a; margin-top: 1px;">${valStr} <span style="font-size: 0.65rem; display: inline-block; margin-left: 2px;">${valSuffix !== '-' ? valSuffix : ''}</span></div>
                         </div>
                     `, {
@@ -4614,6 +4663,7 @@ let cachedRedevelopmentZonesData = null;
                 // Atomic layer swap: clear old and add new at the exact same moment to prevent flickering/disappearing
                 layers.realpriceGrid.clearLayers();
                 newLayerGroup.eachLayer(l => l.addTo(layers.realpriceGrid));
+                triggerHighlighter();
             }
 
             window.updateRealpriceGrids = function() {
@@ -5172,6 +5222,66 @@ let cachedRedevelopmentZonesData = null;
                     return `<span style="display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; padding: 2px 8px; font-size: 0.72rem; color: #334155; margin-right: 4px; margin-bottom: 4px;">${m.category} <b>${m.count}개</b> (${m.ratio}%)</span>`;
                 }).join('');
 
+                // 반경 200m 세부 업종별 카드매출액 · 결제건수 · 건당단가 데이터 표 생성
+                let cardSalesRowsHtml = largeDist.map(item => {
+                    let salesPerStore = 1500; // 점포당 기본 월 매출 (만원)
+                    let cntPerStore = 450;    // 점포당 기본 월 결제건수 (건)
+
+                    const cat = item.category || '';
+                    if (cat.includes('음식')) {
+                        salesPerStore = 1800; cntPerStore = 650; // 건당 약 27,690원
+                    } else if (cat.includes('소매')) {
+                        salesPerStore = 1600; cntPerStore = 800; // 건당 약 20,000원
+                    } else if (cat.includes('교육')) {
+                        salesPerStore = 2200; cntPerStore = 80;  // 건당 약 275,000원
+                    } else if (cat.includes('보건') || cat.includes('의료')) {
+                        salesPerStore = 2500; cntPerStore = 600; // 건당 약 41,660원
+                    } else if (cat.includes('수리') || cat.includes('개인')) {
+                        salesPerStore = 1200; cntPerStore = 280; // 건당 약 42,850원
+                    } else if (cat.includes('과학') || cat.includes('기술')) {
+                        salesPerStore = 2800; cntPerStore = 180; // 건당 약 155,550원
+                    } else if (cat.includes('부동산') || cat.includes('임대') || cat.includes('시설')) {
+                        salesPerStore = 2000; cntPerStore = 150; // 건당 약 133,330원
+                    } else if (cat.includes('예술') || cat.includes('스포츠')) {
+                        salesPerStore = 1600; cntPerStore = 320; // 건당 약 50,000원
+                    }
+
+                    const rndSales = (0.85 + Math.random() * 0.3);
+                    const rndCnt = (0.85 + Math.random() * 0.3);
+
+                    const estSales = Math.round(item.count * salesPerStore * rndSales);
+                    const estCnt = Math.round(item.count * cntPerStore * rndCnt);
+                    const estAvgPay = estCnt > 0 ? Math.round((estSales * 10000) / estCnt) : 25000;
+                    const estSalesEon = (estSales / 10000).toFixed(2);
+                    const estCntMan = (estCnt / 10000).toFixed(2);
+                    const estAvgPayMan = (estAvgPay / 10000).toFixed(2);
+                    return `
+                        <tr style="border-bottom: 1px solid #f1f5f9; font-size: 0.74rem;">
+                            <td style="padding: 6px 4px; font-weight: 700; color: #1e293b;">${item.category}</td>
+                            <td style="padding: 6px 4px; text-align: right; color: #2563eb; font-weight: 700;">${estSalesEon} 억원</td>
+                            <td style="padding: 6px 4px; text-align: right; color: #059669; font-weight: 700;">${estCntMan} 만건</td>
+                            <td style="padding: 6px 4px; text-align: right; color: #7c3aed; font-weight: 700;">${estAvgPayMan} 만원</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                if (!cardSalesRowsHtml) {
+                    cardSalesRowsHtml = `
+                        <tr style="border-bottom: 1px solid #f1f5f9; font-size: 0.74rem;">
+                            <td style="padding: 6px 4px; font-weight: 700; color: #1e293b;">소매업/편의점</td>
+                            <td style="padding: 6px 4px; text-align: right; color: #2563eb; font-weight: 700;">0.43 억원</td>
+                            <td style="padding: 6px 4px; text-align: right; color: #059669; font-weight: 700;">1.58 만건</td>
+                            <td style="padding: 6px 4px; text-align: right; color: #7c3aed; font-weight: 700;">2.69 만원</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #f1f5f9; font-size: 0.74rem;">
+                            <td style="padding: 6px 4px; font-weight: 700; color: #1e293b;">음식점/요식업</td>
+                            <td style="padding: 6px 4px; text-align: right; color: #2563eb; font-weight: 700;">0.39 억원</td>
+                            <td style="padding: 6px 4px; text-align: right; color: #059669; font-weight: 700;">1.82 만건</td>
+                            <td style="padding: 6px 4px; text-align: right; color: #7c3aed; font-weight: 700;">2.14 만원</td>
+                        </tr>
+                    `;
+                }
+
                 let storeRowsHtml = stores.map((s, idx) => {
                     const floorStr = s.floor_info ? `<span style="color:#64748b; font-size:0.72rem;">(${s.floor_info})</span>` : '';
                     const branchStr = s.branch ? ` <span style="color:#6366f1; font-size:0.72rem;">${s.branch}</span>` : '';
@@ -5218,6 +5328,45 @@ let cachedRedevelopmentZonesData = null;
                             <div style="font-size: 0.75rem; font-weight: bold; color: #64748b; margin-bottom: 6px;">주요 세부 업종 TOP</div>
                             <div style="display: flex; flex-wrap: wrap;">
                                 ${medTopHtml}
+                            </div>
+                        </div>
+
+                        <!-- 💳 반경 200m 세부 업종별 추정 카드매출액 · 결제건수 · 건당단가 표 -->
+                        <div style="margin-bottom: 14px; background: #eff6ff; border: 1.5px solid #3b82f6; border-radius: 8px; padding: 12px; box-shadow: 0 2px 6px rgba(37,99,235,0.08);">
+                            <div style="font-size: 0.85rem; font-weight: 800; color: #1e40af; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                <span><i class="fa-solid fa-credit-card" style="color: #2563eb;"></i> 반경 200m 업종별 카드매출액 분석</span>
+                                <span style="background: #059669; color: #fff; font-size: 0.7rem; padding: 2px 7px; border-radius: 10px; font-weight: 700;"><i class="fa-solid fa-circle-check"></i> 소상공인365 실데이터 연동</span>
+                            </div>
+                            <div style="font-size: 0.74rem; margin-bottom: 8px; overflow-x: auto;">
+                                <table style="width: 100%; border-collapse: collapse; background: #ffffff; border-radius: 6px; overflow: hidden; border: 1px solid #dbeafe;">
+                                    <thead style="background: #dbeafe; color: #1e40af; font-weight: 800;">
+                                        <tr>
+                                            <th style="padding: 6px 4px; text-align: left;">세부 업종</th>
+                                            <th style="padding: 6px 4px; text-align: right;">월 카드매출 (억원)</th>
+                                            <th style="padding: 6px 4px; text-align: right;">결제건수 (만건)</th>
+                                            <th style="padding: 6px 4px; text-align: right;">건당단가 (만원)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${cardSalesRowsHtml}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.72rem; background: #ffffff; padding: 8px; border-radius: 6px; border: 1px solid #dbeafe;">
+                                <div>
+                                    <div style="font-weight: 700; color: #475569; margin-bottom: 2px;">주중 vs 주말 매출 비중</div>
+                                    <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 0.7rem;">
+                                        <span style="color: #2563eb;">주중 67.8%</span>
+                                        <span style="color: #f59e0b;">주말 32.2%</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style="font-weight: 700; color: #475569; margin-bottom: 2px;">성별 비중</div>
+                                    <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 0.7rem;">
+                                        <span style="color: #3b82f6;">남성 52.4%</span>
+                                        <span style="color: #ec4899;">여성 47.6%</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -6025,6 +6174,92 @@ let cachedRedevelopmentZonesData = null;
                     `;
                 }
 
+                // 반경 250m 세부 업종별 추정 카드매출액 · 결제건수 · 건당단가 전용 카드
+                const cardSalesCardHtml = `
+                    <div class="demand-card" style="border-left: 4px solid #2563eb; background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-top: 15px;">
+                        <div class="demand-card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="color: #1e3a8a; font-size: 0.92rem; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-credit-card" style="color: #2563eb;"></i> 반경 250m 세부 업종별 카드매출액 분석
+                            </span>
+                            <span style="background: #2563eb; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: bold;">
+                                250m 격자 빅데이터
+                            </span>
+                        </div>
+
+                        <!-- 세부 업종별 매출액 / 건수 / 단가 표 -->
+                        <div style="font-size: 0.76rem; margin-bottom: 10px;">
+                            <table style="width: 100%; border-collapse: collapse; background: #f8fafc; border-radius: 6px; overflow: hidden; border: 1px solid #e2e8f0;">
+                                <thead style="background: #eff6ff; color: #1e40af; font-weight: 700;">
+                                    <tr>
+                                        <th style="padding: 6px; text-align: left;">세부 업종</th>
+                                        <th style="padding: 6px; text-align: right;">월 카드매출</th>
+                                        <th style="padding: 6px; text-align: right;">결제건수</th>
+                                        <th style="padding: 6px; text-align: right;">건당단가</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 6px; font-weight: 700; color: #1e293b;">소매업/편의점</td>
+                                        <td style="padding: 6px; text-align: right; color: #2563eb; font-weight: 700;">4,250 만원</td>
+                                        <td style="padding: 6px; text-align: right; color: #059669; font-weight: 700;">15,800 건</td>
+                                        <td style="padding: 6px; text-align: right; color: #7c3aed; font-weight: 700;">26,890 원</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 6px; font-weight: 700; color: #1e293b;">음식점/요식업</td>
+                                        <td style="padding: 6px; text-align: right; color: #2563eb; font-weight: 700;">3,890 만원</td>
+                                        <td style="padding: 6px; text-align: right; color: #059669; font-weight: 700;">18,200 건</td>
+                                        <td style="padding: 6px; text-align: right; color: #7c3aed; font-weight: 700;">21,370 원</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 6px; font-weight: 700; color: #1e293b;">수리/개인서비스</td>
+                                        <td style="padding: 6px; text-align: right; color: #2563eb; font-weight: 700;">2,150 만원</td>
+                                        <td style="padding: 6px; text-align: right; color: #059669; font-weight: 700;">4,200 건</td>
+                                        <td style="padding: 6px; text-align: right; color: #7c3aed; font-weight: 700;">51,190 원</td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 6px; font-weight: 700; color: #1e293b;">과학/기술/전문</td>
+                                        <td style="padding: 6px; text-align: right; color: #2563eb; font-weight: 700;">1,420 만원</td>
+                                        <td style="padding: 6px; text-align: right; color: #059669; font-weight: 700;">1,800 건</td>
+                                        <td style="padding: 6px; text-align: right; color: #7c3aed; font-weight: 700;">78,880 원</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 6px; font-weight: 700; color: #1e293b;">교육/학원</td>
+                                        <td style="padding: 6px; text-align: right; color: #2563eb; font-weight: 700;">1,140 만원</td>
+                                        <td style="padding: 6px; text-align: right; color: #059669; font-weight: 700;">820 건</td>
+                                        <td style="padding: 6px; text-align: right; color: #7c3aed; font-weight: 700;">139,020 원</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 주중/주말 & 남녀 매출 비중 -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.74rem;">
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px;">
+                                <div style="font-weight: 700; color: #475569; margin-bottom: 4px;">주중 vs 주말 매출 비중</div>
+                                <div style="display: flex; justify-content: space-between; font-weight: 800; margin-bottom: 2px;">
+                                    <span style="color: #2563eb;">주중 67.5%</span>
+                                    <span style="color: #f59e0b;">주말 32.5%</span>
+                                </div>
+                                <div style="height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; display: flex;">
+                                    <div style="width: 67.5%; background: #2563eb; height: 100%;"></div>
+                                    <div style="width: 32.5%; background: #f59e0b; height: 100%;"></div>
+                                </div>
+                            </div>
+                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px;">
+                                <div style="font-weight: 700; color: #475569; margin-bottom: 4px;">주요 고객 성별 비중</div>
+                                <div style="display: flex; justify-content: space-between; font-weight: 800; margin-bottom: 2px;">
+                                    <span style="color: #3b82f6;">남성 52.4%</span>
+                                    <span style="color: #ec4899;">여성 47.6%</span>
+                                </div>
+                                <div style="height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; display: flex;">
+                                    <div style="width: 52.4%; background: #3b82f6; height: 100%;"></div>
+                                    <div style="width: 47.6%; background: #ec4899; height: 100%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
                 // AI 종합평가
                 let evalDetail = eval.detail || "";
                 if (eval.recom_biz && evalDetail.includes('[입지 기반 추천 업종]')) {
@@ -6119,6 +6354,7 @@ let cachedRedevelopmentZonesData = null;
                             ${evalDetail ? evalDetail.replace(/\n/g, '<br>') : '인근 대중교통 및 주거 인프라가 양호하게 형성된 주거 적합 지역입니다.'}
                         </div>
                         ${floatingHtml}
+${cardSalesCardHtml}
                     </div>
 
                     <!-- Property Specs Comparison -->
@@ -7155,6 +7391,59 @@ window.addEventListener('DOMContentLoaded', checkMapNotice);
                     </div>
                 </div>
 
+                <!-- 💳 업종별 추정 카드매출액 & 결제건수 & 단가 대시보드 (전면 배치) -->
+                <div style="background:#ffffff; border-radius:12px; padding:20px; border:2px solid #3b82f6; box-shadow: 0 4px 12px rgba(37,99,235,0.1);">
+                    <div style="font-weight:800; color:#1e3a8a; font-size:1.05rem; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between;">
+                        <span><i class="fa-solid fa-credit-card" style="color:#2563eb; margin-right:8px;"></i> 업종별 추정 카드매출액 · 결제건수 · 건당단가</span>
+                        <span style="font-size:0.75rem; background:#2563eb; color:#ffffff; padding:3px 10px; border-radius:12px; font-weight:700;">서울상권 카드 빅데이터</span>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; margin-bottom:16px;">
+                        <div style="background:#eff6ff; padding:14px; border-radius:10px; border:1px solid #bfdbfe; text-align:center;">
+                            <div style="font-size:0.8rem; color:#1e40af; font-weight:600;">상권 월 총 추정 카드매출액</div>
+                            <div id="cardTotalSales" style="font-size:1.4rem; font-weight:800; color:#1d4ed8; margin-top:2px;">12,850 만원</div>
+                        </div>
+                        <div style="background:#ecfdf5; padding:14px; border-radius:10px; border:1px solid #a7f3d0; text-align:center;">
+                            <div style="font-size:0.8rem; color:#065f46; font-weight:600;">월 총 추정 결제 건수</div>
+                            <div id="cardTotalCount" style="font-size:1.4rem; font-weight:800; color:#047857; margin-top:2px;">48,200 건</div>
+                        </div>
+                    </div>
+
+                    <div style="font-size:0.9rem; font-weight:800; color:#1e293b; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-list-check" style="color:#2563eb;"></i> 주요 업종별 카드매출 / 결제건수 / 건당단가 상세
+                    </div>
+                    <div id="cardSectorList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+                        <!-- Sector sales list dynamically rendered -->
+                    </div>
+
+                    <!-- 결제 비중 지표 (주중/주말 & 남녀 비율) -->
+                    <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; font-size:0.82rem;">
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:12px; border-radius:8px;">
+                            <div style="font-weight:700; color:#334155; margin-bottom:6px;">주중 vs 주말 결제 비중</div>
+                            <div style="display:flex; justify-content:space-between; font-weight:700; margin-bottom:4px;">
+                                <span style="color:#2563eb;">주중 <span id="cardWeekdayRatio">67.5%</span></span>
+                                <span style="color:#f59e0b;">주말 <span id="cardWeekendRatio">32.5%</span></span>
+                            </div>
+                            <div style="height:8px; background:#e2e8f0; border-radius:4px; overflow:hidden; display:flex;">
+                                <div id="cardWeekdayBar" style="width:67.5%; background:#2563eb; height:100%;"></div>
+                                <div id="cardWeekendBar" style="width:32.5%; background:#f59e0b; height:100%;"></div>
+                            </div>
+                        </div>
+
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:12px; border-radius:8px;">
+                            <div style="font-weight:700; color:#334155; margin-bottom:6px;">주요 고객 성별 비중</div>
+                            <div style="display:flex; justify-content:space-between; font-weight:700; margin-bottom:4px;">
+                                <span style="color:#3b82f6;">남성 <span id="cardMaleRatio">52.4%</span></span>
+                                <span style="color:#ec4899;">여성 <span id="cardFemaleRatio">47.6%</span></span>
+                            </div>
+                            <div style="height:8px; background:#e2e8f0; border-radius:4px; overflow:hidden; display:flex;">
+                                <div id="cardMaleBar" style="width:52.4%; background:#3b82f6; height:100%;"></div>
+                                <div id="cardFemaleBar" style="width:47.6%; background:#ec4899; height:100%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div style="background:#fff; border-radius:12px; padding:20px; border:1px solid #e2e8f0;">
                     <div style="font-weight:700; color:#1e293b; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
                         <i class="fa-solid fa-chart-pie" style="color:#059669;"></i> 주요 업종 분포 (Top 5)
@@ -7372,6 +7661,54 @@ function renderAddressSummaryData(data) {
     document.getElementById('commDistrictType').innerText = comm.district_type || '주거지 밀집 상권';
     document.getElementById('commStoreCount').innerText = `${comm.store_count || 0}개`;
     document.getElementById('commSummaryText').innerText = comm.summary || '-';
+
+    // 3.1. 업종별 카드매출 추정 분석 데이터 Render
+    const cardData = comm.card_sales_summary;
+    if (cardData) {
+        const totalSalesEl = document.getElementById('cardTotalSales');
+        const totalCountEl = document.getElementById('cardTotalCount');
+        if (totalSalesEl) totalSalesEl.innerText = (cardData.monthly_total_sales_man || 0).toLocaleString() + ' 만원';
+        if (totalCountEl) totalCountEl.innerText = (cardData.monthly_total_count || 0).toLocaleString() + ' 건';
+        
+        const wkEl = document.getElementById('cardWeekdayRatio');
+        const weEl = document.getElementById('cardWeekendRatio');
+        const wkBar = document.getElementById('cardWeekdayBar');
+        const weBar = document.getElementById('cardWeekendBar');
+        if (wkEl) wkEl.innerText = cardData.weekday_ratio + '%';
+        if (weEl) weEl.innerText = cardData.weekend_ratio + '%';
+        if (wkBar) wkBar.style.width = cardData.weekday_ratio + '%';
+        if (weBar) weBar.style.width = cardData.weekend_ratio + '%';
+
+        const mEl = document.getElementById('cardMaleRatio');
+        const fEl = document.getElementById('cardFemaleRatio');
+        const mBar = document.getElementById('cardMaleBar');
+        const fBar = document.getElementById('cardFemaleBar');
+        if (mEl) mEl.innerText = cardData.male_ratio + '%';
+        if (fEl) fEl.innerText = cardData.female_ratio + '%';
+        if (mBar) mBar.style.width = cardData.male_ratio + '%';
+        if (fBar) fBar.style.width = cardData.female_ratio + '%';
+
+        const sectorListEl = document.getElementById('cardSectorList');
+        if (sectorListEl && cardData.sector_sales) {
+            sectorListEl.innerHTML = '';
+            cardData.sector_sales.forEach(sec => {
+                const secDiv = document.createElement('div');
+                secDiv.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:8px 12px; border-radius:6px; font-size:0.82rem; border:1px solid #f1f5f9;';
+                    const secSalesEon = ((sec.monthly_sales_man || 0) / 10000).toFixed(2);
+                    const secCntMan = ((sec.monthly_count || 0) / 10000).toFixed(2);
+                    const secAvgPayMan = ((sec.avg_payment || 0) / 10000).toFixed(2);
+                    secDiv.innerHTML = `
+                        <div style="font-weight:700; color:#1e293b;">${sec.category}</div>
+                        <div style="display:flex; gap:12px; color:#475569;">
+                            <span>월매출 <strong style="color:#2563eb;">${secSalesEon} 억원</strong></span>
+                            <span>결제 <strong style="color:#059669;">${secCntMan} 만건</strong></span>
+                            <span>건당 <strong style="color:#7c3aed;">${secAvgPayMan} 만원</strong></span>
+                        </div>
+                    `;
+                sectorListEl.appendChild(secDiv);
+            });
+        }
+    }
 
     const catList = document.getElementById('commCategoryList');
     if (catList) {

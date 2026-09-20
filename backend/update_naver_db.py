@@ -40,12 +40,15 @@ def update_naver_db():
     conn.commit()
     
     files_info = [
-        # 서울 매물
+        # 서울 매물 (최신 9월 17~18일 포함 및 기존 파일 통합)
         {"file": "네이버부동산_서울_아파트_20260706.xlsx", "estate_type": "아파트", "region": "서울"},
+        {"file": "네이버부동산_서울특별시_아파트_20260917.xlsx", "estate_type": "아파트", "region": "서울"},
         {"file": "네이버부동산_서울_오피스텔_20260707.xlsx", "estate_type": "오피스텔", "region": "서울"},
         {"file": "네이버부동산_서울_빌라_20260706.xlsx", "estate_type": "다세대/빌라", "region": "서울"},
+        {"file": "네이버부동산_서울_연립다세대_빌라_통합_20260918.xlsx", "estate_type": "다세대/빌라", "region": "서울"},
         {"file": "네이버부동산_서울_단독_20260708.xlsx", "estate_type": "단독주택", "region": "서울"},
         {"file": "네이버부동산_서울_상가_20260706.xlsx", "estate_type": "상가", "region": "서울"},
+        {"file": "네이버부동산_서울특별시_상가_20260917.xlsx", "estate_type": "상가", "region": "서울"},
         # 경기도 매물
         {"file": "네이버부동산_경기도_성남시_아파트_20260805.xlsx", "estate_type": "아파트", "region": "경기"},
         {"file": "네이버부동산_경기도_아파트_Part1_(1~50000)_20260904.xlsx", "estate_type": "아파트", "region": "경기"},

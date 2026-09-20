@@ -110,6 +110,7 @@ def get_cached_dataset(target_type):
         cache_key = "아파트"
         files = [
             "네이버부동산_서울_아파트_20260706.xlsx",
+            "네이버부동산_서울특별시_아파트_20260917.xlsx",
             "네이버부동산_경기도_성남시_아파트_20260805.xlsx",
             "네이버부동산_경기도_아파트_Part1_(1~50000)_20260904.xlsx",
             "네이버부동산_경기도_아파트_Part2_(50001~100000)_20260904.xlsx",
@@ -117,7 +118,7 @@ def get_cached_dataset(target_type):
         ]
     elif "빌라" in target_type or "다세대" in target_type or "연립" in target_type:
         cache_key = "빌라"
-        files = ["네이버부동산_서울_빌라_20260706.xlsx"]
+        files = ["네이버부동산_서울_빌라_20260706.xlsx", "네이버부동산_서울_연립다세대_빌라_통합_20260918.xlsx"]
     elif "오피스텔" in target_type:
         cache_key = "오피스텔"
         files = ["네이버부동산_서울_오피스텔_20260707.xlsx"]
@@ -127,7 +128,7 @@ def get_cached_dataset(target_type):
     else:
         # 상가, 근린상가, 근린생활시설, 상가주택 등 (서울 + 경기도 상가 통합)
         cache_key = "상가"
-        files = ["네이버부동산_서울_상가_20260706.xlsx", "네이버부동산_경기도_상가_20260819.xlsx"]
+        files = ["네이버부동산_서울_상가_20260706.xlsx", "네이버부동산_서울특별시_상가_20260917.xlsx", "네이버부동산_경기도_상가_20260819.xlsx"]
         
     if cache_key in _DATASET_CACHE:
         return _DATASET_CACHE[cache_key]
