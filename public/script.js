@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.message && (data.user_type === 'member' || data.user_type === 'admin')) {
                     alert(data.message);
                 }
+                window.location.href = '/map.html' + window.location.search + window.location.hash;
             } else {
                 alert(data.message || '비밀번호가 일치하지 않습니다.');
                 pwdInput.value = '';

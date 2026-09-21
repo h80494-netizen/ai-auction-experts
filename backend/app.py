@@ -4569,11 +4569,14 @@ public_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "public")
 
 @app.get("/")
 @app.get("/index.html")
-@app.get("/map.html")
 async def serve_root_domain(request: Request):
     index_path = os.path.join(public_dir, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
+    return FileResponse(os.path.join(public_dir, "map.html"))
+
+@app.get("/map.html")
+async def serve_map_domain(request: Request):
     return FileResponse(os.path.join(public_dir, "map.html"))
 
 if os.path.exists(public_dir):
