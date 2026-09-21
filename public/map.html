@@ -4,7 +4,7 @@
 <head>
     <script>
         if (sessionStorage.getItem('auth_token') !== 'verified') {
-            window.location.href = '/index.html';
+            window.location.href = '/index.html' + window.location.search + window.location.hash;
         }
     </script>
     <meta charset="UTF-8">

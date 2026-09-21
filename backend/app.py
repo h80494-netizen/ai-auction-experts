@@ -4566,8 +4566,18 @@ async def api_address_summary_get(address: str, lat: Optional[float] = None, lng
 
 
 public_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "public")
+
+@app.get("/")
+@app.get("/index.html")
+@app.get("/map.html")
+async def serve_root_domain(request: Request):
+    index_path = os.path.join(public_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return FileResponse(os.path.join(public_dir, "map.html"))
+
 if os.path.exists(public_dir):
-    app.mount("/", StaticFiles(directory=public_dir, html=True), name="static")
+    app.mount("/", StaticFiles(directory=public_dir, html=False), name="static")
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8001)
