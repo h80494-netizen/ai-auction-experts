@@ -1543,6 +1543,18 @@
                             <option value="floor_sensitivity">층별 가격 민감도</option>
                         </select>
                     </div>
+                    <!-- 형광펜 하이라이트 & 경공매 중첩 선택 -->
+                    <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
+                        <span style="font-size: 0.72rem; font-weight: bold; color: var(--text-dark); display: flex; align-items: center; justify-content: space-between;">
+                            <span><i class="fa-solid fa-highlighter" style="color: #f59e0b;"></i> 형광펜 & 경공매 중첩</span>
+                            <span id="hl-auction-count-badge" style="font-size: 0.7rem; color: #2563eb; background: #dbeafe; padding: 1px 6px; border-radius: 10px; font-weight: 800; display: none;">0건 중첩</span>
+                        </span>
+                        <div style="display: flex; gap: 4px; background: #f1f5f9; border: 1px solid var(--border-color); padding: 3px; border-radius: 6px;">
+                            <button id="hl-mode-all" type="button" class="hl-mode-btn" onclick="setHighlighterMode('all')" style="flex: 1; padding: 5px 4px; font-size: 0.72rem; font-weight: 800; border: none; border-radius: 4px; cursor: pointer; background: #3b82f6; color: #fff; transition: all 0.2s ease;">전체</button>
+                            <button id="hl-mode-top15" type="button" class="hl-mode-btn" onclick="setHighlighterMode('top15')" style="flex: 1; padding: 5px 4px; font-size: 0.72rem; font-weight: 800; border: none; border-radius: 4px; cursor: pointer; background: transparent; color: #dc2626; transition: all 0.2s ease;">🔴 상위 15%</button>
+                            <button id="hl-mode-bottom15" type="button" class="hl-mode-btn" onclick="setHighlighterMode('bottom15')" style="flex: 1; padding: 5px 4px; font-size: 0.72rem; font-weight: 800; border: none; border-radius: 4px; cursor: pointer; background: transparent; color: #4c1d95; transition: all 0.2s ease;">🔵 하위 15%</button>
+                        </div>
+                    </div>
                     <!-- 격자 크기 선택 -->
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                         <span style="font-size: 0.72rem; font-weight: bold; color: var(--text-dark);">격자 크기 설정</span>
@@ -1946,10 +1958,34 @@ let cachedRedevelopmentZonesData = null;
             roadFlows: L.layerGroup(),
             eliteSchools: L.layerGroup(),
             realpriceGrid: L.layerGroup(),
+            highlighterAuctionOverlay: L.layerGroup().addTo(map),
             lodging: L.layerGroup(),
             touristDensity: L.layerGroup(),
             auction: L.layerGroup().addTo(map)
         };
+
+        let highlighterMode = 'all';
+
+        function setHighlighterMode(mode) {
+            highlighterMode = mode;
+            ['all', 'top15', 'bottom15'].forEach(m => {
+                const btn = document.getElementById('hl-mode-' + m);
+                if (btn) {
+                    if (m === mode) {
+                        btn.style.background = m === 'top15' ? '#dc2626' : (m === 'bottom15' ? '#4c1d95' : '#3b82f6');
+                        btn.style.color = '#ffffff';
+                        btn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+                    } else {
+                        btn.style.background = 'transparent';
+                        btn.style.color = m === 'top15' ? '#dc2626' : (m === 'bottom15' ? '#4c1d95' : '#475569');
+                        btn.style.boxShadow = 'none';
+                    }
+                }
+            });
+            if (typeof fetchRealpriceGrids === 'function') {
+                fetchRealpriceGrids();
+            }
+        }
 
         function createDotMarker(lat, lng, color, popupHtml, radius = 5) {
             return L.circleMarker([lat, lng], {
@@ -4474,66 +4510,86 @@ let cachedRedevelopmentZonesData = null;
                 const vals = data.map(d => d.val).filter(v => v > 0).sort((a, b) => a - b);
                 if (vals.length === 0) return;
                 
+                const activeHighlighterBounds = [];
+
                 const getGridStyle = (val) => {
-                    if (val <= 0) return { color: '#ffffff', fillColor: '#ffffff', weight: 0.5, opacity: 0.2, fillOpacity: 0.1, isTop25: false };
+                    if (val <= 0) return { color: '#ffffff', fillColor: '#ffffff', weight: 0.5, opacity: 0.2, fillOpacity: 0.1, isTop15: false, isBottom15: false };
                     const idx = vals.findIndex(v => v >= val);
                     const percentile = (idx + 1) / vals.length;
-                    const isTop25 = percentile >= 0.75; // 상위 25% 이상 판단
+                    const isTop15 = percentile >= 0.85; // 상위 15% 이상 판단
+                    const isBottom15 = percentile <= 0.15; // 하위 15% 이하 판단
                     
                     let fillColor = '#fed7aa';
                     let borderColor = '#f97316';
+                    let weight = 0.8;
+                    let opacity = 0.35;
+                    let fillOpacity = 0.35;
 
-                    if (indicator === 'jeonse_ratio') {
-                        if (percentile >= 0.75) {
-                            fillColor = '#064e3b'; // 상위 25% 이상 (가장 진한 딥 그린)
-                            borderColor = '#022c22';
-                        } else if (percentile >= 0.50) {
-                            fillColor = '#047857';
-                            borderColor = '#065f46';
-                        } else if (percentile >= 0.25) {
-                            fillColor = '#10b981';
-                            borderColor = '#047857';
+                    if (highlighterMode === 'top15') {
+                        if (isTop15) {
+                            fillColor = '#dc2626'; // 상위 15% 형광 레드
+                            borderColor = '#f59e0b';
+                            weight = 3.5;
+                            opacity = 0.95;
+                            fillOpacity = 0.80;
                         } else {
-                            fillColor = '#a7f3d0';
-                            borderColor = '#34d399';
+                            fillColor = '#fee2e2';
+                            borderColor = '#fca5a5';
+                            weight = 0.5;
+                            opacity = 0.15;
+                            fillOpacity = 0.10;
                         }
-                    } else if (indicator === 'transaction_count') {
-                        if (percentile >= 0.75) {
-                            fillColor = '#1e3a8a'; // 상위 25% 이상 (가장 진한 딥 블루)
-                            borderColor = '#172554';
-                        } else if (percentile >= 0.50) {
-                            fillColor = '#1d4ed8';
-                            borderColor = '#1e3a8a';
-                        } else if (percentile >= 0.25) {
-                            fillColor = '#3b82f6';
-                            borderColor = '#1d4ed8';
+                    } else if (highlighterMode === 'bottom15') {
+                        if (isBottom15) {
+                            fillColor = '#4c1d95'; // 하위 15% 형광 바이올렛
+                            borderColor = '#06b6d4';
+                            weight = 3.5;
+                            opacity = 0.95;
+                            fillOpacity = 0.80;
                         } else {
-                            fillColor = '#93c5fd';
-                            borderColor = '#60a5fa';
+                            fillColor = '#ede9fe';
+                            borderColor = '#c4b5fd';
+                            weight = 0.5;
+                            opacity = 0.15;
+                            fillOpacity = 0.10;
                         }
                     } else {
-                        if (percentile >= 0.75) {
-                            fillColor = '#991b1b'; // 상위 25% 이상 (가장 진한 딥 레드)
-                            borderColor = '#7f1d1d';
+                        // 전체 모드
+                        if (isTop15) {
+                            fillColor = '#991b1b'; // 상위 15% 딥레드
+                            borderColor = '#f59e0b';
+                            weight = 2.5;
+                            opacity = 0.95;
+                            fillOpacity = 0.75;
+                        } else if (isBottom15) {
+                            fillColor = '#312e81'; // 하위 15% 딥블루
+                            borderColor = '#06b6d4';
+                            weight = 2.5;
+                            opacity = 0.95;
+                            fillOpacity = 0.75;
                         } else if (percentile >= 0.50) {
-                            fillColor = '#dc2626';
-                            borderColor = '#991b1b';
-                        } else if (percentile >= 0.25) {
                             fillColor = '#f97316';
                             borderColor = '#ea580c';
+                            weight = 1.0;
+                            opacity = 0.45;
+                            fillOpacity = 0.45;
                         } else {
                             fillColor = '#fed7aa';
                             borderColor = '#fb923c';
+                            weight = 0.8;
+                            opacity = 0.35;
+                            fillOpacity = 0.35;
                         }
                     }
 
                     return {
                         color: borderColor,
                         fillColor: fillColor,
-                        weight: isTop25 ? 2.5 : 0.8,
-                        opacity: isTop25 ? 0.95 : 0.35,
-                        fillOpacity: isTop25 ? 0.72 : 0.35,
-                        isTop25: isTop25,
+                        weight: weight,
+                        opacity: opacity,
+                        fillOpacity: fillOpacity,
+                        isTop15: isTop15,
+                        isBottom15: isBottom15,
                         percentilePct: Math.round(percentile * 100)
                     };
                 };
@@ -4545,12 +4601,24 @@ let cachedRedevelopmentZonesData = null;
                 
                 data.forEach(item => {
                     if (item.val <= 0) return;
+                    const boundsObj = L.latLngBounds(
+                        [item.lat - halfLat, item.lng - halfLng],
+                        [item.lat + halfLat, item.lng + halfLng]
+                    );
                     const rectBounds = [
                         [item.lat - halfLat, item.lng - halfLng],
                         [item.lat + halfLat, item.lng + halfLng]
                     ];
                     
                     const styleInfo = getGridStyle(item.val);
+                    
+                    if (highlighterMode === 'top15' && styleInfo.isTop15) {
+                        activeHighlighterBounds.push(boundsObj);
+                    } else if (highlighterMode === 'bottom15' && styleInfo.isBottom15) {
+                        activeHighlighterBounds.push(boundsObj);
+                    } else if (highlighterMode === 'all' && (styleInfo.isTop15 || styleInfo.isBottom15)) {
+                        activeHighlighterBounds.push(boundsObj);
+                    }
                     
                     const formatChangeRate = (rate) => {
                         if (rate == null || rate === 0) return '-';
@@ -4588,7 +4656,12 @@ let cachedRedevelopmentZonesData = null;
                         label = '로얄층/저층 민감도';
                     }
                     
-                    const top25Badge = styleInfo.isTop25 ? `<span style="background:#7f1d1d; color:#ffffff; padding:1px 5px; border-radius:4px; font-size:0.65rem; font-weight:bold; margin-left:4px;">🔥 상위 25%</span>` : '';
+                    let hlTag = '';
+                    if (styleInfo.isTop15) {
+                        hlTag = `<span style="background:#dc2626; color:#ffffff; padding:1px 5px; border-radius:4px; font-size:0.65rem; font-weight:bold; margin-left:4px;">🔴 상위 15%</span>`;
+                    } else if (styleInfo.isBottom15) {
+                        hlTag = `<span style="background:#4c1d95; color:#ffffff; padding:1px 5px; border-radius:4px; font-size:0.65rem; font-weight:bold; margin-left:4px;">🔵 하위 15%</span>`;
+                    }
 
                     const rect = L.rectangle(rectBounds, {
                         color: styleInfo.color,
@@ -4596,35 +4669,35 @@ let cachedRedevelopmentZonesData = null;
                         opacity: styleInfo.opacity,
                         fillColor: styleInfo.fillColor,
                         fillOpacity: styleInfo.fillOpacity,
-                        isTop25: styleInfo.isTop25
+                        isTop15: styleInfo.isTop15,
+                        isBottom15: styleInfo.isBottom15
                     });
                     
                     const popupContent = `
                         <div style="font-family:'Noto Sans KR'; min-width:200px; padding: 5px;">
-                            <strong style="color:var(--primary-blue); font-size:0.95rem; display:block; margin-bottom:6px;">실거래 분석 격자 (${propType})${top25Badge}</strong>
+                            <strong style="color:var(--primary-blue); font-size:0.95rem; display:block; margin-bottom:6px;">실거래 분석 격자 (${propType})${hlTag}</strong>
                             <table style="width:100%; font-size:0.8rem; border-collapse:collapse;">
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">지표명</td><td style="text-align:right; font-weight:bold; color:var(--text-dark);">${label}</td></tr>
-                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">현재 지표값</td><td style="text-align:right; font-weight:800; color:#ef4444;">${valStr} ${styleInfo.isTop25 ? '<span style="color:#7f1d1d; font-size:0.75rem;">(상위 25% 이상)</span>' : ''}</td></tr>
+                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">현재 지표값</td><td style="text-align:right; font-weight:800; color:#ef4444;">${valStr} ${styleInfo.isTop15 ? '<span style="color:#dc2626; font-size:0.75rem;">(상위 15% 고가)</span>' : (styleInfo.isBottom15 ? '<span style="color:#4c1d95; font-size:0.75rem;">(하위 15% 저평가)</span>' : '')}</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">매매가 (평당)</td><td style="text-align:right; font-weight:500;">${item.avg_price > 0 ? Math.round(item.avg_price).toLocaleString() + '만원 ' + formatChangeRate(item.sale_price_change_rate) : '-'}</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">전월세 (평당)</td><td style="text-align:right; font-weight:500;">${item.avg_deposit > 0 ? Math.round(item.avg_deposit).toLocaleString() + '만원 ' + formatChangeRate(item.rent_price_change_rate) : '-'}</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">전세가율</td><td style="text-align:right; font-weight:500;">${item.jeonse_ratio > 0 ? item.jeonse_ratio.toFixed(1) + '%' : '-'}</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">연간 거래수</td><td style="text-align:right; font-weight:500;">매매 ${item.sale_count || 0}건 / 전월세 ${item.rent_count || 0}건 (총 ${item.count}건)</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">신구축 격차</td><td style="text-align:right; font-weight:500;">${item.age_premium > 0 ? item.age_premium.toFixed(2) + '배' : '-'}</td></tr>
                                 <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0;">로얄층 민감도</td><td style="text-align:right; font-weight:500;">${item.floor_sensitivity > 0 ? item.floor_sensitivity.toFixed(2) + '배' : '-'}</td></tr>
-                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0; font-weight:bold;">평수대별 매매건수</td><td style="text-align:right; font-weight:bold; color:var(--primary-blue);">${item.sale_count || 0}건</td></tr>
-                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0; padding-left:10px;">├ 10평 이하</td><td style="text-align:right; font-weight:500;">${item.sales_under_10 || 0}건 (${item.sale_count > 0 ? ((item.sales_under_10 || 0)/item.sale_count*100).toFixed(1) : 0}%)</td></tr>
-                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0; padding-left:10px;">├ 20평 이하</td><td style="text-align:right; font-weight:500;">${item.sales_10_to_20 || 0}건 (${item.sale_count > 0 ? ((item.sales_10_to_20 || 0)/item.sale_count*100).toFixed(1) : 0}%)</td></tr>
-                                <tr style="border-bottom:1px solid #f1f5f9;"><td style="color:gray; padding:4px 0; padding-left:10px;">├ 30평 이하</td><td style="text-align:right; font-weight:500;">${item.sales_20_to_30 || 0}건 (${item.sale_count > 0 ? ((item.sales_20_to_30 || 0)/item.sale_count*100).toFixed(1) : 0}%)</td></tr>
-                                <tr><td style="color:gray; padding:4px 0; padding-left:10px;">└ 30평 초과</td><td style="text-align:right; font-weight:500;">${item.sales_over_30 || 0}건 (${item.sale_count > 0 ? ((item.sales_over_30 || 0)/item.sale_count*100).toFixed(1) : 0}%)</td></tr>
                             </table>
                         </div>
                     `;
                     
                     rect.bindPopup(popupContent);
                     
+                    let tooltipLabel = `${propType}`;
+                    if (styleInfo.isTop15) tooltipLabel += ' 🔴상위15%';
+                    else if (styleInfo.isBottom15) tooltipLabel += ' 🔵하위15%';
+
                     rect.bindTooltip(`
                         <div style="text-align: center; line-height: 1.2;">
-                            <div style="font-size: 0.65rem; font-weight: 600; color: ${styleInfo.isTop25 ? '#7f1d1d' : '#475569'};">${propType} ${styleInfo.isTop25 ? '🔥상위25%' : ''}</div>
+                            <div style="font-size: 0.65rem; font-weight: 700; color: ${styleInfo.isTop15 ? '#dc2626' : (styleInfo.isBottom15 ? '#4c1d95' : '#475569')};">${tooltipLabel}</div>
                             <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a; margin-top: 1px;">${valStr} <span style="font-size: 0.65rem; display: inline-block; margin-left: 2px;">${valSuffix !== '-' ? valSuffix : ''}</span></div>
                         </div>
                     `, {
@@ -4663,7 +4736,58 @@ let cachedRedevelopmentZonesData = null;
                 // Atomic layer swap: clear old and add new at the exact same moment to prevent flickering/disappearing
                 layers.realpriceGrid.clearLayers();
                 newLayerGroup.eachLayer(l => l.addTo(layers.realpriceGrid));
+                highlightAuctionsInGrids(highlighterMode, activeHighlighterBounds);
                 triggerHighlighter();
+            }
+
+            function highlightAuctionsInGrids(mode, activeBoundsList) {
+                if (!layers.highlighterAuctionOverlay) return;
+                layers.highlighterAuctionOverlay.clearLayers();
+                
+                const countBadge = document.getElementById('hl-auction-count-badge');
+                if (!cachedAuctionsData || cachedAuctionsData.length === 0 || mode === 'all' || !activeBoundsList || activeBoundsList.length === 0) {
+                    if (countBadge) countBadge.style.display = 'none';
+                    return;
+                }
+                
+                let matchedCount = 0;
+                const highlightColor = mode === 'top15' ? '#dc2626' : '#4c1d95';
+                const tagLabel = mode === 'top15' ? '🔴 상위 15% 영역' : '🔵 하위 15% 저평가';
+                
+                cachedAuctionsData.forEach(auc => {
+                    if (!auc.lat || !auc.lng) return;
+                    const pt = L.latLng(auc.lat, auc.lng);
+                    const isMatched = activeBoundsList.some(b => b.contains(pt));
+                    
+                    if (isMatched) {
+                        matchedCount++;
+                        // 1. 형광 펄스 링 생성
+                        const pulseCircle = L.circleMarker([auc.lat, auc.lng], {
+                            radius: 18,
+                            color: highlightColor,
+                            weight: 3,
+                            opacity: 0.9,
+                            fillColor: highlightColor,
+                            fillOpacity: 0.25
+                        });
+                        
+                        // 2. 툴팁/배지 부여
+                        pulseCircle.bindTooltip(`
+                            <div style="background: ${highlightColor}; color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 0.7rem; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
+                                ${tagLabel} (${auc.case_no || '경공매'})
+                            </div>
+                        `, { permanent: false, direction: 'top' });
+                        
+                        pulseCircle.addTo(layers.highlighterAuctionOverlay);
+                    }
+                });
+                
+                if (countBadge) {
+                    countBadge.innerText = `${matchedCount}건 중첩`;
+                    countBadge.style.display = matchedCount > 0 ? 'inline-block' : 'none';
+                    countBadge.style.background = mode === 'top15' ? '#fee2e2' : '#ede9fe';
+                    countBadge.style.color = mode === 'top15' ? '#dc2626' : '#4c1d95';
+                }
             }
 
             window.updateRealpriceGrids = function() {
