@@ -49,10 +49,18 @@ def generate_deep_research(data: dict) -> str:
             history_str = "없음"
             
         property_type = data.get('property_type', '주택')
-        house_count = data.get('house_count', '1주택')
+        raw_hc = str(data.get('house_count', '0'))
+        if raw_hc in ['0', '무주택', '0주택']:
+            house_count = '무주택 (0주택)'
+        elif raw_hc in ['1', '1주택']:
+            house_count = '1주택'
+        elif raw_hc in ['2', '2주택']:
+            house_count = '2주택'
+        else:
+            house_count = '3주택 이상' if raw_hc in ['3', '3주택 이상'] else f'{raw_hc}주택'
         investor_type = data.get('investor_type', '개인')
         investment_duration = data.get('investment_duration', '단기(6개월)')
-        target_return = data.get('target_return', '20')
+        target_return = data.get('target_return_rate') or data.get('target_return') or '20'
         is_regulated = data.get('is_regulated_area', False)
         has_tenant = data.get('has_tenant', True)
         
