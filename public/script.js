@@ -493,14 +493,45 @@ startBtn.addEventListener('click', async () => {
             if (downloadPdfBtn) {
                 const newPdfBtn = downloadPdfBtn.cloneNode(true);
                 downloadPdfBtn.parentNode.replaceChild(newPdfBtn, downloadPdfBtn);
-                newPdfBtn.addEventListener('click', () => {
+                
+                const convertImagesToBase64 = async (container) => {
+                    if (!container) return;
+                    const imgs = container.querySelectorAll('img');
+                    const promises = Array.from(imgs).map(async (img) => {
+                        if (!img.src || img.src.startsWith('data:')) return;
+                        try {
+                            img.crossOrigin = 'anonymous';
+                            const res = await fetch(img.src, { mode: 'cors' });
+                            if (res.ok) {
+                                const blob = await res.blob();
+                                const reader = new FileReader();
+                                await new Promise((resolve) => {
+                                    reader.onloadend = () => {
+                                        img.src = reader.result;
+                                        resolve();
+                                    };
+                                    reader.onerror = () => resolve();
+                                    reader.readAsDataURL(blob);
+                                });
+                            }
+                        } catch (e) {
+                            console.warn("Cross-origin image base64 conversion skipped:", e);
+                        }
+                    });
+                    await Promise.all(promises);
+                };
+
+                newPdfBtn.addEventListener('click', async () => {
                     const element = document.getElementById('finalReport');
                     const buttonsContainer = document.getElementById('downloadButtonsContainer');
                     const scrollHint = document.getElementById('scrollHint');
                     
+                    const origBtnText = newPdfBtn.innerHTML;
+                    newPdfBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> PDF 변환 중...';
+                    newPdfBtn.disabled = true;
+
                     try {
                         if (typeof html2pdf === 'undefined') {
-                            // html2pdf 라이브러리가 없을 경우 브라우저 표준 인쇄 호출
                             window.print();
                             return;
                         }
@@ -512,36 +543,37 @@ startBtn.addEventListener('click', async () => {
                             element.classList.add('pdf-capture-mode');
                             element.scrollLeft = 0;
                         }
+
+                        // 이미지 CORS Canvas 오염 방지를 위해 Base64 사전 변환
+                        await convertImagesToBase64(element);
                         
                         const opt = {
                             margin:       [6, 6, 6, 6],
                             filename:     `${safeCaseNum}_권리분석리포트.pdf`,
                             image:        { type: 'jpeg', quality: 0.98 },
-                            html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#13141c', letterRendering: true, scrollX: 0, scrollY: 0 },
+                            html2canvas:  { 
+                                scale: 2, 
+                                useCORS: true, 
+                                allowTaint: true,
+                                backgroundColor: '#13141c', 
+                                letterRendering: true, 
+                                scrollX: 0, 
+                                scrollY: 0,
+                                imageTimeout: 15000 
+                            },
                             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
                         };
                         
-                        setTimeout(() => {
-                            html2pdf().set(opt).from(element).save().then(() => {
-                                // 캡쳐 완료 후 원상 복구
-                                if (element) element.classList.remove('pdf-capture-mode');
-                                if (buttonsContainer) buttonsContainer.style.display = 'flex';
-                                if (scrollHint) scrollHint.style.display = 'block';
-                            }).catch(err => {
-                                console.error("PDF 캡쳐 에러:", err);
-                                if (element) element.classList.remove('pdf-capture-mode');
-                                if (buttonsContainer) buttonsContainer.style.display = 'flex';
-                                if (scrollHint) scrollHint.style.display = 'block';
-                                alert("PDF 캡쳐 중 오류가 발생하여 브라우저 인쇄 창으로 전환합니다.");
-                                window.print();
-                            });
-                        }, 150);
+                        await html2pdf().set(opt).from(element).save();
                     } catch (e) {
-                        console.error(e);
+                        console.error("PDF 캡쳐 에러:", e);
+                        window.print();
+                    } finally {
                         if (element) element.classList.remove('pdf-capture-mode');
                         if (buttonsContainer) buttonsContainer.style.display = 'flex';
                         if (scrollHint) scrollHint.style.display = 'block';
-                        window.print();
+                        newPdfBtn.innerHTML = origBtnText;
+                        newPdfBtn.disabled = false;
                     }
                 });
             }

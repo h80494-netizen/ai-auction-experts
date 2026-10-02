@@ -1030,6 +1030,29 @@
         }
 
 </style>
+
+<style>
+/* Guarantee Leaflet Popup is always on top of all banners and floating UI elements */
+.leaflet-popup {
+    z-index: 99999 !important;
+}
+.leaflet-popup-content-wrapper {
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important;
+}
+#mapNoticeBanner {
+    z-index: 1050 !important;
+    pointer-events: none !important;
+}
+#mapNoticeBanner > div {
+    pointer-events: auto !important;
+}
+</style>
+
+<style>
+#naverPriceModal {
+    z-index: 999999 !important;
+}
+</style>
 </head>
 
 <body>
@@ -1154,8 +1177,8 @@
                 </div>
             </div>
             <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-                <button onclick="document.getElementById('mapNoticeBanner').style.display='none'" style="background:rgba(255,255,255,0.15); border:none; color:#cbd5e1; border-radius:4px; padding:4px 8px; font-size:0.75rem; cursor:pointer;">
-                    닫기 <i class="fa-solid fa-xmark"></i>
+                <button onclick="document.getElementById('mapNoticeBanner').style.display='none'" style="background:#ef4444; border:none; color:white; border-radius:6px; padding:6px 12px; font-size:0.82rem; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:5px; box-shadow:0 2px 4px rgba(0,0,0,0.2);" title="안내창 닫기 (Exit)">
+                    닫기 (Exit) <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
         </div>
@@ -2220,11 +2243,9 @@ let cachedRedevelopmentZonesData = null;
                             isInside = true;
                         }
                     }
-                } else if (layer instanceof L.Rectangle) {
+                } else if (layer instanceof L.Rectangle || layer instanceof L.Polygon) {
                     if (layer.getBounds && layer.getBounds().contains(latlng)) {
-                        if (layer.options && (layer.options.isTop25 === true || layer.options.weight >= 2.0)) {
-                            isInside = true;
-                        }
+                        isInside = true;
                     }
                 } else if (layer instanceof L.Polygon) {
                     if (layer.getBounds && layer.getBounds().contains(latlng)) {
@@ -2362,9 +2383,9 @@ let cachedRedevelopmentZonesData = null;
                     if (marker.bringToFront) marker.bringToFront();
                     highlightedCaseNos.push(marker.auctionData.case_no);
                 } else {
-                    let dimRadius = (marker.defaultRadius >= 12) ? 6 : 4;
+                    let dimRadius = marker.defaultRadius || 6;
                     marker.setStyle({
-                        radius: dimRadius, color: '#94a3b8', weight: 1, fillColor: marker.typeColor, fillOpacity: 0.3
+                        radius: dimRadius, color: '#ffffff', weight: 2, fillColor: marker.typeColor, fillOpacity: 0.8
                     });
                 }
             });
@@ -4319,10 +4340,32 @@ let cachedRedevelopmentZonesData = null;
                                 <tr><td style="color:gray; padding:3px 0;">공시지가</td><td style="text-align:right;">${d.official_land_price && d.official_land_price > 0 ? (d.official_land_price / 100000000).toFixed(2) + '억' : '정보없음'}</td></tr>
                                 ${cleanNotes ? `<tr><td style="color:#ef4444; padding:3px 0; font-weight:bold;">특수권리</td><td style="text-align:right; font-size:0.8rem; color:#ef4444; word-break:keep-all;">${cleanNotes}</td></tr>` : ''}
                             </table>
-                            <button onclick="window.openBasicInfo('${d.case_no}')" style="width:100%; background:#0ea5e9; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; touch-action:manipulation; margin-bottom: 8px;"><i class="fa-solid fa-circle-info"></i> 기본정보 보기</button>
-                            <button onclick="openAnalysisModal('${d.case_no}', '${escapedAddress}')" style="width:100%; background:var(--primary-blue); color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; touch-action:manipulation;"><i class="fa-solid fa-scale-balanced"></i> 권리분석 리포트</button>
-                            <button onclick="openDemandPanel(${d.lat}, ${d.lng}, '${d.case_no}', '${escapedAddress}', '${d.property_type}', ${d.area_size || 0}); map.closePopup();" style="width:100%; background:#8b5cf6; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; margin-top: 8px; touch-action:manipulation;"><i class="fa-solid ${demandBtnIcon}"></i> ${demandBtnText}</button>
-                            <button onclick="openNaverPriceModal('${d.case_no}', ${d.lat}, ${d.lng}, '${d.property_type}', ${d.area_size || 0});" style="width:100%; background:#f59e0b; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:bold; margin-top: 8px; touch-action:manipulation;"><i class="fa-solid fa-chart-line"></i> 네이버 시세 분석</button>
+                            <!-- 4 Key Analysis Action Buttons (2x2 Grid Layout) -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px;">
+                                <button onclick="window.openBasicInfo('${d.case_no}')" style="background:#0ea5e9; color:white; border:none; padding:8px 6px; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:4px; touch-action:manipulation;" title="기본 경매 사이트 이동">
+                                    <i class="fa-solid fa-circle-info"></i> 기본경매사이트
+                                </button>
+                                <button onclick="openAnalysisModal('${d.case_no}', '${escapedAddress}')" style="background:var(--primary-blue); color:white; border:none; padding:8px 6px; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:4px; touch-action:manipulation;" title="AI 권리분석 보고서">
+                                    <i class="fa-solid fa-scale-balanced"></i> 권리분석
+                                </button>
+                                <button onclick="openDemandPanel(${d.lat}, ${d.lng}, '${d.case_no}', '${escapedAddress}', '${d.property_type}', ${d.area_size || 0}); map.closePopup();" style="background:#8b5cf6; color:white; border:none; padding:8px 6px; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:4px; touch-action:manipulation;" title="입지 및 상권분석">
+                                    <i class="fa-solid ${demandBtnIcon}"></i> 입지분석
+                                </button>
+                                <button type="button" class="btn-naver-price-analysis" 
+                                        onclick="window.executeNaverModalDirect(this);"
+                                        data-case-no="${d.case_no || ''}" 
+                                        data-lat="${d.lat || 0}" 
+                                        data-lng="${d.lng || 0}" 
+                                        data-type="${d.property_type || ''}" 
+                                        data-size="${d.area_size || 0}" 
+                                        data-address="${escapedAddress || ''}" 
+                                        data-appraisal="${d.appraisal_price || d.appraised_price || 0}" 
+                                        data-minprice="${d.minimum_price || d.min_price || d.min_bid_price || 0}" 
+                                        style="width:100%; background:#f59e0b; color:white; border:none; padding:8px 6px; border-radius:6px; cursor:pointer; font-size:0.8rem; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:4px; touch-action:manipulation; position:relative; z-index:999;" 
+                                        title="네이버 시세 및 최저가율 정밀 분석">
+                                    <i class="fa-solid fa-chart-line"></i> 네이버시세분석
+                                </button>
+                            </div>
 
                         </div>
                     `;
@@ -5096,6 +5139,10 @@ let cachedRedevelopmentZonesData = null;
                 if (e.target.checked) {
                     fetchResidentialHeatmap();
                 }
+                setTimeout(() => {
+                    if (layers.auction && layers.auction.bringToFront) layers.auction.bringToFront();
+                    triggerHighlighter();
+                }, 300);
             });
 
             document.getElementById('toggle-workplace-heatmap').addEventListener('change', (e) => {
@@ -5104,6 +5151,10 @@ let cachedRedevelopmentZonesData = null;
                 if (e.target.checked) {
                     fetchWorkplaceHeatmap();
                 }
+                setTimeout(() => {
+                    if (layers.auction && layers.auction.bringToFront) layers.auction.bringToFront();
+                    triggerHighlighter();
+                }, 300);
             });
 
             document.getElementById('toggle-road-flows').addEventListener('change', (e) => {
@@ -7183,6 +7234,29 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
             .report-action-bar { display: none !important; }
         }
     </style>
+
+<style>
+/* Guarantee Leaflet Popup is always on top of all banners and floating UI elements */
+.leaflet-popup {
+    z-index: 99999 !important;
+}
+.leaflet-popup-content-wrapper {
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important;
+}
+#mapNoticeBanner {
+    z-index: 1050 !important;
+    pointer-events: none !important;
+}
+#mapNoticeBanner > div {
+    pointer-events: auto !important;
+}
+</style>
+
+<style>
+#naverPriceModal {
+    z-index: 999999 !important;
+}
+</style>
 </head>
 <body>
     <div class="report-action-bar">
@@ -7363,42 +7437,161 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
 
 <!-- Naver Price Analysis Split Modal -->
 <div id="naverPriceModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
-    <div class="modal-content" style="background: white; padding: 20px; border-radius: 10px; width: 1000px; max-width: 95%; height: 80vh; max-height: 800px; display: flex; flex-direction: column;">
-        <h2 style="margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;"><i class="fa-solid fa-chart-line"></i> 네이버 시세 분석</h2>
-        <div id="naverPriceLoading" style="display: none; text-align: center; padding: 50px;">
-            <i class="fa-solid fa-spinner fa-spin fa-3x"></i>
-            <p style="margin-top:15px; font-size:1.1rem;">사례 부동산 탐색 및 시세 분석 중입니다...</p>
-        </div>
+    <div class="modal-content" style="background: white; padding: 24px; border-radius: 14px; width: 1050px; max-width: 95%; height: 85vh; max-height: 820px; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);">
         
-        <div id="naverPriceResult" style="display: none; flex: 1; flex-direction: row; gap: 20px; overflow: hidden;">
-            <!-- Left: Properties List -->
-            <div style="flex: 1; border-right: 1px solid #ddd; padding-right: 20px; overflow-y: auto;">
-                <h3 style="font-size:1.2rem; margin-bottom:10px;"><i class="fa-solid fa-list"></i> 유사 사례 부동산 리스트</h3>
-                <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                    <thead>
-                        <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1;">
-                            <th style="padding:10px;">위치</th>
-                            <th style="padding:10px;">층수</th>
-                            <th style="padding:10px;">면적</th>
-                            <th style="padding:10px; text-align:right;">매물호가(억원)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="naverPricePropsBody">
-                    </tbody>
-                </table>
+        <!-- Modal Header -->
+        <div style="border-bottom: 2px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="font-size: 1.35rem; font-weight: 800; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-chart-line" style="color: #2563eb;"></i> 네이버 시세 분석
+                </h2>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button onclick="printNaverPriceReport()" style="background: #2563eb; color: white; border: none; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(37,99,235,0.2);" title="분석 보고서 PDF 출력 / 인쇄">
+                        <i class="fa-solid fa-print"></i> PDF / 인쇄
+                    </button>
+                    <label style="font-weight: 700; font-size: 0.9rem; color: #475569;"><i class="fa-solid fa-location-crosshairs" style="color: #0284c7;"></i> 탐색 반경:</label>
+                    <select id="naverRadiusSelect" onchange="changeNaverRadius()" style="padding: 6px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 700; color: #0f172a; background: #f8fafc; font-size: 0.9rem; cursor: pointer;">
+                        <option value="500">반경 500m</option>
+                        <option value="1000" selected>반경 1km (1,000m - 디폴트)</option>
+                        <option value="1500">반경 1.5km (1,500m)</option>
+                        <option value="2000">반경 2km (2,000m)</option>
+                    </select>
+                    <button onclick="document.getElementById('naverPriceModal').style.display='none'" style="background: none; border: none; font-size: 1.3rem; color: #94a3b8; cursor: pointer; padding: 0 4px;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
             </div>
             
-            <!-- Right: Stats -->
-            <div style="flex: 1; padding-left: 10px; overflow-y: auto;">
-                <h3 style="font-size:1.2rem; margin-bottom:10px;"><i class="fa-solid fa-chart-pie"></i> 시세 요약 통계</h3>
-                <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                    <tbody id="naverPriceTableBody">
-                    </tbody>
-                </table>
+            <!-- Target Address & Case Number Display Box -->
+            <div id="naverTargetAddressBox" style="margin-top: 10px; font-size: 0.92rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 6px; background: #f1f5f9; padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <i class="fa-solid fa-location-dot" style="color: #ef4444;"></i>
+                <span id="naverTargetAddressText">분석 물건 주소지 정보 불러오는 중...</span>
+                <span id="naverTargetCaseNoBadge" style="font-size: 0.78rem; font-weight: 800; background: #2563eb; color: white; padding: 2px 8px; border-radius: 6px; margin-left: 4px;"></span>
+            </div>
+        </div>
+
+        <div id="naverPriceLoading" style="display: none; text-align: center; padding: 80px 0;">
+            <i class="fa-solid fa-circle-notch fa-spin fa-3x" style="color: #2563eb;"></i>
+            <p style="margin-top: 16px; font-weight: 700; color: #475569; font-size: 1rem;">사례 매물 탐색 및 시세 분석을 진행 중입니다...</p>
+        </div>
+
+        <div id="naverPriceResult" style="display: none; flex: 1; flex-direction: row; gap: 20px; overflow: hidden;">
+            <!-- Left: Properties List -->
+            <div style="flex: 1.2; display: flex; flex-direction: column; gap: 10px; overflow: hidden; border-right: 1px solid #e2e8f0; padding-right: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="font-size: 1.05rem; font-weight: 800; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-list-check" style="color: #475569;"></i> 유사 사례 부동산 매물 리스트
+                    </h3>
+                    <span id="naverPropsCountBadge" style="font-size: 0.8rem; font-weight: 700; background: #e0f2fe; color: #0369a1; padding: 3px 10px; border-radius: 12px;">0건</span>
+                </div>
+                
+                <div style="flex: 1; overflow-y: auto; background: white; border: 1px solid #cbd5e1; border-radius: 8px;">
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
+                        <thead>
+                            <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1; position: sticky; top: 0; z-index: 1;">
+                                <th style="padding: 10px 12px; font-weight: 700; color: #334155;">위치/주소</th>
+                                <th style="padding: 10px 8px; font-weight: 700; color: #334155;">구분</th>
+                                <th style="padding: 10px 8px; font-weight: 700; color: #334155;">층수</th>
+                                <th style="padding: 10px 8px; font-weight: 700; color: #334155;">면적</th>
+                                <th style="padding: 10px 8px; font-weight: 700; color: #334155; text-align: right;">호가(억원)</th>
+                                <th style="padding: 10px 8px; font-weight: 700; color: #334155; text-align: right;">평당가</th>
+                                <th style="padding: 10px 8px; font-weight: 700; color: #334155; text-align: right;">거리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="naverPricePropsBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Right: Stats & Valuation -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; padding-right: 4px;">
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin: 0; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-calculator" style="color: #2563eb;"></i> 추정 시세 평가 요약
+                </h3>
+                
+                <!-- Card 1: Target Categories -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; margin-bottom: 6px;">분석 대상 범주군 (동일 그룹)</div>
+                    <div id="naverTargetBadges" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                    </div>
+                </div>
+
+                <!-- Card 2: Avg Pyeong Price -->
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 0.82rem; font-weight: 700; color: #1e40af;">유사 매물 평균 평당가</div>
+                        <div style="font-size: 0.75rem; color: #3b82f6; margin-top: 2px;">(반경 내 동일 그룹 매물 기준)</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span id="naverAvgPyeongPrice" style="font-size: 1.35rem; font-weight: 900; color: #1d4ed8;">0</span>
+                        <span style="font-size: 0.85rem; font-weight: 700; color: #1e40af;"> 만원/평</span>
+                    </div>
+                </div>
+
+                <!-- Card 3: Estimated Market Price (90% Applied) & Appraised / Min Price Grid -->
+                <div style="background: #f0fdf4; border: 1.5.px solid #86efac; border-radius: 12px; padding: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <div style="font-size: 0.85rem; font-weight: 800; color: #166534; display: flex; align-items: center; gap: 5px;">
+                            <i class="fa-solid fa-bullseye" style="color: #16a34a;"></i> 추정 시세 (탁상감정가)
+                        </div>
+                        <span style="font-size: 0.75rem; font-weight: 800; background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 10px;">산출액 90% 반영</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px;">
+                        <div style="font-size: 0.78rem; color: #16a34a;">평당가 × 전용평수 × 0.9</div>
+                        <div>
+                            <span id="naverEstimatedMarketPrice" style="font-size: 1.55rem; font-weight: 900; color: #15803d;">0.00</span>
+                            <span style="font-size: 0.95rem; font-weight: 800; color: #166534;"> 억원</span>
+                        </div>
+                    </div>
+
+                    <!-- Appraised Price & Minimum Price sub-grid (Clean 억 원 unit without 만원) -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #bbf7d0;">
+                        <div style="background: rgba(255,255,255,0.75); padding: 7px 10px; border-radius: 8px; border: 1px solid #dcfce7;">
+                            <div style="font-size: 0.73rem; font-weight: 700; color: #475569; display:flex; align-items:center; gap:4px;">
+                                <i class="fa-solid fa-building-flag" style="color:#0284c7;"></i> 감정가
+                            </div>
+                            <div id="naverAppraisedPriceText" style="font-size: 0.98rem; font-weight: 800; color: #0f172a; margin-top: 2px;">0.00 억원</div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.75); padding: 7px 10px; border-radius: 8px; border: 1px solid #dcfce7;">
+                            <div style="font-size: 0.73rem; font-weight: 700; color: #475569; display:flex; align-items:center; gap:4px;">
+                                <i class="fa-solid fa-gavel" style="color:#2563eb;"></i> 경공매 최저가
+                            </div>
+                            <div id="naverMinPriceText" style="font-size: 0.98rem; font-weight: 800; color: #1d4ed8; margin-top: 2px;">0.00 억원</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Min Price Ratio & Jeonse Ratio -->
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                    <!-- Min Price Ratio -->
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 0.88rem; font-weight: 800; color: #0f172a;">경공매 최저가율</div>
+                            <div style="font-size: 0.75rem; color: #64748b;">(최저가 ÷ 추정 시세)</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span id="naverMinPriceRatio" style="font-size: 1.4rem; font-weight: 900; color: #2563eb;">0.0%</span>
+                            <span id="naverMinPriceBadge" style="display: inline-block; font-size: 0.75rem; font-weight: 800; margin-left: 6px; padding: 3px 8px; border-radius: 10px; background: #e0f2fe; color: #0369a1;">-</span>
+                        </div>
+                    </div>
+                    
+                    <div style="border-top: 1px dashed #e2e8f0;"></div>
+
+                    <!-- Jeonse Ratio -->
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 0.88rem; font-weight: 800; color: #0f172a;">추정 전세가율</div>
+                            <div style="font-size: 0.75rem; color: #64748b;">(전세가 ÷ 추정 시세)</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span id="naverJeonseRatio" style="font-size: 1.25rem; font-weight: 800; color: #0f172a;">N/A</span>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
         
-        <div id="naverPriceError" style="display: none; color: red; margin-top: 15px; padding: 20px; background:#fef2f2; border:1px solid #fca5a5; border-radius:5px;"></div>
+<div id="naverPriceError" style="display: none; color: red; margin-top: 15px; padding: 20px; background:#fef2f2; border:1px solid #fca5a5; border-radius:5px;"></div>
         
         <div style="text-align: right; margin-top: 20px; border-top:1px solid #eee; padding-top:15px;">
             <button onclick="document.getElementById('naverPriceModal').style.display='none'" style="padding: 10px 20px; cursor: pointer; border-radius: 6px; border: none; background: #64748b; color:white; font-weight:bold;">닫기</button>
@@ -7409,34 +7602,204 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
 
 
 <script>
-async function openNaverPriceModal(caseNo, lat, lng, type, size) {
+let currentNaverModalParams = null;
+
+
+window.openNaverPriceModalByAuctionId = function(auctionId, caseNo) {
+    let ac = null;
+    if (window.auctions && window.auctions.length > 0) {
+        ac = window.auctions.find(a => (a.id && String(a.id) === String(auctionId)) || (a.case_no && a.case_no === caseNo));
+    }
+    if (!ac && window.allAuctions && window.allAuctions.length > 0) {
+        ac = window.allAuctions.find(a => (a.id && String(a.id) === String(auctionId)) || (a.case_no && a.case_no === caseNo));
+    }
+    if (ac) {
+        openNaverPriceModal(
+            ac.case_no || caseNo,
+            ac.lat,
+            ac.lng,
+            ac.property_type || '상가',
+            ac.area_size || ac.pyeong || 20,
+            ac.address || '',
+            ac.appraisal_price || ac.appraised_price || 0,
+            ac.minimum_price || ac.min_price || ac.min_bid_price || 0
+        );
+    } else {
+        openNaverPriceModal(caseNo || '', 37.5665, 126.9780, '상가', 20, '', 0, 0);
+    }
+};
+
+
+// Global Event Listener for Naver Price Analysis Button (100% Guaranteed Click Handler)
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.btn-naver-price-analysis');
+    if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const caseNo = btn.getAttribute('data-case-no') || '';
+        const lat = parseFloat(btn.getAttribute('data-lat')) || 37.5665;
+        const lng = parseFloat(btn.getAttribute('data-lng')) || 126.9780;
+        const propType = btn.getAttribute('data-type') || '상가';
+        const size = parseFloat(btn.getAttribute('data-size')) || 20;
+        const addr = btn.getAttribute('data-address') || '';
+        const appPrice = parseFloat(btn.getAttribute('data-appraisal')) || 0;
+        const minPrice = parseFloat(btn.getAttribute('data-minprice')) || 0;
+
+        let ac = null;
+        if (window.auctions && window.auctions.length > 0) {
+            const normCaseNo = caseNo ? caseNo.replace(/[\s()]/g, '') : '';
+            const baseCaseNo = normCaseNo.split('(')[0];
+            ac = window.auctions.find(a => {
+                if (!a) return false;
+                const aNorm = a.case_no ? a.case_no.replace(/[\s()]/g, '') : '';
+                if (normCaseNo && aNorm && (aNorm === normCaseNo || aNorm.includes(baseCaseNo))) return true;
+                if (lat && lng && Math.abs(a.lat - lat) < 0.0005 && Math.abs(a.lng - lng) < 0.0005) return true;
+                return false;
+            });
+        }
+
+        if (ac) {
+            openNaverPriceModal(
+                ac.case_no || caseNo,
+                ac.lat || lat,
+                ac.lng || lng,
+                ac.property_type || propType,
+                ac.area_size || ac.pyeong || size,
+                ac.address || addr,
+                ac.appraisal_price || ac.appraised_price || appPrice,
+                ac.minimum_price || ac.min_price || ac.min_bid_price || minPrice
+            );
+        } else {
+            openNaverPriceModal(caseNo, lat, lng, propType, size, addr, appPrice, minPrice);
+        }
+    }
+});
+
+
+// 100% Guaranteed Direct Naver Price Modal Execution Function
+window.executeNaverModalDirect = function(btn) {
+    if (!btn) return;
+    try {
+        const caseNo = btn.getAttribute('data-case-no') || '';
+        const lat = parseFloat(btn.getAttribute('data-lat')) || 37.5665;
+        const lng = parseFloat(btn.getAttribute('data-lng')) || 126.9780;
+        const propType = btn.getAttribute('data-type') || '상가';
+        const size = parseFloat(btn.getAttribute('data-size')) || 20;
+        const addr = btn.getAttribute('data-address') || '';
+        const appPrice = parseFloat(btn.getAttribute('data-appraisal')) || 0;
+        const minPrice = parseFloat(btn.getAttribute('data-minprice')) || 0;
+
+        console.log("Direct Naver Price Modal Triggered:", caseNo, lat, lng);
+        
+        let ac = null;
+        if (window.auctions && window.auctions.length > 0) {
+            const normCaseNo = caseNo ? caseNo.replace(/[\s()]/g, '') : '';
+            const baseCaseNo = normCaseNo.split('(')[0];
+            ac = window.auctions.find(a => {
+                if (!a) return false;
+                const aNorm = a.case_no ? a.case_no.replace(/[\s()]/g, '') : '';
+                if (normCaseNo && aNorm && (aNorm === normCaseNo || aNorm.includes(baseCaseNo))) return true;
+                if (lat && lng && Math.abs(a.lat - lat) < 0.0005 && Math.abs(a.lng - lng) < 0.0005) return true;
+                return false;
+            });
+        }
+
+        if (ac) {
+            openNaverPriceModal(
+                ac.case_no || caseNo,
+                ac.lat || lat,
+                ac.lng || lng,
+                ac.property_type || propType,
+                ac.area_size || ac.pyeong || size,
+                ac.address || addr,
+                ac.appraisal_price || ac.appraised_price || appPrice,
+                ac.minimum_price || ac.min_price || ac.min_bid_price || minPrice
+            );
+        } else {
+            openNaverPriceModal(caseNo, lat, lng, propType, size, addr, appPrice, minPrice);
+        }
+    } catch(err) {
+        console.error("Error launching Naver Price Modal:", err);
+    }
+};
+
+async function openNaverPriceModal(caseNo, lat, lng, type, size, address, appraisalPrice, minPrice) {
     document.getElementById('naverPriceModal').style.display = 'flex';
     document.getElementById('naverPriceLoading').style.display = 'block';
     document.getElementById('naverPriceResult').style.display = 'none';
     document.getElementById('naverPriceError').style.display = 'none';
 
+    currentNaverModalParams = { caseNo, lat, lng, type, size, address, appraisalPrice, minPrice };
+    const radiusVal = parseInt(document.getElementById('naverRadiusSelect').value) || 1000;
+    await executeNaverPriceAnalysis(radiusVal);
+}
+
+async function changeNaverRadius() {
+    if (!currentNaverModalParams) return;
+    const radiusVal = parseInt(document.getElementById('naverRadiusSelect').value) || 1000;
+    document.getElementById('naverPriceLoading').style.display = 'block';
+    document.getElementById('naverPriceResult').style.display = 'none';
+    document.getElementById('naverPriceError').style.display = 'none';
+    await executeNaverPriceAnalysis(radiusVal);
+}
+
+async function executeNaverPriceAnalysis(radiusVal) {
+    if (!currentNaverModalParams) return;
+    const { caseNo, lat, lng, type, size, address, appraisalPrice, minPrice } = currentNaverModalParams;
+
     const payload = {
         lat: lat || 37.5665,
         lon: lng || 126.9780,
         type: type || "아파트",
-        area_pyeong: size ? size : 25,
+        area_pyeong: size ? parseFloat(size) : 25.0,
         floor: "5층",
         total_floor: "15층",
         build_year: "2010",
-        appraised_price: 500000000,
-        min_price: 400000000,
-        senior_debt: 0
+        appraised_price: (appraisalPrice && appraisalPrice > 0) ? appraisalPrice : 0,
+        min_price: (minPrice && minPrice > 0) ? minPrice : 0,
+        senior_debt: 0,
+        radius: radiusVal || 1000
     };
+
+    let targetAddr = address || "위치 정보 미기재";
+    let targetCaseNo = caseNo || "";
+
+    // Detect B1 basement from address text if floor is normal
+    const b1_keywords = ["B1", "B01", "B02", "지1층", "지2층", "지층", "지하", "지1층비", "지1", "B1층", "B2층"];
+    if (b1_keywords.some(k => targetAddr.toUpperCase().includes(k))) {
+        payload.floor = "지하";
+    }
     
-    if(window.auctions && window.auctions.length > 0) {
-        const ac = window.auctions.find(a => a.case_no === caseNo);
-        if(ac) {
-            payload.appraised_price = ac.appraisal_price || payload.appraised_price;
-            payload.min_price = ac.minimum_price || payload.min_price;
-            if(ac.pyeong) payload.area_pyeong = ac.pyeong;
-            if(ac.floor) payload.floor = String(ac.floor);
+    // Robust Auction Property Matching by Case No & Lat/Lng
+    if (window.auctions && window.auctions.length > 0) {
+        const normCaseNo = caseNo ? caseNo.replace(/[\s()]/g, '') : '';
+        const baseCaseNo = normCaseNo.split('(')[0];
+        const ac = window.auctions.find(a => {
+            if (!a) return false;
+            const aNorm = a.case_no ? a.case_no.replace(/[\s()]/g, '') : '';
+            if (normCaseNo && aNorm && (aNorm === normCaseNo || aNorm.includes(baseCaseNo))) return true;
+            if (lat && lng && Math.abs(a.lat - lat) < 0.0005 && Math.abs(a.lng - lng) < 0.0005) return true;
+            return false;
+        });
+        
+        if (ac) {
+            const appraised = ac.appraisal_price || ac.appraised_price || ac.appraisalPrice || 0;
+            const minimum = ac.minimum_price || ac.min_price || ac.min_bid_price || ac.minPrice || 0;
+            if (appraised > 0) payload.appraised_price = appraised;
+            if (minimum > 0) payload.min_price = minimum;
+            if (ac.pyeong) payload.area_pyeong = parseFloat(ac.pyeong);
+            if (ac.floor) payload.floor = String(ac.floor);
+            if (ac.total_floor) payload.total_floor = String(ac.total_floor);
+            if (ac.build_year) payload.build_year = String(ac.build_year);
+            if (ac.address) targetAddr = ac.address;
+            if (ac.case_no) targetCaseNo = ac.case_no;
         }
     }
+
+    // Display target property address & case number
+    document.getElementById('naverTargetAddressText').innerText = targetAddr;
+    document.getElementById('naverTargetCaseNoBadge').innerText = targetCaseNo ? `사건 ${targetCaseNo}` : '';
 
     try {
         const response = await fetch('/api/naver_price_analysis', {
@@ -7447,50 +7810,90 @@ async function openNaverPriceModal(caseNo, lat, lng, type, size) {
         const res = await response.json();
         
         document.getElementById('naverPriceLoading').style.display = 'none';
-        if (res.status === 'success') {
+        if (res.status === 'success' && res.data) {
             const data = res.data;
             document.getElementById('naverPriceResult').style.display = 'flex';
             
-            let html = `
-                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; width:45%; color:#475569;">분석 대상</th><td style="font-weight:bold;">${type} / ${data.target_categories.floor} / ${data.target_categories.area} / ${data.target_categories.age}</td></tr>
-                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">탐색 반경</th><td style="color:#0284c7; font-weight:bold;">${data.radius_used}m <span style="font-size:0.9em; color:#64748b;">(매칭: ${data.matched_count}건)</span></td></tr>
-                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">총 제비용</th><td>${(data.target_indicators.total_expense / 100000000).toFixed(2)} 억원</td></tr>
-                <tr style="border-bottom:1px solid #eee; background:#f8fafc;"><th style="padding:12px 8px; color:#475569;">지표 A (최저가+비용)</th><td style="font-weight:bold; color:#0f172a;">${(data.target_indicators.ind_a || 0).toFixed(2)} 억원</td></tr>
-                <tr style="border-bottom:1px solid #eee; background:#f8fafc;"><th style="padding:12px 8px; color:#475569;">지표 B (적정가+비용)</th><td style="font-weight:bold; color:#0f172a;">${(data.target_indicators.ind_b || 0).toFixed(2)} 억원</td></tr>
-                
-                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">사례 평균가</th><td>${(data.market_prices.avg_price || 0).toFixed(2)} 억원</td></tr>
-                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">사례 중간값</th><td>${(data.market_prices.median_price || 0).toFixed(2)} 억원</td></tr>
-                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">평균 90% 수준</th><td style="color:#16a34a; font-weight:bold;">${(data.market_prices.avg_90 || 0).toFixed(2)} 억원</td></tr>
-                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">중간 90% 수준</th><td style="color:#16a34a; font-weight:bold;">${(data.market_prices.median_90 || 0).toFixed(2)} 억원</td></tr>
-                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">사례 최저가</th><td style="color:#dc2626; font-weight:bold;">${(data.market_prices.min_price || 0).toFixed(2)} 억원</td></tr>
-                
-                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">괴리율 (지표A vs 평균)</th><td><span style="padding:4px 8px; border-radius:12px; background:${(data.disparities.ind_a_vs_avg || 0) > 0 ? '#dcfce7' : '#fee2e2'}; color:${(data.disparities.ind_a_vs_avg || 0) > 0 ? '#166534' : '#991b1b'};">${(data.disparities.ind_a_vs_avg || 0).toFixed(2)}%</span></td></tr>
-                <tr style="border-bottom:1px solid #eee;"><th style="padding:12px 8px; color:#475569;">괴리율 (지표A vs 중간)</th><td><span style="padding:4px 8px; border-radius:12px; background:${(data.disparities.ind_a_vs_median || 0) > 0 ? '#dcfce7' : '#fee2e2'}; color:${(data.disparities.ind_a_vs_median || 0) > 0 ? '#166534' : '#991b1b'};">${(data.disparities.ind_a_vs_median || 0).toFixed(2)}%</span></td></tr>
+            // Badges
+            const cats = data.target_categories || {};
+            let badgesHtml = `
+                <span style="background:#e0f2fe; color:#0369a1; font-weight:800; padding:4px 10px; border-radius:8px; font-size:0.82rem;">${cats.type_label || '부동산'}</span>
+                <span style="background:#f1f5f9; color:#334155; font-weight:700; padding:4px 10px; border-radius:8px; font-size:0.82rem;">층수: ${cats.floor || '-'}</span>
+                <span style="background:#f1f5f9; color:#334155; font-weight:700; padding:4px 10px; border-radius:8px; font-size:0.82rem;">평수: ${cats.area || '-'}</span>
+                <span style="background:#f1f5f9; color:#334155; font-weight:700; padding:4px 10px; border-radius:8px; font-size:0.82rem;">연식: ${cats.age || '-'}</span>
             `;
-            if(data.special_rule_applied) {
-                html += `<tr><td colspan="2" style="color:#ef4444; font-size:0.9em; padding-top:10px;"><i class="fa-solid fa-triangle-exclamation"></i> 지하 매물 부족으로 1층 시세의 70% 특례 적용됨</td></tr>`;
+            document.getElementById('naverTargetBadges').innerHTML = badgesHtml;
+            if (data.special_rule_applied) {
+                badgesHtml += `<span style="background:#fee2e2; color:#b91c1c; font-weight:800; padding:4px 10px; border-radius:8px; font-size:0.82rem;"><i class="fa-solid fa-triangle-exclamation"></i> ${data.special_rule_msg || '지하 1층시세 60% 특례적용'}</span>`;
+                document.getElementById('naverTargetBadges').innerHTML = badgesHtml;
             }
-            document.getElementById('naverPriceTableBody').innerHTML = html;
             
+            // Stats
+            const calc = data.calculation_result || {};
+            document.getElementById('naverAvgPyeongPrice').innerText = (calc.avg_pyeong_price || 0).toLocaleString();
+            
+            const estEon = (calc.estimated_market_price_eon || 0).toFixed(2);
+            document.getElementById('naverEstimatedMarketPrice').innerText = estEon;
+
+            // Render Appraised Price & Min Price Text (Clean 억 원 unit without 만원)
+            const appEon = (payload.appraised_price / 100000000.0).toFixed(2);
+            document.getElementById('naverAppraisedPriceText').innerText = `${appEon} 억원`;
+
+            const minEon = (payload.min_price / 100000000.0).toFixed(2);
+            document.getElementById('naverMinPriceText').innerText = `${minEon} 억원`;
+
+            const ratioVal = calc.min_price_ratio || 0;
+            document.getElementById('naverMinPriceRatio').innerText = ratioVal.toFixed(1) + '%';
+            
+            const badgeEl = document.getElementById('naverMinPriceBadge');
+            if (ratioVal <= 70) {
+                badgeEl.innerText = '매우저평가';
+                badgeEl.style.background = '#dcfce7';
+                badgeEl.style.color = '#15803d';
+            } else if (ratioVal <= 90) {
+                badgeEl.innerText = '저평가';
+                badgeEl.style.background = '#e0f2fe';
+                badgeEl.style.color = '#0369a1';
+            } else {
+                badgeEl.innerText = '적정/고평가';
+                badgeEl.style.background = '#f1f5f9';
+                badgeEl.style.color = '#475569';
+            }
+
+            const jRatio = calc.jeonse_ratio;
+            if (jRatio && jRatio > 0) {
+                document.getElementById('naverJeonseRatio').innerText = jRatio.toFixed(1) + '%';
+            } else {
+                document.getElementById('naverJeonseRatio').innerText = 'N/A (데이터 없음)';
+            }
+            
+            document.getElementById('naverPropsCountBadge').innerText = `${data.matched_count || 0}건 매칭`;
+
+            // Properties list
             let propsHtml = '';
-            if(data.properties && data.properties.length > 0) {
+            if (data.properties && data.properties.length > 0) {
                 data.properties.forEach(p => {
+                    const priceDisplay = p.price_eon ? `${p.price_eon}억` : `${(p.price_total || 0).toLocaleString()}만`;
+                    const ppDisplay = p.pyeong_price ? `${p.pyeong_price.toLocaleString()}만` : '-';
                     propsHtml += `
                         <tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:12px 10px; font-size:0.95em;">${p.address}</td>
-                            <td style="padding:12px 10px; font-size:0.9em; color:#64748b;">${p.floor_cat}</td>
-                            <td style="padding:12px 10px; font-size:0.9em; color:#64748b;">${p.pyeong}평</td>
-                            <td style="padding:12px 10px; text-align:right; font-weight:500;">${(p.price || 0).toFixed(2)}</td>
+                            <td style="padding:10px 12px; font-weight:600; color:#1e293b;">${p.address}</td>
+                            <td style="padding:10px 8px; color:#475569;"><span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:0.8rem;">${p.deal_type || '매매'}</span></td>
+                            <td style="padding:10px 8px; color:#64748b;">${p.floor_cat || p.floor_display}</td>
+                            <td style="padding:10px 8px; color:#64748b;">${p.pyeong}</td>
+                            <td style="padding:10px 8px; text-align:right; font-weight:700; color:#0f172a;">${priceDisplay}</td>
+                            <td style="padding:10px 8px; text-align:right; color:#2563eb; font-weight:600;">${ppDisplay}</td>
+                            <td style="padding:10px 8px; text-align:right; color:#64748b;">${p.distance}m</td>
                         </tr>
                     `;
                 });
             } else {
-                propsHtml = `<tr><td colspan="4" style="text-align:center; padding:30px; color:#94a3b8;">유사 조건의 사례 부동산이 없습니다.</td></tr>`;
+                propsHtml = `<tr><td colspan="7" style="text-align:center; padding:40px; color:#94a3b8; font-weight:600;">선택한 반경 내 동일 그룹 사례 매물이 없습니다.</td></tr>`;
             }
             document.getElementById('naverPricePropsBody').innerHTML = propsHtml;
             
         } else {
-            throw new Error(res.message || "Unknown error");
+            throw new Error((res && res.message) ? res.message : "데이터를 불러오는 중 오류가 발생했습니다.");
         }
     } catch (err) {
         document.getElementById('naverPriceLoading').style.display = 'none';
@@ -8545,6 +8948,66 @@ function renderAddressSummaryData(data) {
     // Show initial location tab
     switchAddrTab('location');
 }
+
+function printNaverPriceReport() {
+    const modalEl = document.getElementById('naverPriceModal');
+    if (!modalEl) return;
+    const printContent = modalEl.querySelector('.modal-content').outerHTML;
+    const win = window.open('', '_blank', 'width=1100,height=900');
+    win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>네이버 시세 및 경공매 분석 보고서</title>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>
+                body { font-family: 'Pretendard', sans-serif; padding: 20px; background: white; color: #1e293b; }
+                .modal-content { width: 100% !important; height: auto !important; max-height: none !important; box-shadow: none !important; border: none !important; }
+                button, select, label { display: none !important; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                th, td { border: 1px solid #cbd5e1; padding: 8px 10px; }
+                @media print {
+                    body { padding: 0; }
+                }
+            </style>
+        
+<style>
+/* Guarantee Leaflet Popup is always on top of all banners and floating UI elements */
+.leaflet-popup {
+    z-index: 99999 !important;
+}
+.leaflet-popup-content-wrapper {
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3) !important;
+}
+#mapNoticeBanner {
+    z-index: 1050 !important;
+    pointer-events: none !important;
+}
+#mapNoticeBanner > div {
+    pointer-events: auto !important;
+}
+</style>
+
+<style>
+#naverPriceModal {
+    z-index: 999999 !important;
+}
+</style>
+</head>
+        <body>
+            ${printContent}
+            <script>
+                window.onload = function() {
+                    window.print();
+                    setTimeout(function() { window.close(); }, 500);
+                };
+            <\/script>
+        </body>
+        </html>
+    `);
+    win.document.close();
+}
+
 </script>
 </body>
 </html>

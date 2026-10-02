@@ -39,23 +39,46 @@ def update_naver_db():
     """)
     conn.commit()
     
-    files_info = [
-        # 서울 매물 (최신 9월 17~18일 포함 및 기존 파일 통합)
-        {"file": "네이버부동산_서울_아파트_20260706.xlsx", "estate_type": "아파트", "region": "서울"},
-        {"file": "네이버부동산_서울특별시_아파트_20260917.xlsx", "estate_type": "아파트", "region": "서울"},
-        {"file": "네이버부동산_서울_오피스텔_20260707.xlsx", "estate_type": "오피스텔", "region": "서울"},
-        {"file": "네이버부동산_서울_빌라_20260706.xlsx", "estate_type": "다세대/빌라", "region": "서울"},
-        {"file": "네이버부동산_서울_연립다세대_빌라_통합_20260918.xlsx", "estate_type": "다세대/빌라", "region": "서울"},
-        {"file": "네이버부동산_서울_단독_20260708.xlsx", "estate_type": "단독주택", "region": "서울"},
-        {"file": "네이버부동산_서울_상가_20260706.xlsx", "estate_type": "상가", "region": "서울"},
-        {"file": "네이버부동산_서울특별시_상가_20260917.xlsx", "estate_type": "상가", "region": "서울"},
-        # 경기도 매물
-        {"file": "네이버부동산_경기도_성남시_아파트_20260805.xlsx", "estate_type": "아파트", "region": "경기"},
-        {"file": "네이버부동산_경기도_아파트_Part1_(1~50000)_20260904.xlsx", "estate_type": "아파트", "region": "경기"},
-        {"file": "네이버부동산_경기도_아파트_Part2_(50001~100000)_20260904.xlsx", "estate_type": "아파트", "region": "경기"},
-        {"file": "네이버부동산_경기도_아파트_Part3_(100001~122613)_20260904.xlsx", "estate_type": "아파트", "region": "경기"},
-        {"file": "네이버부동산_경기도_상가_20260819.xlsx", "estate_type": "상가", "region": "경기"},
-    ]
+    # Dynamically scan all excel files in data_dir
+    files_info = []
+    for f in os.listdir(data_dir):
+        if not (f.endswith('.xlsx') or f.endswith('.xlsm')) or f.startswith('~$'):
+            continue
+            
+        # Determine region
+        if "인천" in f:
+            region = "인천"
+        elif "서울" in f:
+            region = "서울"
+        elif "경기" in f:
+            region = "경기"
+        else:
+            region = "전국"
+            
+        # Determine estate_type
+        if "아파트" in f:
+            estate_type = "아파트"
+        elif "빌라" in f or "연립" in f or "다세대" in f:
+            estate_type = "다세대/빌라"
+        elif "오피스텔" in f:
+            estate_type = "오피스텔"
+        elif "단독" in f or "다가구" in f:
+            estate_type = "단독주택"
+        elif "상가" in f:
+            estate_type = "상가"
+        else:
+            estate_type = "기타"
+            
+        files_info.append({
+            "file": f,
+            "estate_type": estate_type,
+            "region": region
+        })
+        
+    print(f"Discovered {len(files_info)} Excel file(s) in {data_dir}:")
+    for item in files_info:
+        print(f"  - {item['file']} => Region: {item['region']}, Type: {item['estate_type']}")
+    print("-" * 60)
     
     total_inserted = 0
     

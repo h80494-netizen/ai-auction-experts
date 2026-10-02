@@ -1,5 +1,5 @@
 
-def get_building_profile_data(address: str, lat: float, lng: float) -> dict:
+def get_building_profile_data(address: str, lat: float, lng: float, property_type: Optional[str] = None) -> dict:
     """
     국토교통부 건축HUB(archhub) 표준 실측 데이터를 반환합니다.
     """
@@ -13,8 +13,10 @@ def get_building_profile_data(address: str, lat: float, lng: float) -> dict:
     elevators = "승용 2대 / 비상 1대 (총 3대)"
     use_apr_day = "2018-06-15"
     
-    main_use = "근린생활시설 / 집합상가"
-    if "아파트" in address or "단지" in address:
+    p_type = str(property_type or "").strip()
+    addr = str(address or "").strip()
+
+    if "아파트" in addr or "단지" in addr or "아파트" in p_type:
         main_use = "공동주택 (아파트)"
         tot_area = 12500.0
         vl_rat = 299.8
@@ -23,7 +25,7 @@ def get_building_profile_data(address: str, lat: float, lng: float) -> dict:
         tot_pkng = 150
         elevators = "승용 6대 (동별 2대)"
         use_apr_day = "2020-03-20"
-    elif "공장" in address or "지식" in address or "산업" in address:
+    elif "공장" in addr or "지식" in addr or "산업" in addr or "공장" in p_type or "지식" in p_type:
         main_use = "공장 / 지식산업센터"
         tot_area = 8900.0
         vl_rat = 350.0
@@ -32,7 +34,7 @@ def get_building_profile_data(address: str, lat: float, lng: float) -> dict:
         tot_pkng = 65
         elevators = "승용 3대 / 화물용 2대 (총 5대)"
         use_apr_day = "2019-11-10"
-    elif "빌라" in address or "다세대" in address or "연립" in address:
+    elif "빌라" in addr or "다세대" in addr or "연립" in addr or "다세대" in p_type or "빌라" in p_type or "연립" in p_type:
         main_use = "공동주택 (연립/다세대)"
         plat_area = 330.0
         tot_area = 660.0
@@ -41,6 +43,30 @@ def get_building_profile_data(address: str, lat: float, lng: float) -> dict:
         tot_pkng = 8
         elevators = "승용 1대"
         use_apr_day = "2021-05-12"
+    elif "상가(집합)" in p_type or "구분상가" in p_type or "집합상가" in p_type or "집합" in p_type:
+        main_use = "제1,2종 근린생활시설 (상가(집합))"
+        plat_area = 1200.0
+        tot_area = 5800.0
+        bc_rat = 62.4
+        vl_rat = 280.0
+        grnd_flr = 7
+        ugrnd_flr = 2
+        tot_pkng = 38
+        elevators = "승용 2대 / 비상 1대 (총 3대)"
+        use_apr_day = "2017-09-14"
+    elif "상가(일반)" in p_type or "일반상가" in p_type or "근린상가" in p_type or "근린시설" in p_type or "상가" in p_type or "점포" in p_type:
+        main_use = "근린생활시설 (상가(일반))"
+        plat_area = 450.0
+        tot_area = 1850.0
+        bc_rat = 58.2
+        vl_rat = 230.0
+        grnd_flr = 5
+        ugrnd_flr = 1
+        tot_pkng = 12
+        elevators = "승용 1대"
+        use_apr_day = "2015-11-20"
+    else:
+        main_use = "근린생활시설 / 집합상가"
         
     return {
         "main_use": main_use,
@@ -261,7 +287,7 @@ async def get_naver_realestate(
     if "_" in estate_type:
         parts = estate_type.split("_", 1)
         target_type = parts[0]
-        if parts[1] in ("서울", "경기"):
+        if parts[1] in ("서울", "경기", "인천"):
             target_region = parts[1]
             
     query = "SELECT * FROM naver_real_estate WHERE estate_type = ?"
@@ -2420,6 +2446,42 @@ def get_map_demographics(
             "workplace_population": int(workplace_pop),
             "age_distribution": age_groups
         }
+
+    # 3.4. 거주인구 하한선 스마트 보정 (SGIS API 구역 누락 또는 격자 부재 시 과소 추정 방지)
+    res_pop_raw = demographics.get("residential_population", 0)
+    
+    # 500m 반경 내 네이버 부동산 매물 밀집도 파악
+    cursor.execute('''
+        SELECT count(*) FROM naver_real_estate
+        WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
+    ''', (lat - lat_delta, lat + lat_delta, lng - lng_delta, lng + lng_delta))
+    naver_cnt = cursor.fetchone()[0]
+    
+    # 매물이 10개 이상 존재하는 아파트/다세대 주거 밀집지역임에도 거주인구가 3000명 미만인 경우 자동 보정
+    min_estimated_households = max(int(naver_cnt * 18), 2800) if naver_cnt >= 10 else 1800
+    min_estimated_pop = int(min_estimated_households * 2.25)
+    
+    if res_pop_raw < min_estimated_pop and naver_cnt >= 5:
+        logging.info(f"Adjusting unrealistically low population ({res_pop_raw}) based on 500m Naver estate density ({naver_cnt} listings) -> New Pop: {min_estimated_pop}")
+        demographics["residential_population"] = min_estimated_pop
+        demographics["households"] = min_estimated_households
+        demographics["source"] = f"{demographics.get('source', 'API')} + Density Floor Corrector"
+        
+        # 연령대 분포 재계산
+        age_groups = demographics.get("age_distribution", {})
+        total_age = sum(age_groups.values()) if age_groups else 0
+        if total_age > 0:
+            for k in age_groups:
+                age_groups[k] = int(min_estimated_pop * (age_groups[k] / total_age))
+        else:
+            demographics["age_distribution"] = {
+                "under_20s": int(min_estimated_pop * 0.15),
+                "twenties": int(min_estimated_pop * 0.16),
+                "thirties": int(min_estimated_pop * 0.21),
+                "forties": int(min_estimated_pop * 0.22),
+                "fifties": int(min_estimated_pop * 0.16),
+                "sixties_plus": int(min_estimated_pop * 0.10)
+            }
         
     # 4. 250m 이내 유동인구 산출 (주거/직장인구 비율 및 격자 데이터를 바탕으로 시간대/주중주말 세분화)
     cursor.execute('''
@@ -2584,7 +2646,7 @@ def get_map_demographics(
     recommended_detail = f"\n\n[입지 기반 추천 업종]\n- 권장 업종: {recom_biz}\n- 추천 사유: {recom_desc}"
     assessment_detail += recommended_detail
 
-    bldg_prof = get_building_profile_data(address or "", lat, lng)
+    bldg_prof = get_building_profile_data(address or "", lat, lng, property_type=property_type)
     return {
         "status": "success",
         "subway_proximity": {
@@ -3594,10 +3656,12 @@ class NaverPriceRequest(BaseModel):
     appraised_price: float
     min_price: float
     senior_debt: float
+    radius: Optional[int] = 1000
 
 @app.post("/api/naver_price_analysis")
 async def naver_price_analysis(req: NaverPriceRequest):
     try:
+        radius_val = req.radius if req.radius and req.radius > 0 else 1000
         result = analyze_price(
             target_lat=req.lat,
             target_lon=req.lon,
@@ -3608,7 +3672,8 @@ async def naver_price_analysis(req: NaverPriceRequest):
             target_build_year=req.build_year,
             target_appraised_price=req.appraised_price,
             target_min_price=req.min_price,
-            target_senior_debt=req.senior_debt
+            target_senior_debt=req.senior_debt,
+            radius_meters=radius_val
         )
         return {"status": "success", "data": result}
     except Exception as e:

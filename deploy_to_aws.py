@@ -6,7 +6,7 @@ import io
 import requests
 from dotenv import load_dotenv
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', write_through=True)
 
 # 로컬 루트 및 .env 로드
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -56,23 +56,23 @@ def main():
         print("   (DB까지 함께 올리려면 'python deploy_to_aws.py --with-db'를 실행하세요)")
 
     # 1. 아카이브 생성 (Python tarfile 모듈 활용 - 초고속)
-    tar_filename = "deploy_auto.tar.gz"
+    tar_filename = "deploy_auto.tar"
     print(f"\n[1/4] 배포 패키지 스마트 압축 중 ({tar_filename})...")
     
     import tarfile
 
     def filter_func(tarinfo):
-        name = tarinfo.name
+        name = tarinfo.name.replace('\\', '/')
         # 무조건 제외할 파일/폴더
-        if '__pycache__' in name or name.endswith('.pyc') or name.endswith('.log') or 'cloudflared' in name or '.git' in name or 'scratch' in name or 'downloads' in name or 'node_modules' in name:
+        if '__pycache__' in name or name.endswith('.pyc') or name.endswith('.log') or name.endswith('.exe') or 'cloudflared' in name or '.git' in name or 'scratch' in name or 'downloads' in name or 'node_modules' in name or name.endswith('.gpkg') or name.endswith('.csv') or name.endswith('.pdf') or name.endswith('.zip') or name.endswith('.shp') or name.endswith('.dbf') or name.endswith('.geojson') or name.endswith('.pkl') or 'public/data' in name:
             return None
         if not with_db:
-            if name.endswith('.db') or name.endswith('.db-wal') or name.endswith('.db-shm') or name.endswith('.pkl'):
+            if name.endswith('.db') or name.endswith('.db-wal') or name.endswith('.db-shm'):
                 return None
         return tarinfo
 
-    with tarfile.open(tar_filename, "w:gz") as tar:
-        for item in ["backend", "public", "requirements.txt", ".env"]:
+    with tarfile.open(tar_filename, "w") as tar:
+        for item in ["backend", "public", os.path.join("data", "네이버부동산"), "requirements.txt", ".env"]:
             if os.path.exists(item):
                 tar.add(item, filter=filter_func)
                 
@@ -87,13 +87,16 @@ def main():
 
     # 3. 원격 서버에서 압축 해제 및 서비스 재시작
     print(f"\n[3/4] 원격 서버 적용 및 서비스 무중단 재시작 중...")
-    remote_script = f"cd {AWS_REMOTE_DIR} && tar -xzf ~/{tar_filename} && rm -f ~/{tar_filename} && pkill -f 'python app.py' || true; sleep 1; bash -c 'cd {AWS_REMOTE_DIR}/backend && nohup ../venv/bin/python app.py > server.log 2>&1 < /dev/null & disown -a; sleep 3'"
+    remote_script = f"cd {AWS_REMOTE_DIR} && tar -xf ~/{tar_filename} && rm -f ~/{tar_filename} && pkill -f 'python app.py' || true; sleep 1; bash -c 'cd {AWS_REMOTE_DIR}/backend && nohup ../venv/bin/python app.py > server.log 2>&1 < /dev/null & disown -a; sleep 3'"
     res = run_ssh(remote_script)
     print("  서버 프로세스 재가동 완료!")
 
     # 임시 압축파일 삭제
     if os.path.exists(tar_filename):
-        os.remove(tar_filename)
+        try:
+            os.remove(tar_filename)
+        except Exception:
+            pass
 
     # 4. 라이브 헬스체크 검증
     print(f"\n[4/4] 라이브 서비스 헬스체크 검증 중 ({AWS_DOMAIN})...")
