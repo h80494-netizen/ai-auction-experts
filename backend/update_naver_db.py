@@ -39,10 +39,10 @@ def update_naver_db():
     """)
     conn.commit()
     
-    # Dynamically scan all excel files in data_dir
+    # Dynamically scan all excel and csv files in data_dir
     files_info = []
     for f in os.listdir(data_dir):
-        if not (f.endswith('.xlsx') or f.endswith('.xlsm')) or f.startswith('~$'):
+        if not (f.endswith('.xlsx') or f.endswith('.xlsm') or f.endswith('.csv')) or f.startswith('~$'):
             continue
             
         # Determine region
@@ -75,7 +75,7 @@ def update_naver_db():
             "region": region
         })
         
-    print(f"Discovered {len(files_info)} Excel file(s) in {data_dir}:")
+    print(f"Discovered {len(files_info)} file(s) in {data_dir}:")
     for item in files_info:
         print(f"  - {item['file']} => Region: {item['region']}, Type: {item['estate_type']}")
     print("-" * 60)
@@ -94,10 +94,19 @@ def update_naver_db():
             
         print(f"Loading {filename} ({estate_type}, {region})...")
         t_load = time.time()
-        try:
-            df = pd.read_excel(file_path, engine="calamine")
-        except Exception:
-            df = pd.read_excel(file_path)
+        if filename.endswith('.csv'):
+            try:
+                df = pd.read_csv(file_path, encoding='utf-8-sig')
+            except Exception:
+                try:
+                    df = pd.read_csv(file_path, encoding='cp949')
+                except Exception:
+                    df = pd.read_csv(file_path, encoding='euc-kr')
+        else:
+            try:
+                df = pd.read_excel(file_path, engine="calamine")
+            except Exception:
+                df = pd.read_excel(file_path)
             
         print(f"  Loaded {len(df)} rows in {time.time()-t_load:.2f}s. Preparing records...")
         

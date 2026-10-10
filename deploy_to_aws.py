@@ -64,7 +64,7 @@ def main():
     def filter_func(tarinfo):
         name = tarinfo.name.replace('\\', '/')
         # 무조건 제외할 파일/폴더
-        if '__pycache__' in name or name.endswith('.pyc') or name.endswith('.log') or name.endswith('.exe') or 'cloudflared' in name or '.git' in name or 'scratch' in name or 'downloads' in name or 'node_modules' in name or name.endswith('.gpkg') or name.endswith('.csv') or name.endswith('.pdf') or name.endswith('.zip') or name.endswith('.shp') or name.endswith('.dbf') or name.endswith('.geojson') or name.endswith('.pkl') or 'public/data' in name:
+        if '__pycache__' in name or name.endswith('.pyc') or name.endswith('.log') or name.endswith('.exe') or 'cloudflared' in name or '.git' in name or 'scratch' in name or 'downloads' in name or 'node_modules' in name or name.endswith('.gpkg') or name.endswith('.pdf') or name.endswith('.zip') or name.endswith('.shp') or name.endswith('.dbf') or name.endswith('.geojson') or name.endswith('.pkl') or 'public/data' in name:
             return None
         if not with_db:
             if name.endswith('.db') or name.endswith('.db-wal') or name.endswith('.db-shm'):

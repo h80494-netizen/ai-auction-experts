@@ -141,13 +141,23 @@ def get_age_category_from_text(text):
         return 25
     return 26
 
-def extract_price_total(val):
+def extract_price_total(val, rent_val=0, deal_type=""):
     try:
         val_str = str(val).replace(',', '').strip()
         v = float(val_str)
-        if v > 1000000:  # 원 단위인 경우 만원 단위로 변환
-            return v / 10000.0
-        return v
+        deposit_man = v / 10000.0 if v > 1000000 else v
+        
+        r_str = str(rent_val).replace(',', '').replace('만', '').strip()
+        try:
+            rent_man = float(r_str)
+        except Exception:
+            rent_man = 0.0
+            
+        deal_clean = str(deal_type).strip()
+        if rent_man > 0 or deal_clean in ['월세', '전세', '전월세']:
+            # 환산보증금 = 보증금(만원) + (월세(만원) * 100)
+            return deposit_man + (rent_man * 100.0)
+        return deposit_man
     except Exception:
         return np.nan
 
@@ -173,13 +183,13 @@ def get_cached_dataset(target_type):
     else:
         # 상가, 근린상가, 근린생활시설, 상가주택 등
         cache_key = "상가"
-        keywords = ["상가"]
+        keywords = ["상가", "전월세"]
 
     # Dynamically find matching files
     files = []
     if os.path.exists(data_dir):
         for fn in os.listdir(data_dir):
-            if (fn.endswith('.xlsx') or fn.endswith('.xlsm')) and not fn.startswith('~$'):
+            if (fn.endswith('.xlsx') or fn.endswith('.xlsm') or fn.endswith('.csv')) and not fn.startswith('~$'):
                 if any(kw in fn for kw in keywords):
                     files.append(fn)
 
@@ -215,10 +225,19 @@ def get_cached_dataset(target_type):
         fp = os.path.join(data_dir, fn)
         if os.path.exists(fp):
             try:
-                try:
-                    sub_df = pd.read_excel(fp, engine="calamine")
-                except Exception:
-                    sub_df = pd.read_excel(fp)
+                if fn.endswith('.csv'):
+                    try:
+                        sub_df = pd.read_csv(fp, encoding='utf-8-sig')
+                    except Exception:
+                        try:
+                            sub_df = pd.read_csv(fp, encoding='cp949')
+                        except Exception:
+                            sub_df = pd.read_csv(fp, encoding='euc-kr')
+                else:
+                    try:
+                        sub_df = pd.read_excel(fp, engine="calamine")
+                    except Exception:
+                        sub_df = pd.read_excel(fp)
                 df_list.append(sub_df)
             except Exception as e:
                 print(f"Error loading {fn}: {e}")
@@ -245,16 +264,24 @@ def get_cached_dataset(target_type):
     df['age_cat'] = df.get('보조설명', pd.Series(dtype=str)).apply(get_age_category_from_text)
     
     price_col = '매매가(보증금)' if '매매가(보증금)' in df.columns else ('금액' if '금액' in df.columns else df.columns[0])
-    df['price_total'] = df[price_col].apply(extract_price_total)
+    rent_col = '월세' if '월세' in df.columns else ''
+    deal_col = '거래유형' if '거래유형' in df.columns else ''
+
+    df['price_total'] = df.apply(
+        lambda r: extract_price_total(
+            r.get(price_col, 0),
+            r.get(rent_col, 0) if rent_col else 0,
+            r.get(deal_col, '') if deal_col else ''
+        ),
+        axis=1
+    )
     
     # Deal type & Jeonse total (if available)
-    deal_col = '거래유형' if '거래유형' in df.columns else ''
     if deal_col and deal_col in df.columns:
         df['deal_type_val'] = df[deal_col].astype(str)
     else:
         df['deal_type_val'] = '매매'
         
-    rent_col = '월세' if '월세' in df.columns else ''
     if rent_col and rent_col in df.columns:
         df['rent_val'] = pd.to_numeric(df[rent_col], errors='coerce').fillna(0)
     else:

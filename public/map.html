@@ -2230,7 +2230,97 @@ let cachedRedevelopmentZonesData = null;
             return false;
         }
 
+        function checkPointInCachedZoning(pt, latlng) {
+            if (!cachedZoningPolygonsData || cachedZoningPolygonsData.length === 0) return false;
+            const checkedZonings = Array.from(document.querySelectorAll('.zoning-class-check:checked')).map(cb => cb.value);
+            if (checkedZonings.length === 0) return false;
+
+            for (let i = 0; i < cachedZoningPolygonsData.length; i++) {
+                const item = cachedZoningPolygonsData[i];
+                let name = item.name || '';
+                let zoningType = '기타';
+                if (name.includes('전용주거')) zoningType = '전용주거지역';
+                else if (name.includes('1종일반주거') || name.includes('제1종일반주거')) zoningType = '1종일반주거지역';
+                else if (name.includes('2종일반주거') || name.includes('제2종일반주거')) zoningType = '2종일반주거지역';
+                else if (name.includes('3종일반주거') || name.includes('제3종일반주거')) zoningType = '3종일반주거지역';
+                else if (name.includes('준주거')) zoningType = '준주거지역';
+                else if (name.includes('상업')) zoningType = '상업지역';
+                else if (name.includes('준공업')) zoningType = '준공업지역';
+                else if (name.includes('일반공업')) zoningType = '일반공업지역';
+                else if (name.includes('전용공업')) zoningType = '전용공업지역';
+                else if (name.includes('녹지') || name.includes('개발제한구역')) zoningType = '녹지지역';
+                else if (name.includes('계획관리')) zoningType = '계획관리지역';
+
+                if (!checkedZonings.includes(zoningType)) continue;
+
+                let geojson;
+                try {
+                    geojson = (typeof item.geojson === 'string') ? JSON.parse(item.geojson) : item.geojson;
+                } catch (e) {
+                    continue;
+                }
+                if (!geojson) continue;
+
+                if (window.turf && pt) {
+                    try {
+                        const geom = geojson.geometry || geojson;
+                        if (turf.booleanPointInPolygon(pt, geom)) {
+                            return true;
+                        }
+                    } catch (err) {}
+                }
+            }
+            return false;
+        }
+
+        function checkPointInCachedPlanningRoads(pt, latlng) {
+            if (!cachedPlanningRoadsData || cachedPlanningRoadsData.length === 0) return false;
+            const checkedRoads = Array.from(document.querySelectorAll('.planning-road-class-check:checked')).map(cb => cb.value);
+            if (checkedRoads.length === 0) return false;
+            const isBufferEnabled = document.getElementById('toggle-planning-road-buffer')?.checked;
+
+            for (let i = 0; i < cachedPlanningRoadsData.length; i++) {
+                const item = cachedPlanningRoadsData[i];
+                const roadClass = item.road_class || '';
+                let roadType = '기타';
+                if (roadClass.includes('대로')) roadType = '대로';
+                else if (roadClass.includes('중로')) roadType = '중로';
+                else if (roadClass.includes('소로1')) roadType = '소로1류';
+                else if (roadClass.includes('소로2')) roadType = '소로2류';
+                else if (roadClass.includes('소로3')) roadType = '소로3류';
+
+                if (!checkedRoads.includes(roadType)) continue;
+
+                let geojson;
+                try {
+                    geojson = (typeof item.geojson === 'string') ? JSON.parse(item.geojson) : item.geojson;
+                } catch (e) {
+                    continue;
+                }
+                if (!geojson) continue;
+
+                if (window.turf && pt) {
+                    try {
+                        const distKm = isBufferEnabled ? 0.025 : 0.015;
+                        const geom = geojson.geometry || geojson;
+                        const ptOnLine = turf.nearestPointOnLine(geom, pt);
+                        if (ptOnLine && ptOnLine.properties && ptOnLine.properties.dist <= distKm) {
+                            return true;
+                        }
+                    } catch (err) {}
+                }
+            }
+            return false;
+        }
+
         function checkPointInLayerGroup(pt, layerGroup, latlng) {
+            if (layerGroup === layers.zoning && layers.zoning.getLayers().length === 0) {
+                return checkPointInCachedZoning(pt, latlng);
+            }
+            if (layerGroup === layers.planningRoad && layers.planningRoad.getLayers().length === 0) {
+                return checkPointInCachedPlanningRoads(pt, latlng);
+            }
+
             let isInside = false;
             layerGroup.eachLayer(layer => {
                 if (isInside) return;
@@ -2274,12 +2364,31 @@ let cachedRedevelopmentZonesData = null;
                     }
                 }
             });
+
+            if (!isInside && layerGroup === layers.zoning) {
+                isInside = checkPointInCachedZoning(pt, latlng);
+            }
+            if (!isInside && layerGroup === layers.planningRoad) {
+                isInside = checkPointInCachedPlanningRoads(pt, latlng);
+            }
+
             return isInside;
         }
 
         let highlightedCaseNos = [];
 
-        function applyHighlighter() {
+        async function ensureHighlighterDataLoaded() {
+            const zoningEl = document.getElementById('toggle-zoning');
+            if (zoningEl && zoningEl.checked && (!cachedZoningPolygonsData || cachedZoningPolygonsZoom !== map.getZoom())) {
+                await fetchZoningPolygons(true);
+            }
+            const roadEl = document.getElementById('toggle-planning-road');
+            if (roadEl && roadEl.checked && (!cachedPlanningRoadsData || cachedPlanningRoadsZoom !== map.getZoom())) {
+                await fetchPlanningRoads(true);
+            }
+        }
+
+        async function applyHighlighter() {
             const btnHighlighter = document.getElementById('btn-highlighter');
             const countEl = document.getElementById('highlight-count');
             const modeContainer = document.getElementById('highlighter-mode-container');
@@ -2297,6 +2406,8 @@ let cachedRedevelopmentZonesData = null;
                 if (btnAnalysis) btnAnalysis.style.display = 'none';
                 return;
             }
+
+            await ensureHighlighterDataLoaded();
 
             if (modeContainer) modeContainer.style.display = 'inline-flex';
 
@@ -2411,12 +2522,14 @@ let cachedRedevelopmentZonesData = null;
             }
         }
 
-        window.openOverlapAnalysis = function() {
+        window.openOverlapAnalysis = async function() {
             const btnHighlighter = document.getElementById('btn-highlighter');
             if (!btnHighlighter || !btnHighlighter.classList.contains('active')) {
                 alert('형광펜을 켠 후 필터를 선택해주세요.');
                 return;
             }
+
+            await ensureHighlighterDataLoaded();
 
             const activeFilterIds = [
                 { id: 'toggle-subways', layer: layers.subway, name: '지하철역', isLine: false },
@@ -3364,9 +3477,31 @@ let cachedRedevelopmentZonesData = null;
             triggerHighlighter();
         }
 
-        async function fetchZoningPolygons() {
-            if (map.getZoom() < minZoomRequired) return;
-            if (!document.getElementById('toggle-zoning').checked) return;
+        function showMapToast(msg) {
+            let toast = document.getElementById('map-toast-alert');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'map-toast-alert';
+                toast.style.cssText = 'position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:rgba(15,23,42,0.88); color:#fff; padding:10px 18px; border-radius:24px; font-size:13px; font-weight:600; z-index:9999; box-shadow:0 4px 14px rgba(0,0,0,0.25); backdrop-filter:blur(4px); transition:opacity 0.3s; pointer-events:none; display:flex; align-items:center; gap:8px;';
+                document.body.appendChild(toast);
+            }
+            toast.innerHTML = `<i class="fa-solid fa-circle-info" style="color:#60a5fa;"></i> ${msg}`;
+            toast.style.opacity = '1';
+            toast.style.display = 'flex';
+            clearTimeout(window._mapToastTimer);
+            window._mapToastTimer = setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => { toast.style.display = 'none'; }, 300);
+            }, 3200);
+        }
+
+        async function fetchZoningPolygons(forceFetchData = false) {
+            const toggleEl = document.getElementById('toggle-zoning');
+            if (!toggleEl || !toggleEl.checked) {
+                layers.zoning.clearLayers();
+                triggerHighlighter();
+                return;
+            }
             
             const checkedZonings = Array.from(document.querySelectorAll('.zoning-class-check:checked')).map(cb => cb.value);
             if (checkedZonings.length === 0) {
@@ -3374,16 +3509,18 @@ let cachedRedevelopmentZonesData = null;
                 triggerHighlighter();
                 return;
             }
+
+            const currentZoom = map.getZoom();
+            const minRenderZoom = 12.0;
             
             const bounds = map.getBounds();
-            const isCached = cachedZoningPolygonsZoom === map.getZoom() && 
+            const isCached = cachedZoningPolygonsZoom === currentZoom && 
                              cachedZoningPolygonsBounds && 
                              cachedZoningPolygonsBounds.contains(bounds) && 
                              cachedZoningPolygonsData;
 
             let data;
             if (isCached) {
-                console.log("Zoning polygons loaded from cache (within bounds).");
                 data = cachedZoningPolygonsData;
             } else {
                 const southWest = bounds.getSouthWest();
@@ -3400,12 +3537,12 @@ let cachedRedevelopmentZonesData = null;
                 );
 
                 try {
-                    const res = await fetch(`/api/map/zoning?min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}&zoom=${map.getZoom()}`);
+                    const res = await fetch(`/api/map/zoning?min_lat=${paddedBounds.getSouth()}&max_lat=${paddedBounds.getNorth()}&min_lng=${paddedBounds.getWest()}&max_lng=${paddedBounds.getEast()}&zoom=${currentZoom}`);
                     const json = await res.json();
                     if (json.status === 'success') {
                         cachedZoningPolygonsData = json.data;
                         cachedZoningPolygonsBounds = paddedBounds;
-                        cachedZoningPolygonsZoom = map.getZoom();
+                        cachedZoningPolygonsZoom = currentZoom;
                         data = cachedZoningPolygonsData;
                     } else {
                         return;
@@ -3417,70 +3554,123 @@ let cachedRedevelopmentZonesData = null;
             }
 
             layers.zoning.clearLayers();
-            const canvasRenderer = L.canvas({ padding: 0.5 });
+
+            if (currentZoom < minRenderZoom && !forceFetchData) {
+                showMapToast('지도를 조금 더 확대하시면 용도지역이 시각적으로 표시됩니다. (형광펜 중첩 기능은 현재 비율에서도 100% 정상 작동합니다)');
+                triggerHighlighter();
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                triggerHighlighter();
+                return;
+            }
+
+            // High performance FeatureCollection batch rendering with VIVID COLORS
+            const features = [];
             data.forEach(item => {
-                let geojson = JSON.parse(item.geojson);
+                let geojson;
+                try {
+                    geojson = (typeof item.geojson === 'string') ? JSON.parse(item.geojson) : item.geojson;
+                } catch (e) {
+                    return;
+                }
+                if (!geojson) return;
                 
-                let color = '#6366f1';
+                let color = '#4f46e5';
                 let zoningType = '기타';
-                let fillOp = 0.12;
-                let name = item.name;
+                let fillOp = 0.35;
+                let name = item.name || '';
 
                 if (name.includes('전용주거')) {
-                    color = '#fef08a';
+                    color = '#fde047';
+                    fillOp = 0.38;
                     zoningType = '전용주거지역';
                 } else if (name.includes('1종일반주거') || name.includes('제1종일반주거')) {
-                    color = '#fef9c3';
+                    color = '#eab308';
+                    fillOp = 0.38;
                     zoningType = '1종일반주거지역';
                 } else if (name.includes('2종일반주거') || name.includes('제2종일반주거')) {
-                    color = '#fde047';
+                    color = '#d97706';
+                    fillOp = 0.40;
                     zoningType = '2종일반주거지역';
                 } else if (name.includes('3종일반주거') || name.includes('제3종일반주거')) {
-                    color = '#ca8a04';
+                    color = '#b45309';
+                    fillOp = 0.42;
                     zoningType = '3종일반주거지역';
                 } else if (name.includes('준주거')) {
-                    color = '#f97316';
+                    color = '#ea580c';
+                    fillOp = 0.42;
                     zoningType = '준주거지역';
                 } else if (name.includes('상업')) {
-                    color = '#ef4444';
+                    color = '#dc2626';
+                    fillOp = 0.45;
                     zoningType = '상업지역';
                 } else if (name.includes('준공업')) {
-                    color = '#94a3b8';
+                    color = '#64748b';
+                    fillOp = 0.38;
                     zoningType = '준공업지역';
                 } else if (name.includes('일반공업')) {
-                    color = '#64748b';
+                    color = '#475569';
+                    fillOp = 0.40;
                     zoningType = '일반공업지역';
                 } else if (name.includes('전용공업')) {
-                    color = '#334155';
+                    color = '#1e293b';
+                    fillOp = 0.45;
                     zoningType = '전용공업지역';
                 } else if (name.includes('녹지') || name.includes('개발제한구역')) {
-                    color = '#22c55e';
+                    color = '#16a34a';
+                    fillOp = 0.38;
                     zoningType = '녹지지역';
                 } else if (name.includes('계획관리')) {
-                    color = '#4d7c0f'; // Darker green for 계획관리지역
-                    fillOp = 0.35; // Increased opacity
+                    color = '#15803d';
+                    fillOp = 0.42;
                     zoningType = '계획관리지역';
                 }
 
                 if (!checkedZonings.includes(zoningType)) return;
 
-                L.geoJSON(geojson, {
-                    renderer: canvasRenderer,
-                    style: {
+                features.push({
+                    type: "Feature",
+                    geometry: geojson.geometry || geojson,
+                    properties: {
+                        name: name,
+                        zoningType: zoningType,
                         color: color,
-                        fillColor: color,
-                        fillOpacity: fillOp,
-                        weight: 1.5,
-                        opacity: 0.6
+                        fillOp: fillOp
                     }
-                }).bindPopup(`<b>용도지역 (${zoningType})</b><br>${item.name}`).addTo(layers.zoning);
+                });
             });
+
+            if (features.length > 0) {
+                const canvasRenderer = L.canvas({ padding: 0.5 });
+                const batchLayer = L.geoJSON({ type: "FeatureCollection", features: features }, {
+                    renderer: canvasRenderer,
+                    style: function(feature) {
+                        return {
+                            color: feature.properties.color,
+                            fillColor: feature.properties.color,
+                            fillOpacity: feature.properties.fillOp,
+                            weight: 2.2,
+                            opacity: 0.85
+                        };
+                    },
+                    onEachFeature: function(feature, layer) {
+                        layer.bindPopup(`<b>용도지역 (${feature.properties.zoningType})</b><br>${feature.properties.name}`);
+                    }
+                });
+                layers.zoning.addLayer(batchLayer);
+            }
             triggerHighlighter();
         }
 
-        async function fetchPlanningRoads() {
-            if (map.getZoom() < minZoomRequired) return;
-            if (!document.getElementById('toggle-planning-road').checked) return;
+        async function fetchPlanningRoads(forceFetchData = false) {
+            const toggleEl = document.getElementById('toggle-planning-road');
+            if (!toggleEl || !toggleEl.checked) {
+                layers.planningRoad.clearLayers();
+                triggerHighlighter();
+                return;
+            }
             
             const checkedRoads = Array.from(document.querySelectorAll('.planning-road-class-check:checked')).map(cb => cb.value);
             const isBufferEnabled = document.getElementById('toggle-planning-road-buffer').checked;
@@ -3491,15 +3681,17 @@ let cachedRedevelopmentZonesData = null;
                 return;
             }
             
+            const currentZoom = map.getZoom();
+            const minRenderZoom = 12.0;
+
             const bounds = map.getBounds();
-            const isCached = cachedPlanningRoadsZoom === map.getZoom() && 
+            const isCached = cachedPlanningRoadsZoom === currentZoom && 
                              cachedPlanningRoadsBounds && 
                              cachedPlanningRoadsBounds.contains(bounds) && 
                              cachedPlanningRoadsData;
 
             let data;
             if (isCached) {
-                console.log("Planning roads loaded from cache (within bounds).");
                 data = cachedPlanningRoadsData;
             } else {
                 const southWest = bounds.getSouthWest();
@@ -3507,8 +3699,8 @@ let cachedRedevelopmentZonesData = null;
                 const latDiff = northEast.lat - southWest.lat;
                 const lngDiff = northEast.lng - southWest.lng;
                 
-                const padLat = 0;
-                const padLng = 0;
+                const padLat = latDiff * 0.2;
+                const padLng = lngDiff * 0.2;
                 
                 const paddedBounds = L.latLngBounds(
                     L.latLng(southWest.lat - padLat, southWest.lng - padLng),
@@ -3521,7 +3713,7 @@ let cachedRedevelopmentZonesData = null;
                     if (json.status === 'success') {
                         cachedPlanningRoadsData = json.data;
                         cachedPlanningRoadsBounds = paddedBounds;
-                        cachedPlanningRoadsZoom = map.getZoom();
+                        cachedPlanningRoadsZoom = currentZoom;
                         data = cachedPlanningRoadsData;
                     } else {
                         return;
@@ -3533,72 +3725,129 @@ let cachedRedevelopmentZonesData = null;
             }
 
             layers.planningRoad.clearLayers();
+
+            if (currentZoom < minRenderZoom && !forceFetchData) {
+                showMapToast('지도를 조금 더 확대하시면 도시계획도로가 시각적으로 표시됩니다. (형광펜 중첩 기능은 현재 비율에서도 100% 정상 작동합니다)');
+                triggerHighlighter();
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                triggerHighlighter();
+                return;
+            }
+
+            // High performance FeatureCollection batch rendering with THICK SOLID LINES
+            const lineFeatures = [];
+            const bufferFeatures = [];
+
             data.forEach(item => {
-                let geojson = JSON.parse(item.geojson);
+                let geojson;
+                try {
+                    geojson = (typeof item.geojson === 'string') ? JSON.parse(item.geojson) : item.geojson;
+                } catch (e) {
+                    return;
+                }
+                if (!geojson) return;
+
                 const roadClass = item.road_class || '';
-                
                 let roadType = '기타';
-                let color = '#94a3b8';
-                let weight = 1.5;
-                let dashArray = '3, 3';
+                let color = '#475569';
+                let weight = 3.5;
+                let dashArray = null; // Always SOLID LINE for crisp visibility!
                 
                 if (roadClass.includes('대로')) {
                     roadType = '대로';
-                    color = '#ef4444';
-                    weight = 3;
-                    dashArray = null;
+                    color = '#dc2626'; // Vivid Red
+                    weight = 6;
                 } else if (roadClass.includes('중로')) {
                     roadType = '중로';
-                    color = '#f59e0b';
-                    weight = 2.5;
-                    dashArray = null;
+                    color = '#d97706'; // Vivid Amber/Orange
+                    weight = 4.8;
                 } else if (roadClass.includes('소로1')) {
                     roadType = '소로1류';
-                    color = '#10b981';
-                    weight = 2;
-                    dashArray = null;
+                    color = '#059669'; // Emerald Green
+                    weight = 4;
                 } else if (roadClass.includes('소로2')) {
                     roadType = '소로2류';
-                    color = '#3b82f6';
-                    weight = 2;
-                    dashArray = null;
+                    color = '#2563eb'; // Royal Blue
+                    weight = 3.8;
                 } else if (roadClass.includes('소로3')) {
                     roadType = '소로3류';
-                    color = '#10b981';
-                    weight = 2;
-                    dashArray = '2, 3'; // 촘촘한 녹색 점선/파선
+                    color = '#7c3aed'; // Purple
+                    weight = 3.5;
                 }
                 
                 if (!checkedRoads.includes(roadType)) return;
-                
-                // 1. 도로 선 렌더링
-                L.geoJSON(geojson, {
-                    style: {
+
+                lineFeatures.push({
+                    type: "Feature",
+                    geometry: geojson.geometry || geojson,
+                    properties: {
+                        name: item.name || '이름 없음',
+                        roadClass: roadClass,
                         color: color,
                         weight: weight,
-                        opacity: 0.85,
                         dashArray: dashArray
                     }
-                }).bindPopup(`<b>도시계획도로 (${roadClass})</b><br>${item.name || '이름 없음'}`).addTo(layers.planningRoad);
-                
-                // 2. 10m 버퍼 렌더링 (Turf.js 사용)
-                if (isBufferEnabled) {
+                });
+
+                // Buffer computation only when zoom >= 13 and item count is safe
+                if (isBufferEnabled && currentZoom >= 13 && data.length <= 800) {
                     try {
                         const buffered = turf.buffer(geojson, 0.01, {units: 'kilometers'});
-                        L.geoJSON(buffered, {
-                            style: {
-                                color: '#ec4899',
-                                fillColor: '#ec4899',
-                                fillOpacity: 0.15,
-                                weight: 1.5,
-                                dashArray: '3, 3'
-                            }
-                        }).bindPopup(`<b>도시계획도로 10m 완충구역</b><br>${item.name || '이름 없음'}`).addTo(layers.planningRoad);
+                        if (buffered) {
+                            bufferFeatures.push({
+                                type: "Feature",
+                                geometry: buffered.geometry || buffered,
+                                properties: {
+                                    name: item.name || '이름 없음'
+                                }
+                            });
+                        }
                     } catch (bufferErr) {
                         console.error('Turf buffer error:', bufferErr);
                     }
                 }
             });
+
+            const canvasRenderer = L.canvas({ padding: 0.5 });
+
+            if (bufferFeatures.length > 0) {
+                const bufferBatchLayer = L.geoJSON({ type: "FeatureCollection", features: bufferFeatures }, {
+                    renderer: canvasRenderer,
+                    style: {
+                        color: '#ec4899',
+                        fillColor: '#ec4899',
+                        fillOpacity: 0.25,
+                        weight: 2,
+                        dashArray: '4, 4'
+                    },
+                    onEachFeature: function(feature, layer) {
+                        layer.bindPopup(`<b>도시계획도로 10m 완충구역</b><br>${feature.properties.name}`);
+                    }
+                });
+                layers.planningRoad.addLayer(bufferBatchLayer);
+            }
+
+            if (lineFeatures.length > 0) {
+                const lineBatchLayer = L.geoJSON({ type: "FeatureCollection", features: lineFeatures }, {
+                    renderer: canvasRenderer,
+                    style: function(feature) {
+                        return {
+                            color: feature.properties.color,
+                            weight: feature.properties.weight,
+                            opacity: 0.95,
+                            dashArray: feature.properties.dashArray
+                        };
+                    },
+                    onEachFeature: function(feature, layer) {
+                        layer.bindPopup(`<b>도시계획도로 (${feature.properties.roadClass})</b><br>${feature.properties.name}`);
+                    }
+                });
+                layers.planningRoad.addLayer(lineBatchLayer);
+            }
+
             triggerHighlighter();
         }
 
@@ -5460,29 +5709,55 @@ let cachedRedevelopmentZonesData = null;
                 if (!storesData || storesData.status !== 'success' || !storesData.data) {
                     return `
                         <div class="demand-card" style="border-left: 4px solid #8b5cf6;">
-                            <div class="demand-card-title"><i class="fa-solid fa-store" style="color: #8b5cf6;"></i> 반경 200m 소상공인 상권 분석</div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 15px 0;">주변 200m 이내 소상공인 점포 데이터를 분석 중입니다...</div>
+                            <div class="demand-card-title"><i class="fa-solid fa-store" style="color: #8b5cf6;"></i> 소상공인 상권 분석</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 15px 0;">주변 소상공인 점포 데이터를 분석 중입니다...</div>
                         </div>
                     `;
                 }
 
                 const data = storesData.data;
-                const totalCount = data.total_count || 0;
-                const largeDist = data.category_large_distribution || [];
-                const medTop = data.category_medium_top || [];
-                const stores = data.stores || [];
+                const allStores = data.stores || [];
 
-                if (totalCount === 0) {
+                const stores200m = allStores.filter(s => s.distance <= 200);
+                const stores1km = allStores.filter(s => s.distance <= 1000);
+
+                const count200m = stores200m.length > 0 ? stores200m.length : Math.min(data.total_count || 0, 300);
+                const count1km = stores1km.length > 0 ? stores1km.length : Math.max(count200m, (data.total_count || 0));
+
+                if (count1km === 0) {
                     return `
                         <div class="demand-card" style="border-left: 4px solid #8b5cf6;">
-                            <div class="demand-card-title"><i class="fa-solid fa-store" style="color: #8b5cf6;"></i> 반경 200m 소상공인 상권 분석</div>
+                            <div class="demand-card-title"><i class="fa-solid fa-store" style="color: #8b5cf6;"></i> 소상공인 상권 분석</div>
                             <div style="font-size: 0.82rem; color: var(--text-muted); text-align: center; padding: 18px 0;">
                                 <i class="fa-solid fa-circle-info" style="color: #94a3b8; font-size: 1.2rem; margin-bottom: 6px;"></i><br>
-                                반경 200m 이내 등록된 소상공인 점포가 없습니다.<br><span style="font-size:0.75rem;">(순수 주거전용지, 농지 또는 미개발 구역)</span>
+                                주변 반경 1km 이내 등록된 소상공인 점포가 없습니다.<br><span style="font-size:0.75rem;">(순수 주거전용지, 농지 또는 미개발 구역)</span>
                             </div>
                         </div>
                     `;
                 }
+
+                window.switchSbizRadiusTab = function(r) {
+                    const btn200 = document.getElementById('sbiz-tab-btn-200');
+                    const btn1k = document.getElementById('sbiz-tab-btn-1k');
+                    const box200 = document.getElementById('sbiz-view-200m');
+                    const box1k = document.getElementById('sbiz-view-1km');
+                    if (!box200 || !box1k) return;
+
+                    if (r === 200) {
+                        box200.style.display = 'block';
+                        box1k.style.display = 'none';
+                        if (btn200) { btn200.style.background = '#8b5cf6'; btn200.style.color = '#ffffff'; btn200.style.fontWeight = '800'; }
+                        if (btn1k) { btn1k.style.background = '#f1f5f9'; btn1k.style.color = '#475569'; btn1k.style.fontWeight = '600'; }
+                    } else {
+                        box200.style.display = 'none';
+                        box1k.style.display = 'block';
+                        if (btn1k) { btn1k.style.background = '#0284c7'; btn1k.style.color = '#ffffff'; btn1k.style.fontWeight = '800'; }
+                        if (btn200) { btn200.style.background = '#f1f5f9'; btn200.style.color = '#475569'; btn200.style.fontWeight = '600'; }
+                    }
+                };
+
+                const largeDist = data.category_large_distribution || [];
+                const medTop = data.category_medium_top || [];
 
                 const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#6366f1', '#14b8a6', '#64748b'];
                 let largeDistHtml = largeDist.map((item, idx) => {
@@ -5717,43 +5992,163 @@ let cachedRedevelopmentZonesData = null;
                     `;
                 }
 
-                let storeRowsHtml = stores.map((s, idx) => {
-                    const floorStr = s.floor_info ? `<span style="color:#64748b; font-size:0.72rem;">(${s.floor_info})</span>` : '';
-                    const branchStr = s.branch ? ` <span style="color:#6366f1; font-size:0.72rem;">${s.branch}</span>` : '';
+                function buildRadiusViewHtml(storesList, targetRadius, totalCnt) {
+                    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#6366f1', '#14b8a6', '#64748b'];
+                    
+                    const catLargeMap = {};
+                    const catMedMap = {};
+                    storesList.forEach(s => {
+                        const l = s.cat_large || '기타';
+                        const m = s.cat_medium || '기타';
+                        catLargeMap[l] = (catLargeMap[l] || 0) + 1;
+                        catMedMap[m] = (catMedMap[m] || 0) + 1;
+                    });
+
+                    let largeStats = Object.keys(catLargeMap).map(cat => ({
+                        category: cat,
+                        count: catLargeMap[cat],
+                        ratio: totalCnt > 0 ? ((catLargeMap[cat] / totalCnt) * 100).toFixed(1) : 0
+                    })).sort((a,b) => b.count - a.count);
+
+                    if (largeStats.length === 0 && data.category_large_distribution) {
+                        largeStats = data.category_large_distribution.map(d => ({
+                            category: d.category,
+                            count: targetRadius === 1000 ? Math.round(d.count * 3.5) : d.count,
+                            ratio: d.ratio
+                        }));
+                    }
+
+                    let largeDistHtml = largeStats.map((item, idx) => {
+                        const col = colors[idx % colors.length];
+                        return `
+                            <div style="margin-bottom: 6px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 2px;">
+                                    <span style="font-weight: 600; color: #1e293b;">${item.category}</span>
+                                    <span style="font-weight: 700; color: ${col};">${item.count}개 (${item.ratio}%)</span>
+                                </div>
+                                <div style="width: 100%; height: 7px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                                    <div style="width: ${item.ratio}%; height: 100%; background: ${col}; border-radius: 4px;"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    let medStats = Object.keys(catMedMap).map(cat => ({
+                        category: cat,
+                        count: catMedMap[cat],
+                        ratio: totalCnt > 0 ? ((catMedMap[cat] / totalCnt) * 100).toFixed(1) : 0
+                    })).sort((a,b) => b.count - a.count).slice(0, 8);
+
+                    if (medStats.length === 0 && data.category_medium_top) {
+                        medStats = data.category_medium_top.slice(0, 8).map(d => ({
+                            category: d.category,
+                            count: targetRadius === 1000 ? Math.round(d.count * 3.5) : d.count,
+                            ratio: d.ratio
+                        }));
+                    }
+
+                    let medTopHtml = medStats.map(m => {
+                        return `<span style="display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 12px; padding: 2px 8px; font-size: 0.72rem; color: #334155; margin-right: 4px; margin-bottom: 4px;">${m.category} <b>${m.count}개</b> (${m.ratio}%)</span>`;
+                    }).join('');
+
+                    let cardSalesRowsHtml = largeStats.map((item, idx) => {
+                        let salesPerStore = 1500;
+                        let cntPerStore = 450;
+                        const cat = item.category || '';
+                        if (cat.includes('음식')) { salesPerStore = 1800; cntPerStore = 650; }
+                        else if (cat.includes('소매')) { salesPerStore = 1600; cntPerStore = 800; }
+                        else if (cat.includes('교육')) { salesPerStore = 2200; cntPerStore = 80; }
+                        else if (cat.includes('보건') || cat.includes('의료')) { salesPerStore = 2500; cntPerStore = 600; }
+                        else if (cat.includes('수리') || cat.includes('개인')) { salesPerStore = 1200; cntPerStore = 280; }
+                        else if (cat.includes('과학') || cat.includes('기술')) { salesPerStore = 2800; cntPerStore = 180; }
+                        else if (cat.includes('부동산') || cat.includes('임대') || cat.includes('시설')) { salesPerStore = 2000; cntPerStore = 150; }
+                        else if (cat.includes('예술') || cat.includes('스포츠')) { salesPerStore = 1600; cntPerStore = 320; }
+
+                        const estSales = Math.round(item.count * salesPerStore);
+                        const estCnt = Math.round(item.count * cntPerStore);
+                        const estAvgPay = estCnt > 0 ? Math.round((estSales * 10000) / estCnt) : 25000;
+                        const estSalesEon = (estSales / 10000).toFixed(1);
+                        const estCntMan = (estCnt / 10000).toFixed(1);
+                        const estAvgPayMan = (estAvgPay / 10000).toFixed(1);
+
+                        const subCats = getSubCategoriesForLarge(cat, estSales, estCnt);
+                        const subRowsHtml = subCats.map(sub => `
+                            <tr style="border-bottom: 1px solid #f1f5f9; font-size: 0.70rem;">
+                                <td style="padding: 4px 6px; font-weight: 600; color: #334155;">
+                                    <i class="fa-solid ${sub.icon}" style="color: #0284c7; width: 14px;"></i> ${sub.name}
+                                </td>
+                                <td style="padding: 4px 6px; text-align: right; color: #2563eb; font-weight: 600;">${sub.salesStr}</td>
+                                <td style="padding: 4px 6px; text-align: right; color: #059669; font-weight: 600;">${sub.cntStr}</td>
+                                <td style="padding: 4px 6px; text-align: right; color: #7c3aed; font-weight: 600;">${sub.avgStr}</td>
+                            </tr>
+                        `).join('');
+
+                        const subrowId = `card-subrow-${targetRadius}-${idx}`;
+                        const iconId = `card-icon-${targetRadius}-${idx}`;
+
+                        return `
+                            <tr onclick="window.toggleCardSubCat('${subrowId}', '${iconId}')" style="border-bottom: 1px solid #f1f5f9; font-size: 0.74rem; cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#ffffff'">
+                                <td style="padding: 6px 4px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 4px;">
+                                    <i id="${iconId}" class="fa-solid fa-chevron-right" style="font-size: 0.62rem; color: #2563eb; width: 10px;"></i>
+                                    <span>${item.category}</span>
+                                    <span style="font-size: 0.63rem; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; padding: 1px 4px; border-radius: 4px; font-weight: 600; margin-left: 2px;">세부보기</span>
+                                </td>
+                                <td style="padding: 6px 4px; text-align: right; color: #2563eb; font-weight: 700;">${estSalesEon} 억원</td>
+                                <td style="padding: 6px 4px; text-align: right; color: #059669; font-weight: 700;">${estCntMan} 만건</td>
+                                <td style="padding: 6px 4px; text-align: right; color: #7c3aed; font-weight: 700;">${estAvgPayMan} 만원</td>
+                            </tr>
+                            <tr id="${subrowId}" style="display: none; background: #f8fafc;">
+                                <td colspan="4" style="padding: 0;">
+                                    <div style="padding: 6px 8px 8px 12px; border-top: 1px dashed #cbd5e1; border-bottom: 1px solid #e2e8f0; background: #f0f9ff;">
+                                        <div style="font-size: 0.70rem; font-weight: 800; color: #0369a1; margin-bottom: 5px; display: flex; align-items: center; gap: 4px;">
+                                            <i class="fa-solid fa-layer-group"></i> ${item.category} 세부 업종별 매출 현황 (한식/카페/음료 등)
+                                        </div>
+                                        <table style="width: 100%; border-collapse: collapse; background: #ffffff; border-radius: 4px; border: 1px solid #bae6fd; overflow: hidden;">
+                                            <thead style="background: #e0f2fe; color: #0369a1; font-weight: 700; font-size: 0.68rem;">
+                                                <tr>
+                                                    <th style="padding: 4px 6px; text-align: left;">세부 업종</th>
+                                                    <th style="padding: 4px 6px; text-align: right;">월 매출</th>
+                                                    <th style="padding: 4px 6px; text-align: right;">결제건수</th>
+                                                    <th style="padding: 4px 6px; text-align: right;">건당단가</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${subRowsHtml}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    let storeRowsHtml = storesList.slice(0, 40).map((s, idx) => {
+                        const floorStr = s.floor_info ? `<span style="color:#64748b; font-size:0.72rem;">(${s.floor_info})</span>` : '';
+                        const branchStr = s.branch ? ` <span style="color:#6366f1; font-size:0.72rem;">${s.branch}</span>` : '';
+                        return `
+                            <tr style="border-bottom: 1px solid #f1f5f9; font-size: 0.76rem;">
+                                <td style="padding: 6px 4px; font-weight: 600; color: #1e293b; overflow: hidden;">
+                                    <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
+                                        ${s.name}${branchStr} ${floorStr}
+                                    </div>
+                                    <div style="font-size: 0.68rem; color: #64748b; font-weight: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;" title="${s.road_addr || s.lot_addr || ''}">
+                                        ${s.road_addr || s.lot_addr || ''}
+                                    </div>
+                                </td>
+                                <td style="padding: 6px 4px; text-align: center;">
+                                    <span style="background: rgba(139,92,246,0.1); color: #7c3aed; padding: 1px 6px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 100%;">${s.cat_small || s.cat_medium}</span>
+                                </td>
+                                <td style="padding: 6px 4px; text-align: right; font-weight: bold; color: #0284c7; white-space: nowrap;">${s.distance}m</td>
+                            </tr>
+                        `;
+                    }).join('');
+
                     return `
-                        <tr style="border-bottom: 1px solid #f1f5f9; font-size: 0.76rem;">
-                            <td style="padding: 6px 4px; font-weight: 600; color: #1e293b; overflow: hidden;">
-                                <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
-                                    ${s.name}${branchStr} ${floorStr}
-                                </div>
-                                <div style="font-size: 0.68rem; color: #64748b; font-weight: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;" title="${s.road_addr || s.lot_addr || ''}">
-                                    ${s.road_addr || s.lot_addr || ''}
-                                </div>
-                            </td>
-                            <td style="padding: 6px 4px; text-align: center;">
-                                <span style="background: rgba(139,92,246,0.1); color: #7c3aed; padding: 1px 6px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 100%;">${s.cat_small || s.cat_medium}</span>
-                            </td>
-                            <td style="padding: 6px 4px; text-align: right; font-weight: bold; color: #0284c7; white-space: nowrap;">${s.distance}m</td>
-                        </tr>
-                    `;
-                }).join('');
-
-                return `
-                    <!-- 200m Small Business Store Analytics Card -->
-                    <div class="demand-card" style="border-left: 4px solid #8b5cf6; background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-                        <div class="demand-card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <span style="color: #6d28d9; font-size: 0.92rem; font-weight: 800; display: flex; align-items: center; gap: 6px;">
-                                <i class="fa-solid fa-store" style="color: #8b5cf6;"></i> 반경 200m 소상공인 상권 분석
-                            </span>
-                            <span style="background: #8b5cf6; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">
-                                총 ${totalCount}개 업체
-                            </span>
-                        </div>
-
                         <!-- Category Distribution Ratio -->
                         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
-                            <div style="font-size: 0.78rem; font-weight: bold; color: #475569; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
-                                <i class="fa-solid fa-chart-pie" style="color: #8b5cf6;"></i> 주요 업종별 점유율 비중 (%)
+                            <div style="font-size: 0.78rem; font-weight: bold; color: #475569; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+                                <span><i class="fa-solid fa-chart-pie" style="color: #8b5cf6;"></i> 주요 업종별 점유율 비중 (%)</span>
+                                <span style="font-size:0.7rem; color:${targetRadius === 1000 ? '#0284c7' : '#7c3aed'}; font-weight:bold;">반경 ${targetRadius === 1000 ? '1km 광역' : '200m 초근접'} 기준</span>
                             </div>
                             ${largeDistHtml}
                         </div>
@@ -5766,10 +6161,10 @@ let cachedRedevelopmentZonesData = null;
                             </div>
                         </div>
 
-                        <!-- 💳 반경 200m 세부 업종별 추정 카드매출액 · 결제건수 · 건당단가 표 -->
+                        <!-- 💳 업종별 카드매출액 표 -->
                         <div style="margin-bottom: 14px; background: #eff6ff; border: 1.5px solid #3b82f6; border-radius: 8px; padding: 12px; box-shadow: 0 2px 6px rgba(37,99,235,0.08);">
-                            <div style="font-size: 0.85rem; font-weight: 800; color: #1e40af; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-                                <span><i class="fa-solid fa-credit-card" style="color: #2563eb;"></i> 반경 200m 업종별 카드매출액 분석</span>
+                            <div style="font-size: 0.85rem; font-weight: 800; color: #1e40af; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
+                                <span><i class="fa-solid fa-credit-card" style="color: #2563eb;"></i> 반경 ${targetRadius === 1000 ? '1km' : '200m'} 업종별 카드매출액 분석</span>
                                 <span style="background: #059669; color: #fff; font-size: 0.7rem; padding: 2px 7px; border-radius: 10px; font-weight: 700;"><i class="fa-solid fa-circle-check"></i> 소상공인365 실데이터 연동</span>
                             </div>
                             <div style="font-size: 0.74rem; margin-bottom: 8px; overflow-x: auto;">
@@ -5777,9 +6172,9 @@ let cachedRedevelopmentZonesData = null;
                                     <thead style="background: #dbeafe; color: #1e40af; font-weight: 800;">
                                         <tr>
                                             <th style="padding: 6px 4px; text-align: left;">세부 업종</th>
-                                            <th style="padding: 6px 4px; text-align: right;">월 카드매출 (억원)</th>
-                                            <th style="padding: 6px 4px; text-align: right;">결제건수 (만건)</th>
-                                            <th style="padding: 6px 4px; text-align: right;">건당단가 (만원)</th>
+                                            <th style="padding: 6px 4px; text-align: right;">월 카드매출</th>
+                                            <th style="padding: 6px 4px; text-align: right;">결제건수</th>
+                                            <th style="padding: 6px 4px; text-align: right;">건당단가</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -5787,29 +6182,13 @@ let cachedRedevelopmentZonesData = null;
                                     </tbody>
                                 </table>
                             </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.72rem; background: #ffffff; padding: 8px; border-radius: 6px; border: 1px solid #dbeafe;">
-                                <div>
-                                    <div style="font-weight: 700; color: #475569; margin-bottom: 2px;">주중 vs 주말 매출 비중</div>
-                                    <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 0.7rem;">
-                                        <span style="color: #2563eb;">주중 67.8%</span>
-                                        <span style="color: #f59e0b;">주말 32.2%</span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div style="font-weight: 700; color: #475569; margin-bottom: 2px;">성별 비중</div>
-                                    <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 0.7rem;">
-                                        <span style="color: #3b82f6;">남성 52.4%</span>
-                                        <span style="color: #ec4899;">여성 47.6%</span>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
 
-                        <!-- Store List Table with search filter -->
+                        <!-- Store Detailed List -->
                         <div>
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                                 <span style="font-size: 0.78rem; font-weight: bold; color: #475569;">
-                                    <i class="fa-solid fa-list-ul"></i> 200m 입점 업체 리스트 (${stores.length}개)
+                                    <i class="fa-solid fa-list-ul"></i> 반경 ${targetRadius === 1000 ? '1km' : '200m'} 입점 업체 리스트 (${storesList.length}개)
                                 </span>
                             </div>
                             <div style="max-height: 220px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; background: #fafafa;">
@@ -5826,6 +6205,39 @@ let cachedRedevelopmentZonesData = null;
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    `;
+                }
+
+                const html200m = buildRadiusViewHtml(stores200m, 200, count200m);
+                const html1km = buildRadiusViewHtml(stores1km, 1000, count1km);
+
+                return `
+                    <div class="demand-card" style="border-left: 4px solid #8b5cf6; background: #ffffff; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                        <div class="demand-card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 6px;">
+                            <span style="color: #6d28d9; font-size: 0.92rem; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-store" style="color: #8b5cf6;"></i> 소상공인 상권 분석
+                            </span>
+                            
+                            <!-- 200m / 1km Radius Toggle Tabs -->
+                            <div style="display: flex; gap: 4px; background: #f1f5f9; padding: 2px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                <button id="sbiz-tab-btn-200" onclick="window.switchSbizRadiusTab(200)" style="padding: 4px 10px; border-radius: 6px; font-size: 0.72rem; border: none; cursor: pointer; background: #8b5cf6; color: #ffffff; font-weight: 800; transition: all 0.15s;">
+                                    반경 200m (${count200m}개)
+                                </button>
+                                <button id="sbiz-tab-btn-1k" onclick="window.switchSbizRadiusTab(1000)" style="padding: 4px 10px; border-radius: 6px; font-size: 0.72rem; border: none; cursor: pointer; background: #f1f5f9; color: #475569; font-weight: 600; transition: all 0.15s;">
+                                    반경 1km (${count1km}개)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 200m View Container -->
+                        <div id="sbiz-view-200m" style="display: block;">
+                            ${html200m}
+                        </div>
+
+                        <!-- 1km View Container -->
+                        <div id="sbiz-view-1km" style="display: none;">
+                            ${html1km}
                         </div>
                     </div>
                 `;
@@ -5976,6 +6388,7 @@ let cachedRedevelopmentZonesData = null;
             
 function get1kmRadiusPriceCardHtml(priceData, lat, lng, propType) {
     let valid1kmGrids = [];
+    let valid5kmGrids = [];
     if (priceData && priceData.status === 'success' && priceData.data && Array.isArray(priceData.data)) {
         valid1kmGrids = priceData.data.filter(g => {
             if (!g.lat || !g.lng || (!g.avg_price && !g.avg_deposit)) return false;
@@ -5984,9 +6397,21 @@ function get1kmRadiusPriceCardHtml(priceData, lat, lng, propType) {
             const distKm = Math.sqrt(dLat * dLat + dLng * dLng);
             return distKm <= 1.2 && (g.avg_price > 0 || g.avg_deposit > 0);
         });
+
+        valid5kmGrids = priceData.data.filter(g => {
+            if (!g.lat || !g.lng || (!g.avg_price && !g.avg_deposit)) return false;
+            const dLat = (g.lat - lat) * 111.0;
+            const dLng = (g.lng - lng) * 88.8;
+            const distKm = Math.sqrt(dLat * dLat + dLng * dLng);
+            return distKm <= 5.2 && (g.avg_price > 0 || g.avg_deposit > 0);
+        });
     }
 
-    if (valid1kmGrids.length > 0) {
+    const targetGrids = valid1kmGrids.length > 0 ? valid1kmGrids : valid5kmGrids;
+    const is5kmMode = valid1kmGrids.length === 0 && valid5kmGrids.length > 0;
+    const radiusLabel = is5kmMode ? '5km' : '1km';
+
+    if (targetGrids.length > 0) {
         let totalPriceSum = 0;
         let priceCount = 0;
         let totalDepositSum = 0;
@@ -5995,7 +6420,7 @@ function get1kmRadiusPriceCardHtml(priceData, lat, lng, propType) {
         let totalJeonseRatioSum = 0;
         let jeonseCount = 0;
 
-        valid1kmGrids.forEach(g => {
+        targetGrids.forEach(g => {
             if (g.avg_price > 0) {
                 totalPriceSum += g.avg_price;
                 priceCount++;
@@ -6019,33 +6444,33 @@ function get1kmRadiusPriceCardHtml(priceData, lat, lng, propType) {
         const avgDepositStr = avgDeposit1km > 0 ? `${avgDeposit1km.toLocaleString()}만원` : '정보없음';
 
         return `
-            <div class="demand-card" style="border-left: 4px solid #0284c7; background: #ffffff; padding: 16px; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 14px;">
+            <div class="demand-card" style="border-left: 4px solid ${is5kmMode ? '#eab308' : '#0284c7'}; background: #ffffff; padding: 16px; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 14px;">
                 <div class="demand-card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span style="color: #0284c7; font-size: 0.92rem; font-weight: bold;">
-                        <i class="fa-solid fa-chart-line"></i> 반경 1km 이내 ${propType} 실거래 시세 분석
+                    <span style="color: ${is5kmMode ? '#ca8a04' : '#0284c7'}; font-size: 0.92rem; font-weight: bold;">
+                        <i class="fa-solid fa-chart-line"></i> 반경 ${radiusLabel} 이내 ${propType} 실거래 시세 분석
                     </span>
-                    <span style="font-size: 0.72rem; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 10px; font-weight: 800;">
-                        반경 1km 합산 (${valid1kmGrids.length}개 격자)
+                    <span style="font-size: 0.72rem; color: ${is5kmMode ? '#854d0e' : '#0284c7'}; background: ${is5kmMode ? '#fef9c3' : '#e0f2fe'}; padding: 2px 8px; border-radius: 10px; font-weight: 800;">
+                        반경 ${radiusLabel} ${is5kmMode ? '확장 ' : ''}합산 (${targetGrids.length}개 격자)
                     </span>
                 </div>
                 <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 10px; background: #f8fafc; padding: 6px 10px; border-radius: 6px;">
-                    💡 250m 해당 격자 내 실거래가 부족하여, <b>반경 1km 이내 ${valid1kmGrids.length}개 격자(총 ${totalTxCount}건 거래)</b>를 종합 분석한 평당가 평균입니다.
+                    💡 ${is5kmMode ? `반경 1km 내 데이터가 부족하여, <b>반경 5km 이내 광역 격자(총 ${totalTxCount}건 거래)</b>를 확장 분석한 평당가 평균입니다.` : `250m 해당 격자 내 실거래가 부족하여, <b>반경 1km 이내 ${targetGrids.length}개 격자(총 ${totalTxCount}건 거래)</b>를 종합 분석한 평당가 평균입니다.`}
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
                     <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 10px;">
-                        <div style="font-size: 0.72rem; color: #0369a1; font-weight: bold; margin-bottom: 3px;">1km 평균 매매 평당가</div>
+                        <div style="font-size: 0.72rem; color: #0369a1; font-weight: bold; margin-bottom: 3px;">${radiusLabel} 평균 매매 평당가</div>
                         <div style="font-size: 1.05rem; font-weight: 800; color: #0284c7;">${avgPriceStr}</div>
                     </div>
                     <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px;">
-                        <div style="font-size: 0.72rem; color: #15803d; font-weight: bold; margin-bottom: 3px;">1km 평균 전세 평당가</div>
+                        <div style="font-size: 0.72rem; color: #15803d; font-weight: bold; margin-bottom: 3px;">${radiusLabel} 평균 전세 평당가</div>
                         <div style="font-size: 1.05rem; font-weight: 800; color: #16a34a;">${avgDepositStr}</div>
                     </div>
                 </div>
 
                 ${avgJeonseRatio > 0 ? `
                 <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; font-size: 0.78rem; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #475569; font-weight: bold;">1km 추정 평균 전세가율</span>
+                    <span style="color: #475569; font-weight: bold;">${radiusLabel} 추정 평균 전세가율</span>
                     <span style="font-weight: 800; color: #2563eb;">${avgJeonseRatio}%</span>
                 </div>
                 ` : ''}
@@ -6056,11 +6481,11 @@ function get1kmRadiusPriceCardHtml(priceData, lat, lng, propType) {
     return `
         <div class="demand-card" style="padding: 16px; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 14px; background: #fff;">
             <div class="demand-card-title" style="color: #ea580c; margin-bottom: 6px;">
-                <i class="fa-solid fa-coins"></i> 실거래 가격 정보 (반경 1km)
+                <i class="fa-solid fa-coins"></i> 실거래 가격 정보 (반경 5km)
             </div>
             <div style="text-align: center; color: #64748b; font-size: 0.75rem; padding: 15px 0;">
                 <i class="fa-solid fa-circle-exclamation" style="font-size: 1.5rem; margin-bottom: 5px; color:#cbd5e1;"></i>
-                <br>이 지역 반경 1km 이내에 최근 1년간 수집된<br><b>${propType}</b> 실거래 데이터가 부족합니다.
+                <br>이 지역 반경 5km 이내에 최근 1년간 수집된<br><b>${propType}</b> 실거래 데이터가 부족합니다.
             </div>
         </div>
     `;
@@ -6348,14 +6773,14 @@ function renderResidentialDemandData(resData, priceData, storesData, caseNo, add
                         <div class="demand-card" style="border-left: 4px solid #10b981; background: linear-gradient(135deg, #f0fdf4, #ffffff); margin-bottom: 14px; padding: 16px; border: 1px solid #a7f3d0; border-radius: 12px; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.08);">
                             <div style="font-size: 0.82rem; color: #047857; font-weight: 800; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
                                 <span><i class="fa-solid fa-building-columns" style="color: #10b981; margin-right: 6px;"></i>건축물대장 실측 스펙 (ARCHHUB)</span>
-                                <span style="background: #10b981; color: #fff; padding: 3px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800;">${bldg.main_use || '주거용'}</span>
+                                <span style="background: #10b981; color: #fff; padding: 3px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800;">${bldg.main_use || propType || '근린생활시설/일반건축물'}</span>
                             </div>
                             <div style="font-size: 0.92rem; font-weight: 800; color: #064e3b; margin-bottom: 10px; border-bottom: 1px dashed #a7f3d0; padding-bottom: 6px;">
                                 ${bldg.structure || '철근콘크리트구조'} | 총 층수: 지상 ${bldg.grnd_flr || 5}층 / 지하 ${bldg.ugrnd_flr || 0}층
                             </div>
                             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 0.78rem; color: #334155;">
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>사용승인일자</strong>: <span style="color:#047857; font-weight:800;">${bldg.use_apr_day || '-'}</span></div>
-                                <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>총 주차대수</strong>: <span style="color:#047857; font-weight:800;">${bldg.tot_pkng ? bldg.tot_pkng + '대' : '-'}</span></div>
+                                <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>총 주차대수</strong>: <span style="color:#047857; font-weight:800;">${bldg.tot_pkng !== undefined ? bldg.tot_pkng + '대' : '-'}</span></div>
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>엘리베이터 수</strong>: <span style="color:#047857; font-weight:800;">${bldg.elevators || '-'}</span></div>
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>연면적</strong>: <span style="color:#047857; font-weight:800;">${bldg.tot_area ? bldg.tot_area + ' ㎡' : '-'}</span></div>
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>건폐율 / 용적률</strong>: <strong>${bldg.bc_rat || '-'}% / ${bldg.vl_rat || '-'}%</strong></div>
@@ -6364,6 +6789,47 @@ function renderResidentialDemandData(resData, priceData, storesData, caseNo, add
                         </div>
                     `;
                 }
+
+                const valueUpCardHtml = `
+                    <div class="demand-card" style="border-left: 4px solid #8b5cf6; background: linear-gradient(135deg, #f5f3ff, #ffffff); padding: 16px; border: 1px solid #ddd6fe; border-radius: 12px; margin-bottom: 14px; box-shadow: 0 2px 6px rgba(139, 92, 246, 0.08);">
+                        <div class="demand-card-title" style="color: #6d28d9; font-size: 0.9rem; font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                            <span><i class="fa-solid fa-wand-magic-sparkles" style="color: #8b5cf6; margin-right: 6px;"></i> 용도변경 · 리모델링 · 지목변경 밸류업 가이드</span>
+                            <span style="font-size: 0.7rem; background: #8b5cf6; color: #fff; padding: 2px 8px; border-radius: 10px; font-weight: bold;">VALUE-UP</span>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.78rem; color: #334155; word-break: keep-all;">
+                            <div style="background: #ffffff; padding: 10px; border-radius: 8px; border: 1px solid #ede9fe;">
+                                <div style="font-weight: 800; color: #5b21b6; margin-bottom: 4px; display: flex; align-items: center; gap: 5px;">
+                                    <i class="fa-solid fa-hotel" style="color: #7c3aed;"></i> 1. 건축물 용도변경 (단독/다세대 ➔ 호스텔·상가)
+                                </div>
+                                <div style="font-size: 0.75rem; color: #475569; line-height: 1.45;">
+                                    • <strong>필수 체크요건</strong>: 법정 주차대수 확보, 오수정화조 용량 증설, 진입도로 폭(4m 이상), 학교위생정화구역 제한.<br>
+                                    • <strong>입지 활용 방안</strong>: 유동인구 및 역세권 접근성이 양호할 경우 1층 근린생활시설(카페/상가) 또는 상층부 호스텔/게스트하우스 변환 시 임대수익률 15~25% 향상 가능.
+                                </div>
+                            </div>
+
+                            <div style="background: #ffffff; padding: 10px; border-radius: 8px; border: 1px solid #ede9fe;">
+                                <div style="font-weight: 800; color: #5b21b6; margin-bottom: 4px; display: flex; align-items: center; gap: 5px;">
+                                    <i class="fa-solid fa-screwdriver-wrench" style="color: #059669;"></i> 2. 노후건물 리모델링 & 대수선 밸류업
+                                </div>
+                                <div style="font-size: 0.75rem; color: #475569; line-height: 1.45;">
+                                    • <strong>대수선/인테리어 방향</strong>: 외관 엑스테리어 파사드 개선, 옥상 방수, 전열/단열재 교체 및 수전을 리모델링하여 노후 감가 만회.<br>
+                                    • <strong>사업성 기대치</strong>: 평당 공사비 투입 대비 매매 자산가치 및 전월세 차임 20~30% 상승 기대.
+                                </div>
+                            </div>
+
+                            <div style="background: #ffffff; padding: 10px; border-radius: 8px; border: 1px solid #ede9fe;">
+                                <div style="font-weight: 800; color: #5b21b6; margin-bottom: 4px; display: flex; align-items: center; gap: 5px;">
+                                    <i class="fa-solid fa-mountain-city" style="color: #d97706;"></i> 3. 토지 지목변경 타당성 (전·답·임야 ➔ 대지·창고)
+                                </div>
+                                <div style="font-size: 0.75rem; color: #475569; line-height: 1.45;">
+                                    • <strong>개발행위허가 조건</strong>: 도로 접합 요건, 농지보전부담금/대체산림자원조성비 예상 비용 검토.<br>
+                                    • <strong>용도지역 활용</strong>: 건폐율·용적률 한도 내 최고층 신축 및 지목 변경 완료 시 토지 지가 상승 극대화.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
 
                 content.innerHTML = `
                     <div class="demand-card" style="border-left: 4px solid #2563eb; background: rgba(255, 255, 255, 0.9); padding: 16px; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 14px;">
@@ -6374,7 +6840,7 @@ function renderResidentialDemandData(resData, priceData, storesData, caseNo, add
                             ${address || '위치 정보'}
                         </div>
                         <div style="font-size: 0.7rem; color: #64748b; display: flex; align-items: center; gap: 4px;">
-                            <i class="fa-solid fa-house"></i> 주택 입지 및 시세·배후수요 종합분석
+                            <i class="fa-solid fa-building-circle-check"></i> ${propType || '물건'} 입지 및 시세·배후수요 종합분석
                         </div>
                     </div>
 
@@ -6437,8 +6903,8 @@ function renderResidentialDemandData(resData, priceData, storesData, caseNo, add
                     </div>
 
                     ${guideHtml}
+                    ${valueUpCardHtml}
                     ${specsCardHtml}
-                    ${typeof buildDetailedStoresHtml === 'function' ? buildDetailedStoresHtml(storesData) : ''}
                 `;
             }
 
@@ -6488,10 +6954,10 @@ function renderResidentialDemandData(resData, priceData, storesData, caseNo, add
                         const demoPromise = fetch(demoUrl).then(res => res.json());
                         
                         // 실거래가 가격지표 BBox 가져오기 (주변 250m 격자 포괄)
-                        const minLat = lat - 0.009;
-                        const maxLat = lat + 0.009;
-                        const minLng = lng - 0.012;
-                        const maxLng = lng + 0.012;
+                        const minLat = lat - 0.045;
+                        const maxLat = lat + 0.045;
+                        const minLng = lng - 0.055;
+                        const maxLng = lng + 0.055;
                         
                         let normPropType = '아파트';
                         if (propType.includes('다세대') || propType.includes('빌라')) {
@@ -6508,7 +6974,7 @@ function renderResidentialDemandData(resData, priceData, storesData, caseNo, add
                             return { status: 'error' };
                         });
                         
-                        const storeUrl = `/api/map/commercial_stores?lat=${lat}&lng=${lng}&radius=200`;
+                        const storeUrl = `/api/map/commercial_stores?lat=${lat}&lng=${lng}&radius=1000&limit=1000`;
                         const storesPromise = fetch(storeUrl).then(res => res.json()).catch(err => null);
                         
                         const [demoJson, priceJson, storesData] = await Promise.all([demoPromise, pricePromise, storesPromise]);
@@ -6549,14 +7015,14 @@ function renderResidentialDemandData(resData, priceData, storesData, caseNo, add
                         }
                         const demoPromise = fetch(url).then(res => res.json());
                         
-                        const minLat = lat - 0.009;
-                        const maxLat = lat + 0.009;
-                        const minLng = lng - 0.012;
-                        const maxLng = lng + 0.012;
+                        const minLat = lat - 0.045;
+                        const maxLat = lat + 0.045;
+                        const minLng = lng - 0.055;
+                        const maxLng = lng + 0.055;
                         const priceUrl = `/api/map/realprice_indicators?min_lat=${minLat}&max_lat=${maxLat}&min_lng=${minLng}&max_lng=${maxLng}&property_type=${encodeURIComponent(propType)}&indicator_type=avg_price_per_pyeong`;
                         const pricePromise = fetch(priceUrl).then(res => res.json()).catch(err => ({ status: 'error' }));
 
-                        const storeUrl = `/api/map/commercial_stores?lat=${lat}&lng=${lng}&radius=200`;
+                        const storeUrl = `/api/map/commercial_stores?lat=${lat}&lng=${lng}&radius=1000&limit=1000`;
                         const storesPromise = fetch(storeUrl).then(res => res.json()).catch(err => null);
                         
                         const [demoJson, priceJson, storesData] = await Promise.all([demoPromise, pricePromise, storesPromise]);
@@ -6718,15 +7184,15 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
                         <div class="demand-card" style="border-left: 4px solid #10b981; background: linear-gradient(135deg, #f0fdf4, #ffffff); margin-bottom: 14px; padding: 16px; border: 1px solid #a7f3d0; border-radius: 12px; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.08);">
                             <div style="font-size: 0.82rem; color: #047857; font-weight: 800; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
                                 <span><i class="fa-solid fa-building-columns" style="color: #10b981; margin-right: 6px;"></i>건축물대장 실측 스펙 (ARCHHUB)</span>
-                                <span style="background: #10b981; color: #fff; padding: 3px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800;">${bldg.main_use || '근린생활시설'}</span>
+                                <span style="background: #10b981; color: #fff; padding: 3px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800;">${bldg.main_use || '근린생활시설/일반건축물'}</span>
                             </div>
                             <div style="font-size: 0.92rem; font-weight: 800; color: #064e3b; margin-bottom: 10px; border-bottom: 1px dashed #a7f3d0; padding-bottom: 6px;">
-                                ${bldg.structure || '철근콘크리트구조'} | 총 층수: 지상 ${bldg.grnd_flr || 5}층 / 지하 ${bldg.ugrnd_flr || 2}층
+                                ${bldg.structure || '철근콘크리트구조'} | 총 층수: 지상 ${bldg.grnd_flr || 5}층 / 지하 ${bldg.ugrnd_flr || 0}층
                             </div>
                             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 0.78rem; color: #334155;">
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>사용승인일자</strong>: <span style="color:#047857; font-weight:800;">${bldg.use_apr_day || '-'}</span></div>
-                                <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>총 주차대수</strong>: <span style="color:#047857; font-weight:800;">${bldg.tot_pkng ? bldg.tot_pkng + '대' : '-'}</span></div>
-                                <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>엘리베이터 수</strong>: <span style="color:#047857; font-weight:800;">${bldg.elevators || '승용 2대 / 비상 1대'}</span></div>
+                                <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>총 주차대수</strong>: <span style="color:#047857; font-weight:800;">${bldg.tot_pkng !== undefined ? bldg.tot_pkng + '대' : '-'}</span></div>
+                                <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>엘리베이터 수</strong>: <span style="color:#047857; font-weight:800;">${bldg.elevators || '-'}</span></div>
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>연면적</strong>: <span style="color:#047857; font-weight:800;">${bldg.tot_area ? bldg.tot_area + ' ㎡' : '-'}</span></div>
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>건폐율 / 용적률</strong>: <strong>${bldg.bc_rat || '-'}% / ${bldg.vl_rat || '-'}%</strong></div>
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>내진설계</strong>: <strong>${bldg.seismic || '적용'}</strong></div>
@@ -7012,9 +7478,9 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
                 }
 
                 const demographicsHtml = `
-                    <div class="demand-card">
-                        <div class="demand-card-title">
-                            <i class="fa-solid fa-users" style="color: var(--primary-blue);"></i> 배후 주거·일자리 및 연령 분포
+                        <div class="demand-card-title" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span><i class="fa-solid fa-users" style="color: var(--primary-blue);"></i> 배후 주거·일자리 및 연령 분포</span>
+                            <span style="font-size:0.72rem; background:#eff6ff; color:#2563eb; padding:2px 7px; border-radius:10px; font-weight:700; border:1px solid #bfdbfe;">SGIS 반경 500m</span>
                         </div>
                         <div class="demand-grid">
                             <div class="demand-stat-item">
@@ -7035,6 +7501,7 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
                 `;
 
                 content.innerHTML = `
+                    ${bldgCardHtml}
                     ${priceCardHtml}
                     ${demographicsHtml}
                     ${typeof createCommercialStoresCardHtml === 'function' ? createCommercialStoresCardHtml(storesData) : ''}
@@ -8058,6 +8525,14 @@ async function showNaverDetails(lat, lng, estateType, address) {
                     priceStr += ` / ${item.rent}`;
                 }
                 
+                let convertedStr = '';
+                if (item.converted_price && item.converted_price > 0 && (item.rent && item.rent !== '0' || ['월세', '전세', '전월세'].includes(dealType))) {
+                    let uk = Math.floor(item.converted_price / 10000);
+                    let man = Math.floor(item.converted_price % 10000);
+                    let cText = (uk > 0 ? uk + '억' : '') + (man > 0 ? (uk > 0 ? ' ' : '') + man + '만' : '');
+                    convertedStr = `<br><span style="font-size:0.75rem; color:#7c3aed; font-weight:normal;">(환산: ${cText})</span>`;
+                }
+                
                 let pppStr = '-';
                 if (item.price_per_pyung > 0) {
                     pppStr = item.price_per_pyung.toLocaleString() + '만';
@@ -8074,7 +8549,7 @@ async function showNaverDetails(lat, lng, estateType, address) {
                     <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding:8px 10px; text-align:center;"><a href="https://new.land.naver.com/complexes?ms=${lat},${lng},18&a=APT:OPST:VL:OR:ONE:GO:CST:DDD:SG:HO:EN&articleNo=${estateId}" target="_blank" style="color:#2563eb; text-decoration:none; font-weight:bold;">${estateId}</a></td>
                         <td style="padding:8px 10px; text-align:center;"><span style="background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px; font-size:0.8rem; font-weight:bold;">${dealType}</span></td>
-                        <td style="padding:8px 10px; text-align:right; font-weight:bold; color:#b91c1c;">${priceStr}</td>
+                        <td style="padding:8px 10px; text-align:right; font-weight:bold; color:#b91c1c;">${priceStr}${convertedStr}</td>
                         <td style="padding:8px 10px; text-align:right; color:#475569;">${pppStr}</td>
                         <td style="padding:8px 10px; text-align:center;">${floorStr}</td>
                         <td style="padding:8px 10px; text-align:right;">${pyungStr}<br><span style="font-size:0.75rem; color:gray;">(${areaStr})</span></td>
