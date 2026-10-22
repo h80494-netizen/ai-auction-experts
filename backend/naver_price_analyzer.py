@@ -50,8 +50,8 @@ def get_floor_category_excel(floor_val, total_floor_val, is_housing=False, addre
         t_str = str(total_floor_val).strip()
         addr_upper = str(address_str).upper()
         
-        b1_keywords = ["B1", "B01", "B02", "지1층", "지2층", "지층", "지하", "지1층비", "지1", "B1층", "B2층"]
-        if any(k in f_str for k in b1_keywords) or any(k in addr_upper for k in b1_keywords):
+        b1_keywords = ["B1", "B01", "B02", "지1층", "지2층", "지층", "지하", "지1층비", "지1", "지층1", "지하1", "지하1층", "B1층", "B2층"]
+        if any(k in f_str for k in b1_keywords) or any(k in addr_upper for k in b1_keywords) or re.search(r'지\s*1', f_str) or re.search(r'B\s*1', f_str):
             return "B1"
             
         f_match = re.search(r'\d+', f_str)
@@ -106,21 +106,72 @@ def get_area_category_excel(area_pyeong):
     except Exception:
         return 20
 
+def calculate_building_age_info(build_year_or_text, current_year=2026):
+    """
+    건축년도/사용승인일자 또는 텍스트에서 경과연수 및 3단계 노후도 구분을 도출:
+    - 10년 이내: 신축/준신축
+    - 25년 이내: 중축/보통
+    - 25년 이상: 구축/노후
+    """
+    if not current_year:
+        current_year = datetime.now().year
+        
+    year = None
+    if isinstance(build_year_or_text, (int, float)) and build_year_or_text > 1900:
+        year = int(build_year_or_text)
+    elif build_year_or_text:
+        text = str(build_year_or_text).strip()
+        m = re.search(r'(19\d{2}|20\d{2})', text)
+        if m:
+            year = int(m.group(1))
+        elif "10년이내" in text or "10년이하" in text or "신축" in text:
+            year = current_year - 5
+        elif "25년이내" in text or "25년이하" in text:
+            year = current_year - 15
+        elif "25년이상" in text or "구축" in text or "노후" in text:
+            year = current_year - 28
+
+    if year and year > 1900:
+        age_years = max(0, current_year - year)
+        if age_years <= 10:
+            category_label = "10년 이내"
+            badge_color = "#10b981"  # green
+        elif age_years <= 25:
+            category_label = "25년 이내"
+            badge_color = "#2563eb"  # blue
+        else:
+            category_label = "25년 이상"
+            badge_color = "#64748b"  # gray
+        
+        display_str = f"{year}년식 ({age_years}년차·{category_label})"
+        return {
+            "year": year,
+            "age_years": age_years,
+            "category_label": category_label,
+            "display": display_str,
+            "badge_color": badge_color
+        }
+    else:
+        return {
+            "year": None,
+            "age_years": 15,
+            "category_label": "25년 이내",
+            "display": "25년 이내",
+            "badge_color": "#2563eb"
+        }
+
 def get_age_category_excel(build_year):
     """
     엑셀 매물원장(거래사례) 경과연수대 산식:
-    - < 11년 -> 10 (10년이내)
-    - < 25년 -> 25 (25년이내)
-    - >= 25년 -> 26 (26년이상)
+    - <= 10년 -> 10 (10년이내)
+    - <= 25년 -> 25 (25년이내)
+    - > 25년 -> 26 (25년이상)
     """
-    current_year = datetime.now().year
-    try:
-        age = current_year - int(build_year)
-    except Exception:
-        age = 20
-    if age < 11:
+    age_info = calculate_building_age_info(build_year)
+    cat = age_info["category_label"]
+    if cat == "10년 이내":
         return 10
-    elif age < 25:
+    elif cat == "25년 이내":
         return 25
     else:
         return 26
@@ -462,6 +513,10 @@ def analyze_price(target_lat, target_lon, target_type, target_area_pyeong, targe
             
             pp_val = float(row.get('pyeong_price', 0))
             
+            # 경과연수 및 노후도 구분 산출 (보조설명, 사용승인일자, 건축년도 연동)
+            raw_age_text = row.get('보조설명', row.get('사용승인일자', row.get('건축년도', '')))
+            age_info_dict = calculate_building_age_info(raw_age_text if pd.notnull(raw_age_text) and str(raw_age_text).strip() else target_build_year)
+            
             properties_list.append({
                 "address": addr[:35] + ('...' if len(addr) > 35 else ''),
                 "deal_type": str(row.get('deal_type_val', '매매')),
@@ -471,8 +526,15 @@ def analyze_price(target_lat, target_lon, target_type, target_area_pyeong, targe
                 "price_total": p_val,
                 "price_eon": p_eon,
                 "pyeong_price": round(pp_val, 1),
-                "distance": int(row.get('distance', 0))
+                "distance": int(row.get('distance', 0)),
+                "build_year": age_info_dict["year"],
+                "age_years": age_info_dict["age_years"],
+                "age_category": age_info_dict["category_label"],
+                "age_display": age_info_dict["display"],
+                "age_badge_color": age_info_dict["badge_color"]
             })
+
+    target_age_info = calculate_building_age_info(target_build_year)
 
     return {
         "radius_used": radius_used,
@@ -481,10 +543,15 @@ def analyze_price(target_lat, target_lon, target_type, target_area_pyeong, targe
             "type_label": "주택" if is_housing else "상가/근린",
             "floor": target_floor_cat,
             "area": f"{target_area_cat}평대",
-            "age": f"{target_age_cat}년대"
+            "age": target_age_info["display"],
+            "age_label": target_age_info["category_label"]
         },
         "target_info": {
             "area_pyeong": round(target_area_pyeong, 1),
+            "build_year": target_age_info["year"],
+            "age_years": target_age_info["age_years"],
+            "age_category": target_age_info["category_label"],
+            "age_display": target_age_info["display"],
             "min_price_eon": round(target_min_price_val / 10000.0, 2),
             "min_price_man": round(target_min_price_val, 0)
         },

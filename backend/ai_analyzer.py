@@ -1,4 +1,5 @@
 import os
+import re
 import google.generativeai as genai
 from dotenv import load_dotenv
 import json
@@ -32,8 +33,25 @@ def generate_deep_research(data: dict) -> str:
         address = data.get('address', '알 수 없음')
         approval_date = data.get('approval_date', '알 수 없음')
         auction_date = data.get('auction_date', '알 수 없음')
-        land_area = data.get('land_area', '알 수 없음')
-        building_area = data.get('building_area', '알 수 없음')
+        
+        def format_area_str(val):
+            if not val or val == '알 수 없음':
+                return '알 수 없음'
+            val_str = str(val).replace('㎡', '').replace('평', '').replace(',', '').strip()
+            m = re.search(r'([\d.]+)', val_str)
+            if m:
+                num = float(m.group(1))
+                if '평' in str(val):
+                    pyeong = round(num, 2)
+                    sqm = round(pyeong * 3.30578, 2)
+                else:
+                    sqm = round(num, 2)
+                    pyeong = round(sqm / 3.30578, 2)
+                return f"{pyeong:.2f}평 ({sqm:.2f}㎡)"
+            return str(val)
+
+        land_area = format_area_str(data.get('land_area', '알 수 없음'))
+        building_area = format_area_str(data.get('building_area', '알 수 없음'))
         risks = ', '.join(data.get('risks', [])) if data.get('risks') else '특이사항 없음'
         precautions = data.get('precautions', '없음')
         
@@ -179,6 +197,34 @@ def generate_deep_research(data: dict) -> str:
         prompt = prompt.replace("{tenants_str}", str(tenants_str))
         prompt = prompt.replace("{pdf_context}", str(pdf_context))
         
+        # V-World 국토교통부 토지특성 및 토지이음 공적데이터 실시간 조회하여 프롬프트 컨텍스트에 추가
+        land_context = ""
+        try:
+            from backend.vworld_land_service import get_comprehensive_land_info
+            vw_res = get_comprehensive_land_info(address)
+            if vw_res and (vw_res.get('jimok') or vw_res.get('zoning')):
+                land_context = f"\n\n### [국토교통부 V-World 공적장부 실측 토지 및 토지이음 규제정보]\n"
+                land_context += f"- 공식 지목: {vw_res.get('jimok') or '정보없음'}\n"
+                land_context += f"- 국토계획법상 용도지역: {vw_res.get('zoning') or '정보없음'}\n"
+                if vw_res.get('area_sqm'):
+                    sqm = float(vw_res.get('area_sqm'))
+                    land_context += f"- 토지대장 실측면적: {round(sqm/3.30578, 2):.2f}평 ({sqm:.2f}㎡)\n"
+                if vw_res.get('official_price_sqm'):
+                    land_context += f"- 개별공시지가: ㎡당 {int(vw_res.get('official_price_sqm')):,} 원 (평당 {int(vw_res.get('official_price_sqm')*3.30578):,} 원)\n"
+                use_info = vw_res.get('use_info', {})
+                if use_info.get('all_zones'):
+                    land_context += f"- 토지이음 전체 지정구역: {', '.join(use_info.get('all_zones', []))}\n"
+                if use_info.get('industrial_zones'):
+                    land_context += f"- ⚠️ 산업단지 편입: {', '.join([z['name'] for z in use_info['industrial_zones']])} (협의양도인 산업용지 우선공급, 토지보상법 제77조 영업손실보상, 지장물 이전비 전액 청구 전략 서술 필수)\n"
+                if use_info.get('public_housing_zones'):
+                    land_context += f"- ⚠️ 공공택지/도시개발구역 편입: {', '.join([z['name'] for z in use_info['public_housing_zones']])} (협의양도인택지 단독주택용지 특별공급, 대토보상 상업용지 양도세 40% 감면, 이주자택지 전략 서술 필수)\n"
+                if use_info.get('urban_facilities'):
+                    land_context += f"- ⚠️ 도시계획시설(도로/공원) 저촉: {', '.join([z['name'] for z in use_info['urban_facilities']])} (토지보상법 제74조 잔여지 매수청구권, 20년 일몰제 실효 검토 필수)\n"
+                
+                prompt += land_context
+        except Exception as ve:
+            print(f"V-World 토지정보 프롬프트 주입 에러 (무시 가능): {ve}")
+
         prompt += "\n\n**[중요 지시사항]: 응답은 반드시 '# 1. 요약'으로 시작해야 하며, 1번부터 10번까지의 목차를 빠짐없이 순서대로 작성하세요. 절대 중간 목차부터 시작하지 마세요.**\n"
         last_err_msg = ""
         for current_api_key in api_keys:

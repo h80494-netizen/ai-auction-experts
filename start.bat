@@ -6,7 +6,7 @@ echo =========================================
 echo.
 echo Starting FastAPI Backend Server...
 cd backend
-start "AI Auction Backend" cmd /k "C:\Users\llll\AppData\Local\Programs\Python\Python312\python.exe app.py"
+start "AI Auction Backend" cmd /k "python app.py"
 
 echo Waiting for backend to initialize (3 seconds)...
 timeout /t 3 /nobreak > NUL

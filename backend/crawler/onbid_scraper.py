@@ -38,7 +38,13 @@ def _fetch_auctionmsg_sync(case_number: str, download_dir: str):
         data = result['data']
         
         # 기본 정보 매핑
-        parsed_data["address"] = data.get("address", "")
+        addr_base = data.get("address", "")
+        cltr_nm = data.get("onbidCltrNm", "")
+        # 물건명에 세부 호수(예: B1001호)가 포함되어 있으면 상세 주소로 활용
+        if cltr_nm and any(k in cltr_nm for k in ["호", "층", "동", "지하", "B"]):
+            parsed_data["address"] = cltr_nm
+        else:
+            parsed_data["address"] = addr_base
         parsed_data["status"] = data.get("status", "")
         
         # 감정가, 최저가 추출 (1순위: 감정가, 2순위: 1회차 입찰시작가, 3순위: 가장 빠른 입찰가/최저가)
@@ -55,7 +61,44 @@ def _fetch_auctionmsg_sync(case_number: str, download_dir: str):
         prpt_div = data.get("prptDivNm", "")
         parsed_data["gongme_type"] = prpt_div if prpt_div else "기타일반재산(신탁 등)"
         
-        parsed_data["property_type"] = data.get("category", "") or data.get("cltrUsgLclsCtgrNm", "")
+        # 세부 용도 및 부동산 유형
+        scls_nm = data.get("cltrUsgSclsCtgrNm", "")
+        mcls_nm = data.get("cltrUsgMclsCtgrNm", "")
+        lcls_nm = data.get("cltrUsgLclsCtgrNm", "")
+        category_nm = data.get("category", "")
+        parsed_data["property_type"] = scls_nm or mcls_nm or category_nm or lcls_nm or "상가/근린시설"
+        
+        # 건물면적 및 대지면적 (㎡ -> 평 환산 매핑)
+        bld_sqm_raw = data.get("bldSqms")
+        land_sqm_raw = data.get("landSqms")
+        
+        building_area_str = "정보없음"
+        building_pyeong = 0.0
+        if bld_sqm_raw and str(bld_sqm_raw).strip() not in ["", "0", "null", "None"]:
+            try:
+                bld_sqm = float(bld_sqm_raw)
+                building_pyeong = round(bld_sqm / 3.30578, 1)
+                building_area_str = f"{bld_sqm:.2f}㎡ ({building_pyeong}평)"
+            except Exception:
+                building_area_str = str(bld_sqm_raw)
+                
+        land_area_str = "정보없음"
+        land_pyeong = 0.0
+        if land_sqm_raw and str(land_sqm_raw).strip() not in ["", "0", "null", "None"]:
+            try:
+                land_sqm = float(land_sqm_raw)
+                land_pyeong = round(land_sqm / 3.30578, 1)
+                land_area_str = f"{land_sqm:.2f}㎡ ({land_pyeong}평)"
+            except Exception:
+                land_area_str = str(land_sqm_raw)
+                
+        parsed_data["building_area"] = building_area_str
+        parsed_data["building_pyeong"] = building_pyeong
+        parsed_data["land_area"] = land_area_str
+        parsed_data["land_pyeong"] = land_pyeong
+        parsed_data["pyeong"] = building_pyeong
+        parsed_data["area_size"] = building_pyeong
+        parsed_data["land_size"] = land_pyeong
         
         # 이미지 (옵션)
         img_url = data.get("image")

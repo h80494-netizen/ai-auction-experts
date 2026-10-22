@@ -2956,7 +2956,19 @@ let cachedRedevelopmentZonesData = null;
                                     dashArray: '5, 5'
                                 },
                                 onEachFeature: function(feature, layer) {
-                                    layer.bindPopup(`<b>${typeName}</b>`);
+                                    const props = feature.properties || {};
+                                    const name = props.dgm_nm || props.name || typeName;
+                                    let popupHtml = `<div style="font-family: inherit; font-size: 0.85rem; line-height: 1.5; min-width: 180px;">`;
+                                    popupHtml += `<div style="font-weight: 700; color: #ea580c; font-size: 0.9rem; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;"><i class="fa-solid fa-triangle-exclamation"></i> ${typeName}</div>`;
+                                    popupHtml += `<div style="margin-bottom: 2px;"><b>구역명:</b> <span style="color: #1e293b; font-weight: 600;">${name}</span></div>`;
+                                    if (props.ntfc_sn) popupHtml += `<div style="margin-bottom: 2px; color: #475569;"><b>고시번호:</b> ${props.ntfc_sn}</div>`;
+                                    if (props.dgm_ar && props.dgm_ar > 0) {
+                                        const pyeong = (props.dgm_ar / 3.305785).toFixed(2);
+                                        const sqm = Number(props.dgm_ar).toLocaleString();
+                                        popupHtml += `<div style="color: #475569;"><b>구역면적:</b> ${pyeong}평 (${sqm}㎡)</div>`;
+                                    }
+                                    popupHtml += `</div>`;
+                                    layer.bindPopup(popupHtml);
                                     layer.layerName = typeName;
                                 }
                             });
@@ -5232,8 +5244,12 @@ let cachedRedevelopmentZonesData = null;
                 if (data.documents && data.documents.length > 0) {
                     const place = data.documents[0];
                     const lat = parseFloat(place.y);
-                    const lng = parseFloat(place.x);
-                    const addr = place.road_address_name || place.address_name || query;
+                    let addr = '';
+                    if (place.address_name && place.road_address_name) {
+                        addr = `${place.address_name} (${place.road_address_name})`;
+                    } else {
+                        addr = place.address_name || place.road_address_name || query;
+                    }
                     
                     // 기존 검색 마커가 있다면 제거
                     if (placeMarker) {
@@ -6372,6 +6388,7 @@ let cachedRedevelopmentZonesData = null;
 
             function isResidential(propType) {
                 if (!propType) return false;
+                if (isLand(propType)) return false;
                 const p = String(propType).trim();
                 return p.includes('아파트') || 
                        p.includes('다세대') || 
@@ -6384,6 +6401,270 @@ let cachedRedevelopmentZonesData = null;
                        p.includes('원룸') ||
                        p.includes('주택');
             }
+
+            function isLand(propType) {
+                if (!propType) return false;
+                const p = String(propType).trim();
+                const pureLand = ['토지', '임야', '전', '답', '과수원', '잡종지', '대지', '공장용지', '구거', '도로', '하천', '제방', '유지', '목장용지', '맹지'];
+                if (pureLand.some(k => p === k)) return true;
+                if (p.includes('토지') || p.includes('임야') || p.includes('농지') || p.includes('잡종지') || p.includes('나대지') || p.includes('구거') || p.includes('도로부지') || p.includes('맹지')) {
+                    const bldgKeywords = ['아파트', '빌라', '다세대', '오피스텔', '상가', '점포', '주택', '건물'];
+                    if (!bldgKeywords.some(bk => p.includes(bk))) return true;
+                }
+                return false;
+            }
+
+            function getLandProfileCardHtml(landProf, lat, lng, caseNo, address, propType) {
+                if (!landProf) return '';
+                const summary = landProf.land_summary || {};
+                const permit = landProf.permit_analysis || {};
+                const special = landProf.special_jimok_strategy || null;
+                const upgrade = landProf.zoning_upgrade_potential || {};
+                const dev = landProf.development_roi_simulation || {};
+                const comp = landProf.land_compensation_strategy || {};
+
+                const formatWon = (num) => {
+                    if (!num || num === 0) return '0원';
+                    if (num >= 100000000) {
+                        const eok = (num / 100000000).toFixed(1);
+                        return `${eok}억원`;
+                    }
+                    const man = Math.round(num / 10000);
+                    return `${man.toLocaleString()}만원`;
+                };
+
+                // 특수 지목 전략 섹션
+                let specialSectionHtml = '';
+                if (special) {
+                    let blindListHtml = '';
+                    if (special.blind_land_strategies && special.blind_land_strategies.length > 0) {
+                        blindListHtml = `
+                            <div style="margin-top: 8px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px;">
+                                <div style="font-weight: 800; color: #b45309; font-size: 0.78rem; margin-bottom: 6px;">
+                                    <i class="fa-solid fa-key" style="margin-right: 4px;"></i> 맹지 탈출 5대 실전 전략 (자산가치 2~3배 상승)
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.73rem; color: #78350f; line-height: 1.4;">
+                                    ${special.blind_land_strategies.map(s => `<div>• ${s}</div>`).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    specialSectionHtml = `
+                        <div style="background: #fff7ed; border: 1.5px solid #fdba74; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-weight: 900; color: #9a3412; font-size: 0.84rem;">
+                                    <i class="fa-solid fa-triangle-exclamation" style="color: #ea580c; margin-right: 5px;"></i>특수 지목(${special.type}) 분석 & 인접토지 활용방안
+                                </span>
+                                <span style="background: #ea580c; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800;">특수권리/지목</span>
+                            </div>
+                            <div style="font-size: 0.75rem; color: #431407; line-height: 1.45; margin-bottom: 6px;">
+                                <strong>⚖️ 토지보상 감정 기준:</strong> ${special.compensation_guide}
+                            </div>
+                            <div style="font-size: 0.75rem; color: #431407; line-height: 1.45;">
+                                <strong>💡 인접토지 연계 레버리지:</strong> ${special.adjacent_use_guide}
+                            </div>
+                            ${blindListHtml}
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="demand-card" style="border-left: 5px solid #059669; background: #ffffff; margin-bottom: 16px; padding: 18px; border: 1.5px solid #a7f3d0; border-radius: 14px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.08);">
+                        <!-- 상단 타이틀 & 뱃지 -->
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px;">
+                            <div>
+                                <div style="font-size: 0.95rem; font-weight: 900; color: #064e3b; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-mountain-sun" style="color: #059669; font-size: 1.1rem;"></i>
+                                    토지 정밀 입지 & 개발·보상 가치 리포트
+                                </div>
+                                <div style="font-size: 0.74rem; color: #64748b; margin-top: 2px;">
+                                    공적장부 실측 및 공간정보(zoning·지구단위·보상규제) 융합 분석
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
+                                <span style="background: #059669; color: #fff; padding: 3px 9px; border-radius: 6px; font-size: 0.72rem; font-weight: 800;">
+                                    지목: ${summary.jimok || '토지'}
+                                </span>
+                                <span style="background: #e0e7ff; color: #3730a3; padding: 3px 9px; border-radius: 6px; font-size: 0.72rem; font-weight: 800; border: 1px solid #c7d2fe;">
+                                    ${summary.zoning || '자연녹지지역'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 1. 기본 토지 스펙 & 가격 지표 -->
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                            <div style="font-size: 0.8rem; font-weight: 800; color: #1e293b; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-ruler-combined" style="color: #0ea5e9;"></i> 토지 기본 현황 & 법정 건폐율·용적률
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 0.76rem; color: #334155;">
+                                <div style="background:#fff; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+                                    • <strong>토지 면적</strong>: <strong style="color: #0f766e;">${Number(summary.land_size_pyeong || 0).toFixed(2)}평 (${Number(summary.land_size_sqm || 0).toFixed(2)}㎡)</strong>
+                                </div>
+                                <div style="background:#fff; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+                                    • <strong>건폐율 / 용적률</strong>: <strong style="color: #0f766e;">${summary.bc_rat}% / ${summary.vl_rat}% 상한</strong>
+                                </div>
+                                <div style="background:#fff; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+                                    • <strong>공시지가 (평당)</strong>: <span style="color:#b45309; font-weight:800;">${formatWon(summary.official_price_pyeong)}</span> (총 ${formatWon(summary.official_price_total)})
+                                </div>
+                                <div style="background:#fff; padding:6px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+                                    • <strong>경매 최저가 (평당)</strong>: <span style="color:#2563eb; font-weight:800;">${formatWon(summary.min_price_pyeong)}</span> (총 ${formatWon(summary.min_price)})
+                                </div>
+                                <div style="grid-column: span 2; background:#ecfdf5; padding:6px 10px; border-radius:6px; border:1px solid #a7f3d0; font-size:0.73rem;">
+                                    • <strong>건축 허용 주용도</strong>: <span style="color:#065f46; font-weight:700;">${summary.max_uses}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. 산지/농지 전용허가 분석 & 전용부담금 -->
+                        <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-weight: 800; color: #166534; font-size: 0.82rem; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-file-signature" style="color: #16a34a;"></i> ${permit.category || '인허가 분석'}
+                                </span>
+                                <span style="background: ${permit.feasibility?.includes('유력') || permit.feasibility?.includes('즉시') ? '#16a34a' : '#ea580c'}; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800;">
+                                    ${permit.feasibility || '검토 필요'}
+                                </span>
+                            </div>
+                            <div style="background: #fff; border: 1px solid #dcfce7; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; font-size: 0.74rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: #475569;">• 전용부담금 항목:</span>
+                                    <strong style="color: #166534;">${permit.burden_cost_name || '전용부담금'} (단가: 약 ${permit.unit_cost?.toLocaleString()}원/㎡)</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #475569;">• 총 전용부담금 추정액:</span>
+                                    <strong style="color: #dc2626; font-size: 0.8rem;">약 ${formatWon(permit.estimated_burden)}</strong>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.73rem; color: #166534; line-height: 1.45;">
+                                <strong>📋 인허가 통과 핵심 조건:</strong>
+                                <ul style="margin: 4px 0 6px 16px; padding: 0;">
+                                    ${(permit.conditions || []).map(c => `<li>${c}</li>`).join('')}
+                                </ul>
+                                <div style="background: #dcfce7; padding: 6px 8px; border-radius: 6px; font-size: 0.72rem; color: #14532d;">
+                                    💡 <strong>실무 팁</strong>: ${permit.action_plan || ''}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. 특수 지목(구거, 도로, 하천, 잡종지, 맹지) 전략 -->
+                        ${specialSectionHtml}
+
+                        <!-- 4. 용도지역 변경(종상향) & 성장관리계획 -->
+                        <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-weight: 800; color: #6b21a8; font-size: 0.82rem; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-wand-magic-sparkles" style="color: #9333ea;"></i> 용도지역 변경(종상향) & 성장관리계획
+                                </span>
+                                <span style="background: #9333ea; color: #fff; padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 800;">
+                                    ${upgrade.upgrade_feasibility || '검토'}
+                                </span>
+                            </div>
+                            <div style="font-size: 0.74rem; color: #581c87; line-height: 1.45;">
+                                ${upgrade.growth_management_incentive ? `• <strong>인센티브</strong>: <span style="color:#7e22ce; font-weight:700;">${upgrade.growth_management_incentive}</span><br>` : ''}
+                                • <strong>지구단위계획</strong>: ${upgrade.is_district_unit ? `<span style="color:#dc2626; font-weight:800;">구역 지정 완료 (${upgrade.district_unit_name})</span>` : '구역 미지정 (민간제안 가능)'}<br>
+                                • <strong>전략 가이드</strong>: ${upgrade.detail || ''}
+                            </div>
+                        </div>
+
+                        <!-- 5. 건축비 감안 개발가치 & 사업수지 시뮬레이션 -->
+                        <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-weight: 800; color: #1e40af; font-size: 0.82rem; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-calculator" style="color: #2563eb;"></i> 신축 시 건축비 감안 개발가치 & 사업수지
+                                </span>
+                                <span style="background: #2563eb; color: #fff; padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 800;">
+                                    예상 ROI: +${dev.dev_roi_pct}%
+                                </span>
+                            </div>
+                            <div style="font-size: 0.74rem; color: #1e3a8a; margin-bottom: 8px;">
+                                • 권장 개발모델: <strong>${dev.suitable_facility}</strong> (최대 건축면적: ${Number(dev.max_build_area_pyeong || 0).toFixed(2)}평 / 최대 연면적: ${Number(dev.max_floor_area_pyeong || 0).toFixed(2)}평)
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; font-size: 0.73rem; margin-bottom: 8px;">
+                                <div style="background:#fff; padding:6px; border-radius:6px; border:1px solid #dbeafe;">
+                                    표준 건축단가: <strong>평당 ${(dev.const_cost_per_pyeong / 10000).toLocaleString()}만원</strong>
+                                </div>
+                                <div style="background:#fff; padding:6px; border-radius:6px; border:1px solid #dbeafe;">
+                                    총 건축공사비: <strong style="color:#b45309;">${formatWon(dev.total_const_cost)}</strong>
+                                </div>
+                                <div style="background:#fff; padding:6px; border-radius:6px; border:1px solid #dbeafe;">
+                                    총 사업비(토지+건축): <strong>${formatWon(dev.total_project_cost)}</strong>
+                                </div>
+                                <div style="background:#fff; padding:6px; border-radius:6px; border:1px solid #dbeafe;">
+                                    준공 후 자산가치: <strong style="color:#059669;">${formatWon(dev.completed_asset_value)}</strong>
+                                </div>
+                            </div>
+                            <div style="background: #dbeafe; padding: 8px 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 0.76rem;">
+                                <span>🎯 <strong>개발 기대차익 (수익률)</strong>:</span>
+                                <strong style="color: #1d4ed8; font-size: 0.84rem;">+${formatWon(dev.expected_dev_profit)} (${dev.dev_roi_pct}%)</strong>
+                            </div>
+                            <div style="margin-top: 6px; font-size: 0.72rem; color: #3b82f6; text-align: right;">
+                                ※ 준공 후 임대 운영 시 기대 수익률(Cap Rate): <strong>연 ${dev.expected_cap_rate}%</strong> (월세 약 ${formatWon(Math.round(dev.annual_rent / 12))}/월)
+                            </div>
+                        </div>
+
+                        <!-- 6. 토지이음 기반 특화 토지보상 전략 (산업단지, 공공택지, 도시계획시설) -->
+                        ${comp.specific_strategies && comp.specific_strategies.length > 0 ? `
+                        <div style="background: #ffffff; border: 2px solid #e11d48; border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(225, 29, 72, 0.08);">
+                            <div style="font-size: 0.86rem; font-weight: 900; color: #9f1239; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                                <span><i class="fa-solid fa-bullseye" style="color: #e11d48; margin-right: 6px;"></i> 🎯 토지이음 기반 맞춤형 토지보상 전략 (핵심 솔루션)</span>
+                                <span style="background: #e11d48; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800;">공익사업 수용</span>
+                            </div>
+                            ${comp.specific_strategies.map(strat => `
+                                <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 10px; margin-bottom: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <strong style="color: #881337; font-size: 0.79rem;">${strat.category}</strong>
+                                        <span style="background: ${strat.badge_color}; color: #fff; padding: 2px 7px; border-radius: 4px; font-size: 0.68rem; font-weight: 700;">${strat.badge}</span>
+                                    </div>
+                                    <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.73rem; color: #4c0519; line-height: 1.45;">
+                                        ${strat.items.map(item => `<div>• ${item}</div>`).join('')}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        ` : ''}
+
+                        <!-- 7. 토지보상 가치 & 3단계 실전 협상 전략 -->
+                        <div style="background: #fdf2f8; border: 1.5px solid #fbcfe8; border-radius: 10px; padding: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-weight: 800; color: #9d174d; font-size: 0.82rem; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fa-solid fa-handshake" style="color: #db2777;"></i> 공익사업 수용보상 가치 & 3단계 협상 로드맵
+                                </span>
+                                <span style="background: ${comp.is_public_project ? '#db2777' : '#9ca3af'}; color: #fff; padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: 800;">
+                                    ${comp.is_public_project ? '공익사업 편입/저촉' : '개별개발 대상'}
+                                </span>
+                            </div>
+                            <div style="font-size: 0.74rem; color: #831843; line-height: 1.45; margin-bottom: 8px;">
+                                • 편입/인접 사업: <strong>${comp.project_name}</strong><br>
+                                • 예상 토지보상금: <strong style="color: #db2777; font-size: 0.8rem;">약 ${formatWon(comp.estimated_compensation)}</strong> (최저가 대비 마진: +${comp.compensation_roi}%)
+                            </div>
+                            <div style="background: #fff; border: 1px solid #fce7f3; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px;">
+                                <div style="font-weight: 800; color: #9d174d; font-size: 0.75rem; margin-bottom: 6px;">
+                                    <i class="fa-solid fa-gavel"></i> 실전 3단계 보상금 증액 협상 로드맵
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.72rem; color: #701a75;">
+                                    <div>
+                                        <strong style="color:#db2777;">${comp.negotiation_steps?.step1?.title}</strong><br>
+                                        ${comp.negotiation_steps?.step1?.action}
+                                    </div>
+                                    <div>
+                                        <strong style="color:#db2777;">${comp.negotiation_steps?.step2?.title}</strong><br>
+                                        ${comp.negotiation_steps?.step2?.action}
+                                    </div>
+                                    <div>
+                                        <strong style="color:#db2777;">${comp.negotiation_steps?.step3?.title}</strong><br>
+                                        ${comp.negotiation_steps?.step3?.action}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="background: #fce7f3; padding: 6px 8px; border-radius: 6px; font-size: 0.71rem; color: #831843;">
+                                🎁 <strong>대토보상 & 택지 수령 전략</strong>: ${comp.daeto_and_relocation_rights || ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
 
             
 function get1kmRadiusPriceCardHtml(priceData, lat, lng, propType) {
@@ -6767,14 +7048,27 @@ function renderResidentialDemandData(resData, priceData, storesData, caseNo, add
                 `;
 
                 let bldgCardHtml = '';
-                if (resData && resData.building_profile) {
+                if (resData && (resData.is_land || resData.land_profile)) {
+                    bldgCardHtml = getLandProfileCardHtml(resData.land_profile, lat, lng, caseNo, address, propType);
+                } else if (resData && resData.building_profile) {
                     const bldg = resData.building_profile;
+                    const totAreaSqm = bldg.tot_area ? parseFloat(bldg.tot_area) : 0;
+                    const totAreaPyeong = totAreaSqm > 0 ? (totAreaSqm / 3.30578).toFixed(2) : '-';
+                    const totAreaStr = totAreaSqm > 0 ? `${totAreaPyeong}평 (${totAreaSqm.toFixed(2)}㎡)` : '-';
+                    
+                    const exclPyeong = bldg.exclusive_area_pyeong ? parseFloat(bldg.exclusive_area_pyeong).toFixed(2) : '';
+                    const exclSqm = bldg.exclusive_area_sqm ? parseFloat(bldg.exclusive_area_sqm).toFixed(2) : (exclPyeong ? (parseFloat(exclPyeong) * 3.30578).toFixed(2) : '');
+
                     bldgCardHtml = `
                         <div class="demand-card" style="border-left: 4px solid #10b981; background: linear-gradient(135deg, #f0fdf4, #ffffff); margin-bottom: 14px; padding: 16px; border: 1px solid #a7f3d0; border-radius: 12px; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.08);">
-                            <div style="font-size: 0.82rem; color: #047857; font-weight: 800; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 0.82rem; color: #047857; font-weight: 800; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
                                 <span><i class="fa-solid fa-building-columns" style="color: #10b981; margin-right: 6px;"></i>건축물대장 실측 스펙 (ARCHHUB)</span>
-                                <span style="background: #10b981; color: #fff; padding: 3px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800;">${bldg.main_use || propType || '근린생활시설/일반건축물'}</span>
+                                <div style="display: flex; gap: 4px;">
+                                    ${bldg.zoning ? `<span style="background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 800; border: 1px solid #c7d2fe;">${bldg.zoning}</span>` : ''}
+                                    <span style="background: #10b981; color: #fff; padding: 3px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800;">${bldg.main_use || propType || '공동주택/일반건축물'}</span>
+                                </div>
                             </div>
+                            ${bldg.building_name ? `<div style="font-size: 1.05rem; font-weight: 900; color: #064e3b; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-building" style="color:#059669;"></i> ${bldg.building_name}</div>` : ''}
                             <div style="font-size: 0.92rem; font-weight: 800; color: #064e3b; margin-bottom: 10px; border-bottom: 1px dashed #a7f3d0; padding-bottom: 6px;">
                                 ${bldg.structure || '철근콘크리트구조'} | 총 층수: 지상 ${bldg.grnd_flr || 5}층 / 지하 ${bldg.ugrnd_flr || 0}층
                             </div>
@@ -6782,7 +7076,8 @@ function renderResidentialDemandData(resData, priceData, storesData, caseNo, add
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>사용승인일자</strong>: <span style="color:#047857; font-weight:800;">${bldg.use_apr_day || '-'}</span></div>
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>총 주차대수</strong>: <span style="color:#047857; font-weight:800;">${bldg.tot_pkng !== undefined ? bldg.tot_pkng + '대' : '-'}</span></div>
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>엘리베이터 수</strong>: <span style="color:#047857; font-weight:800;">${bldg.elevators || '-'}</span></div>
-                                <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>연면적</strong>: <span style="color:#047857; font-weight:800;">${bldg.tot_area ? bldg.tot_area + ' ㎡' : '-'}</span></div>
+                                <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>건물 연면적</strong>: <span style="color:#047857; font-weight:800;">${totAreaStr}</span></div>
+                                ${exclPyeong ? `<div style="grid-column: span 2; background:#ecfdf5; padding:6px 10px; border-radius:6px; border:1.5px solid #10b981;">• 🎯 <strong>해당 세대 실측 전유면적</strong>: <span style="color:#047857; font-weight:900; font-size:0.85rem;">${exclPyeong}평 (${exclSqm}㎡)</span></div>` : ''}
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>건폐율 / 용적률</strong>: <strong>${bldg.bc_rat || '-'}% / ${bldg.vl_rat || '-'}%</strong></div>
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>내진설계</strong>: <strong>${bldg.seismic || '적용'}</strong></div>
                             </div>
@@ -6790,46 +7085,210 @@ function renderResidentialDemandData(resData, priceData, storesData, caseNo, add
                     `;
                 }
 
-                const valueUpCardHtml = `
-                    <div class="demand-card" style="border-left: 4px solid #8b5cf6; background: linear-gradient(135deg, #f5f3ff, #ffffff); padding: 16px; border: 1px solid #ddd6fe; border-radius: 12px; margin-bottom: 14px; box-shadow: 0 2px 6px rgba(139, 92, 246, 0.08);">
-                        <div class="demand-card-title" style="color: #6d28d9; font-size: 0.9rem; font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
-                            <span><i class="fa-solid fa-wand-magic-sparkles" style="color: #8b5cf6; margin-right: 6px;"></i> 용도변경 · 리모델링 · 지목변경 밸류업 가이드</span>
-                            <span style="font-size: 0.7rem; background: #8b5cf6; color: #fff; padding: 2px 8px; border-radius: 10px; font-weight: bold;">VALUE-UP</span>
+                // -------------------------------------------------------------
+                // 1. 반경 5km 광역 개발계획 & 도시계획시설(철도·지하철·도로·정비사업) 카드 렌더링
+                // -------------------------------------------------------------
+                let devPlansCardHtml = '';
+                const devPlans = (resData && resData.development_plans_5km && resData.development_plans_5km.status === 'success') ? resData.development_plans_5km : null;
+                
+                if (devPlans) {
+                    const railways = devPlans.railway_projects || [];
+                    const redevs = devPlans.redevelopment_projects || [];
+                    const roads = devPlans.road_projects || [];
+                    const devRailways = railways.filter(r => r.is_developing);
+
+                    let railListHtml = '';
+                    if (devRailways.length > 0) {
+                        railListHtml = devRailways.slice(0, 6).map(r => `
+                            <div style="background: #ffffff; border: 1.5px solid #bfdbfe; border-radius: 8px; padding: 10px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; font-size: 0.68rem; font-weight: 800; padding: 2px 7px; border-radius: 4px; box-shadow: 0 1px 2px rgba(239,68,68,0.3);">
+                                            <i class="fa-solid fa-bolt"></i> 개발호재
+                                        </span>
+                                        <strong style="color: #1e3a8a; font-size: 0.85rem;">${r.name}</strong>
+                                    </div>
+                                    <span style="font-size: 0.78rem; font-weight: 800; color: #2563eb; background: #eff6ff; padding: 2px 6px; border-radius: 4px;">직선 ${r.distance_km}km</span>
+                                </div>
+                                <div style="font-size: 0.75rem; color: #334155; margin-bottom: 3px; line-height: 1.35;">
+                                    • <strong>완공/개통 목표</strong>: <span style="color: #b45309; font-weight: 800;">${r.completion}</span>
+                                </div>
+                                <div style="font-size: 0.72rem; color: #64748b; line-height: 1.35;">
+                                    • <strong>진행 상태</strong>: <span style="color: #0369a1; font-weight: 700;">${r.status}</span> ${r.impact ? `<br>• <strong>노선 효과</strong>: ${r.impact}` : ''}
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        railListHtml = `<div style="font-size:0.75rem; color:#64748b; padding:8px; background:#f8fafc; border-radius:6px;">반경 5km 내 추진 중인 신설 철도망 계획은 없으며 기존 운행 노선이 형성되어 있습니다.</div>`;
+                    }
+
+                    let redevListHtml = '';
+                    if (redevs.length > 0) {
+                        redevListHtml = redevs.slice(0, 5).map(rd => `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: #ffffff; border: 1px solid #fed7aa; border-radius: 6px; margin-bottom: 5px; font-size: 0.75rem;">
+                                <div style="display: flex; flex-direction: column; gap: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 75%;">
+                                    <strong style="color: #7c2d12; font-size: 0.78rem;">${rd.name}</strong>
+                                    <span style="font-size: 0.7rem; color: #c2410c; font-weight: 600;">${rd.stage} | ${rd.completion}</span>
+                                </div>
+                                <span style="font-weight: 800; color: #ea580c; font-size: 0.75rem;">${rd.distance_m}m</span>
+                            </div>
+                        `).join('');
+                    } else {
+                        redevListHtml = `<div style="font-size:0.75rem; color:#64748b; padding:6px 0;">반경 5km 내 고시된 재개발 정비구역이 없습니다.</div>`;
+                    }
+
+                    let roadListHtml = '';
+                    if (roads.length > 0) {
+                        roadListHtml = roads.slice(0, 4).map(rd => `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: #ffffff; border: 1px solid #d1fae5; border-radius: 6px; margin-bottom: 4px; font-size: 0.74rem;">
+                                <span style="color: #064e3b;">• <strong>${rd.name}</strong> <span style="color:#047857; font-size:0.7rem;">(${rd.width_desc})</span></span>
+                                <span style="font-weight: 800; color: #059669;">${rd.distance_m}m</span>
+                            </div>
+                        `).join('');
+                    }
+
+                    devPlansCardHtml = `
+                        <div class="demand-card" style="border-left: 4px solid #2563eb; background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%); padding: 16px; border: 1px solid #bfdbfe; border-radius: 12px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);">
+                            <div class="demand-card-title" style="color: #1e40af; font-size: 0.92rem; font-weight: 800; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+                                <span><i class="fa-solid fa-map-location-dot" style="color: #2563eb; margin-right: 6px;"></i> 반경 5km 광역 개발호재 & 도시계획시설</span>
+                                <span style="font-size: 0.7rem; background: #2563eb; color: #fff; padding: 2px 8px; border-radius: 10px; font-weight: bold;">반경 5km</span>
+                            </div>
+                            
+                            <div style="background: #e0f2fe; border-left: 3px solid #0284c7; padding: 8px 10px; border-radius: 6px; font-size: 0.75rem; color: #0369a1; line-height: 1.45; margin-bottom: 12px;">
+                                <i class="fa-solid fa-bullhorn" style="margin-right: 4px;"></i> <strong>인프라 요약</strong>: ${devPlans.summary}
+                            </div>
+
+                            <!-- 1. 철도/지하철 인프라 -->
+                            <div style="margin-bottom: 12px;">
+                                <div style="font-size: 0.8rem; font-weight: 800; color: #1e3a8a; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                                    <span style="display:flex; align-items:center; gap:5px;">
+                                        <i class="fa-solid fa-train-subway" style="color: #2563eb;"></i> 1. 철도·지하철 신설/연장 사업
+                                    </span>
+                                    <span style="font-size: 0.72rem; color: #2563eb; font-weight: 800;">총 ${devPlans.total_railway_count}개 노선</span>
+                                </div>
+                                ${railListHtml}
+                            </div>
+
+                            <!-- 2. 도시계획도로 -->
+                            ${roads.length > 0 ? `
+                            <div style="margin-bottom: 12px;">
+                                <div style="font-size: 0.8rem; font-weight: 800; color: #065f46; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                                    <span style="display:flex; align-items:center; gap:5px;">
+                                        <i class="fa-solid fa-road" style="color: #059669;"></i> 2. 도시계획 도로망 확충
+                                    </span>
+                                    <span style="font-size: 0.72rem; color: #059669; font-weight: 800;">총 ${devPlans.total_road_count}개소</span>
+                                </div>
+                                ${roadListHtml}
+                            </div>` : ''}
+
+                            <!-- 3. 재개발/재건축 정비사업 -->
+                            <div>
+                                <div style="font-size: 0.8rem; font-weight: 800; color: #7c2d12; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                                    <span style="display: flex; align-items: center; gap: 5px;">
+                                        <i class="fa-solid fa-city" style="color: #ea580c;"></i> 3. 인근 재개발·재건축 정비사업
+                                    </span>
+                                    <span style="font-size: 0.72rem; color: #ea580c; font-weight: 800;">총 ${devPlans.total_redevelopment_count}개 구역</span>
+                                </div>
+                                ${redevListHtml}
+                            </div>
                         </div>
+                    `;
+                }
 
-                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.78rem; color: #334155; word-break: keep-all;">
-                            <div style="background: #ffffff; padding: 10px; border-radius: 8px; border: 1px solid #ede9fe;">
-                                <div style="font-weight: 800; color: #5b21b6; margin-bottom: 4px; display: flex; align-items: center; gap: 5px;">
-                                    <i class="fa-solid fa-hotel" style="color: #7c3aed;"></i> 1. 건축물 용도변경 (단독/다세대 ➔ 호스텔·상가)
-                                </div>
-                                <div style="font-size: 0.75rem; color: #475569; line-height: 1.45;">
-                                    • <strong>필수 체크요건</strong>: 법정 주차대수 확보, 오수정화조 용량 증설, 진입도로 폭(4m 이상), 학교위생정화구역 제한.<br>
-                                    • <strong>입지 활용 방안</strong>: 유동인구 및 역세권 접근성이 양호할 경우 1층 근린생활시설(카페/상가) 또는 상층부 호스텔/게스트하우스 변환 시 임대수익률 15~25% 향상 가능.
-                                </div>
+                // -------------------------------------------------------------
+                // 2. 단독·다가구 건축물 용도변경(근생·호스텔) 5대 필수요건 가이드
+                // -------------------------------------------------------------
+                const usageGuide = (resData && resData.usage_change_guide) ? resData.usage_change_guide : null;
+                let valueUpCardHtml = '';
+
+                if (usageGuide && usageGuide.applicable) {
+                    const comm = usageGuide.commercial_conversion || {};
+                    const hotel = usageGuide.hostel_conversion || {};
+
+                    valueUpCardHtml = `
+                        <div class="demand-card" style="border-left: 4px solid #8b5cf6; background: linear-gradient(135deg, #f5f3ff, #ffffff); padding: 16px; border: 1px solid #ddd6fe; border-radius: 12px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(139, 92, 246, 0.08);">
+                            <div class="demand-card-title" style="color: #6d28d9; font-size: 0.92rem; font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                                <span><i class="fa-solid fa-wand-magic-sparkles" style="color: #8b5cf6; margin-right: 6px;"></i> 단독·다가구 건축물 용도변경 5대 필수요건</span>
+                                <span style="font-size: 0.7rem; background: #8b5cf6; color: #fff; padding: 2px 8px; border-radius: 10px; font-weight: bold;">VALUE-UP</span>
                             </div>
 
-                            <div style="background: #ffffff; padding: 10px; border-radius: 8px; border: 1px solid #ede9fe;">
-                                <div style="font-weight: 800; color: #5b21b6; margin-bottom: 4px; display: flex; align-items: center; gap: 5px;">
-                                    <i class="fa-solid fa-screwdriver-wrench" style="color: #059669;"></i> 2. 노후건물 리모델링 & 대수선 밸류업
-                                </div>
-                                <div style="font-size: 0.75rem; color: #475569; line-height: 1.45;">
-                                    • <strong>대수선/인테리어 방향</strong>: 외관 엑스테리어 파사드 개선, 옥상 방수, 전열/단열재 교체 및 수전을 리모델링하여 노후 감가 만회.<br>
-                                    • <strong>사업성 기대치</strong>: 평당 공사비 투입 대비 매매 자산가치 및 전월세 차임 20~30% 상승 기대.
-                                </div>
+                            <div style="font-size: 0.75rem; color: #5b21b6; background: #ede9fe; padding: 8px 10px; border-radius: 8px; line-height: 1.45; margin-bottom: 12px;">
+                                💡 <strong>대상 건물</strong>: ${propType || '단독/다가구'} (연면적 약 ${usageGuide.tot_area_sqm}㎡ / 지상 ${usageGuide.grnd_flr}층 / 현 주차 ${usageGuide.current_parking}대)<br>
+                                단독·다가구를 근린생활시설(카페/사무소)이나 호스텔(숙박시설)로 변경 시 필수적으로 충족해야 하는 5대 법적 요건을 산출했습니다.
                             </div>
 
-                            <div style="background: #ffffff; padding: 10px; border-radius: 8px; border: 1px solid #ede9fe;">
-                                <div style="font-weight: 800; color: #5b21b6; margin-bottom: 4px; display: flex; align-items: center; gap: 5px;">
-                                    <i class="fa-solid fa-mountain-city" style="color: #d97706;"></i> 3. 토지 지목변경 타당성 (전·답·임야 ➔ 대지·창고)
+                            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.76rem; color: #334155; word-break: keep-all;">
+                                <!-- 1. 근린생활시설 변경 요건 -->
+                                <div style="background: #ffffff; padding: 12px; border-radius: 8px; border: 1.5px solid #d8b4fe;">
+                                    <div style="font-weight: 800; color: #6b21a8; font-size: 0.82rem; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                                        <i class="fa-solid fa-mug-saucer" style="color: #7c3aed;"></i> A. 근린생활시설(카페·음식점·사무소) 변경 요건
+                                    </div>
+                                    <div style="display: flex; flex-direction: column; gap: 5px; line-height: 1.45;">
+                                        <div style="background: #faf5ff; padding: 6px 8px; border-radius: 6px;">
+                                            • <strong>인허가 구분</strong>: <span style="color: #7c3aed; font-weight: bold;">용도변경 허가 대상</span> (주거업무 8군 ➔ 근린생활시설 7군 상위군 이동, 건축사 설계도서 첨부)
+                                        </div>
+                                        <div>
+                                            • <strong>법정 주차대수</strong>: ${comm.parking_condition ? comm.parking_condition.ratio : '134㎡당 1대'} ➔ <strong style="color: #2563eb;">${comm.parking_condition ? comm.parking_condition.required : '산정 필요'}</strong> (${comm.parking_condition ? comm.parking_condition.diff : ''})<br>
+                                            <span style="color: #64748b; font-size: 0.72rem;">└ 확보 방안: ${comm.parking_condition ? comm.parking_condition.solution : ''}</span>
+                                        </div>
+                                        <div>
+                                            • <strong>오수정화조 용량</strong>: <span style="color: #dc2626; font-weight: bold;">핵심 검토</span> (${comm.septic_tank ? comm.septic_tank.standard : ''})<br>
+                                            <span style="color: #b91c1c; font-size: 0.72rem;">⚠️ ${comm.septic_tank ? comm.septic_tank.risk : ''}</span>
+                                        </div>
+                                        <div>
+                                            • <strong>소방시설</strong>: ${comm.fire_safety || '다중이용업소 해당 시 비상구 및 소방완비증명서 필수'}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div style="font-size: 0.75rem; color: #475569; line-height: 1.45;">
-                                    • <strong>개발행위허가 조건</strong>: 도로 접합 요건, 농지보전부담금/대체산림자원조성비 예상 비용 검토.<br>
-                                    • <strong>용도지역 활용</strong>: 건폐율·용적률 한도 내 최고층 신축 및 지목 변경 완료 시 토지 지가 상승 극대화.
+
+                                <!-- 2. 호스텔 / 게스트하우스 변경 요건 -->
+                                <div style="background: #ffffff; padding: 12px; border-radius: 8px; border: 1.5px solid #fed7aa;">
+                                    <div style="font-weight: 800; color: #9a3412; font-size: 0.82rem; margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                                        <i class="fa-solid fa-hotel" style="color: #ea580c;"></i> B. 호스텔 · 게스트하우스(숙박시설) 변경 요건
+                                    </div>
+                                    <div style="display: flex; flex-direction: column; gap: 5px; line-height: 1.45;">
+                                        <div style="background: #fff7ed; padding: 6px 8px; border-radius: 6px;">
+                                            • <strong>용도지역 및 허가</strong>: <span style="color: #ea580c; font-weight: bold;">용도변경 허가 (영업시설 6군 이동)</span><br>
+                                            <span style="color: #c2410c; font-size: 0.72rem;">${hotel.zoning_restriction ? hotel.zoning_restriction.workaround : ''}</span>
+                                        </div>
+                                        <div>
+                                            • <strong>피난 직통계단 2개소 요건</strong>: <strong style="color: #dc2626;">${hotel.stairs_and_escape ? hotel.stairs_and_escape.stair_2_required : '검토'}</strong><br>
+                                            <span style="color: #64748b; font-size: 0.72rem;">└ 기준: ${hotel.stairs_and_escape ? hotel.stairs_and_escape.standard : ''}</span>
+                                        </div>
+                                        <div>
+                                            • <strong>소방시설 완비증명서</strong>: <span style="color: #1e293b; font-weight: 600;">${hotel.fire_safety || ''}</span>
+                                        </div>
+                                        <div>
+                                            • <strong>정화조</strong>: ${hotel.septic_tank || ''}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 3. 대수선 및 리모델링 가이드 -->
+                                <div style="background: #ffffff; padding: 8px 10px; border-radius: 8px; border: 1px solid #ede9fe; font-size: 0.72rem; color: #475569;">
+                                    <i class="fa-solid fa-arrow-trend-up" style="color: #10b981; margin-right: 4px;"></i> <strong>밸류업 기대효과</strong>: 1층 근린생활시설(카페/점포) 변환 시 임대수익률 20~35% 상승 기대되며, 외국인관광도시민박업/호스텔 등록 시 가치 극대화 가능.
                                 </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                } else {
+                    valueUpCardHtml = `
+                        <div class="demand-card" style="border-left: 4px solid #8b5cf6; background: linear-gradient(135deg, #f5f3ff, #ffffff); padding: 16px; border: 1px solid #ddd6fe; border-radius: 12px; margin-bottom: 14px; box-shadow: 0 2px 6px rgba(139, 92, 246, 0.08);">
+                            <div class="demand-card-title" style="color: #6d28d9; font-size: 0.9rem; font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                                <span><i class="fa-solid fa-wand-magic-sparkles" style="color: #8b5cf6; margin-right: 6px;"></i> 용도변경 · 리모델링 · 지목변경 밸류업 가이드</span>
+                                <span style="font-size: 0.7rem; background: #8b5cf6; color: #fff; padding: 2px 8px; border-radius: 10px; font-weight: bold;">VALUE-UP</span>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.78rem; color: #334155; word-break: keep-all;">
+                                <div style="background: #ffffff; padding: 10px; border-radius: 8px; border: 1px solid #ede9fe;">
+                                    <div style="font-weight: 800; color: #5b21b6; margin-bottom: 4px;">1. 건축물 용도변경 (주택 ➔ 근생/호스텔)</div>
+                                    <div style="font-size: 0.75rem; color: #475569; line-height: 1.45;">
+                                        • <strong>필수 체크요건</strong>: 법정 주차대수 확보, 오수정화조 용량 증설, 진입도로 폭(4m 이상), 직통계단 2개소 기준 검토.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
 
                 content.innerHTML = `
                     <div class="demand-card" style="border-left: 4px solid #2563eb; background: rgba(255, 255, 255, 0.9); padding: 16px; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 14px;">
@@ -6860,6 +7319,8 @@ function renderResidentialDemandData(resData, priceData, storesData, caseNo, add
                             ${subwayListHtml}
                         </div>
                     </div>
+
+                    ${devPlansCardHtml}
 
                     <div class="demand-card" style="padding: 16px; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 14px; background: #fff;">
                         <div class="demand-card-title" style="margin-bottom: 10px; font-weight: 800; color: #1e293b;">
@@ -6919,13 +7380,14 @@ function renderResidentialDemandData(resData, priceData, storesData, caseNo, add
                 // Display skeleton state while fetching
                 showDemandSkeleton();
 
-                // 주택 여부 판별
-                const isRes = isResidential(propType);
+                // 토지 및 주택 여부 판별
+                const isLnd = isLand(propType);
+                const isRes = !isLnd && isResidential(propType);
 
                 // 상단 타이틀 동적 반영
                 const drawerTitleEl = document.querySelector('.demand-drawer-title span');
                 if (drawerTitleEl) {
-                    drawerTitleEl.innerText = isRes ? '배후수요 & 주거 입지 분석' : '배후수요 & 상권 분석';
+                    drawerTitleEl.innerText = isLnd ? '토지 개발 & 입지/보상 가치 분석' : (isRes ? '배후수요 & 주거 입지 분석' : '배후수요 & 상권 분석');
                 }
 
                 if (isRes) {
@@ -6951,7 +7413,13 @@ function renderResidentialDemandData(resData, priceData, storesData, caseNo, add
                             demoUrl += `&parking_count=${encodeURIComponent(parkingCount)}`;
                         }
                         
-                        const demoPromise = fetch(demoUrl).then(res => res.json());
+                        const demoPromise = fetch(demoUrl).then(async res => {
+                            if (!res.ok) {
+                                const text = await res.text();
+                                throw new Error(`서버 분석 오류 (${res.status}): ${text.slice(0, 100)}`);
+                            }
+                            return res.json();
+                        });
                         
                         // 실거래가 가격지표 BBox 가져오기 (주변 250m 격자 포괄)
                         const minLat = lat - 0.045;
@@ -7171,21 +7639,35 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
 
                 let pyeongStr = '';
                 if (areaSize) {
-                    const pyeongVal = (parseFloat(areaSize) / 3.30578).toFixed(1);
-                    pyeongStr = `${pyeongVal}평 (${areaSize}㎡)`;
+                    const pSqm = parseFloat(areaSize);
+                    const pPyeong = (pSqm / 3.30578).toFixed(2);
+                    pyeongStr = `${pPyeong}평 (${pSqm.toFixed(2)}㎡)`;
                 } else {
-                    pyeongStr = '25평 (82.6㎡)';
+                    pyeongStr = '25.00평 (82.64㎡)';
                 }
 
                 let bldgCardHtml = '';
-                if (resData && resData.building_profile) {
+                if (resData && (resData.is_land || resData.land_profile)) {
+                    bldgCardHtml = getLandProfileCardHtml(resData.land_profile, lat, lng, caseNo, address, propType);
+                } else if (resData && resData.building_profile) {
                     const bldg = resData.building_profile;
+                    const totAreaSqm = bldg.tot_area ? parseFloat(bldg.tot_area) : 0;
+                    const totAreaPyeong = totAreaSqm > 0 ? (totAreaSqm / 3.30578).toFixed(2) : '-';
+                    const totAreaStr = totAreaSqm > 0 ? `${totAreaPyeong}평 (${totAreaSqm.toFixed(2)}㎡)` : '-';
+                    
+                    const exclPyeong = bldg.exclusive_area_pyeong ? parseFloat(bldg.exclusive_area_pyeong).toFixed(2) : '';
+                    const exclSqm = bldg.exclusive_area_sqm ? parseFloat(bldg.exclusive_area_sqm).toFixed(2) : (exclPyeong ? (parseFloat(exclPyeong) * 3.30578).toFixed(2) : '');
+
                     bldgCardHtml = `
                         <div class="demand-card" style="border-left: 4px solid #10b981; background: linear-gradient(135deg, #f0fdf4, #ffffff); margin-bottom: 14px; padding: 16px; border: 1px solid #a7f3d0; border-radius: 12px; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.08);">
-                            <div style="font-size: 0.82rem; color: #047857; font-weight: 800; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 0.82rem; color: #047857; font-weight: 800; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
                                 <span><i class="fa-solid fa-building-columns" style="color: #10b981; margin-right: 6px;"></i>건축물대장 실측 스펙 (ARCHHUB)</span>
-                                <span style="background: #10b981; color: #fff; padding: 3px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800;">${bldg.main_use || '근린생활시설/일반건축물'}</span>
+                                <div style="display: flex; gap: 4px;">
+                                    ${bldg.zoning ? `<span style="background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 800; border: 1px solid #c7d2fe;">${bldg.zoning}</span>` : ''}
+                                    <span style="background: #10b981; color: #fff; padding: 3px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 800;">${bldg.main_use || propType || '근린생활시설/일반건축물'}</span>
+                                </div>
                             </div>
+                            ${bldg.building_name ? `<div style="font-size: 1.05rem; font-weight: 900; color: #064e3b; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-building" style="color:#059669;"></i> ${bldg.building_name}</div>` : ''}
                             <div style="font-size: 0.92rem; font-weight: 800; color: #064e3b; margin-bottom: 10px; border-bottom: 1px dashed #a7f3d0; padding-bottom: 6px;">
                                 ${bldg.structure || '철근콘크리트구조'} | 총 층수: 지상 ${bldg.grnd_flr || 5}층 / 지하 ${bldg.ugrnd_flr || 0}층
                             </div>
@@ -7193,7 +7675,8 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>사용승인일자</strong>: <span style="color:#047857; font-weight:800;">${bldg.use_apr_day || '-'}</span></div>
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>총 주차대수</strong>: <span style="color:#047857; font-weight:800;">${bldg.tot_pkng !== undefined ? bldg.tot_pkng + '대' : '-'}</span></div>
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>엘리베이터 수</strong>: <span style="color:#047857; font-weight:800;">${bldg.elevators || '-'}</span></div>
-                                <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>연면적</strong>: <span style="color:#047857; font-weight:800;">${bldg.tot_area ? bldg.tot_area + ' ㎡' : '-'}</span></div>
+                                <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>건물 연면적</strong>: <span style="color:#047857; font-weight:800;">${totAreaStr}</span></div>
+                                ${exclPyeong ? `<div style="grid-column: span 2; background:#ecfdf5; padding:6px 10px; border-radius:6px; border:1.5px solid #10b981;">• 🎯 <strong>해당 호수 실측 전유면적</strong>: <span style="color:#047857; font-weight:900; font-size:0.85rem;">${exclPyeong}평 (${exclSqm}㎡)</span></div>` : ''}
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>건폐율 / 용적률</strong>: <strong>${bldg.bc_rat || '-'}% / ${bldg.vl_rat || '-'}%</strong></div>
                                 <div style="background:#ffffff; padding:6px 8px; border-radius:6px; border:1px solid #d1fae5;">• <strong>내진설계</strong>: <strong>${bldg.seismic || '적용'}</strong></div>
                             </div>
@@ -7478,6 +7961,7 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
                 }
 
                 const demographicsHtml = `
+                    <div class="demand-card" style="border-left: 4px solid var(--primary-blue); background: #ffffff; margin-bottom: 14px; padding: 16px; border: 1px solid #e2e8f0; border-radius: 12px;">
                         <div class="demand-card-title" style="display: flex; justify-content: space-between; align-items: center;">
                             <span><i class="fa-solid fa-users" style="color: var(--primary-blue);"></i> 배후 주거·일자리 및 연령 분포</span>
                             <span style="font-size:0.72rem; background:#eff6ff; color:#2563eb; padding:2px 7px; border-radius:10px; font-weight:700; border:1px solid #bfdbfe;">SGIS 반경 500m</span>
@@ -7500,10 +7984,74 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
                     </div>
                 `;
 
+                // 7km 광역 배후수요 카드 HTML (상가 500평 이상)
+                let demo7kCardHtml = '';
+                const demo7k = resData && resData.demographics_7km;
+                if (demo7k) {
+                    demo7kCardHtml = `
+                        <div class="demand-card" style="border-left: 4px solid #ea580c; background: linear-gradient(135deg, #fff7ed, #ffffff); margin-bottom: 14px; padding: 16px; border: 1px solid #fed7aa; border-radius: 12px; box-shadow: 0 2px 6px rgba(234, 88, 12, 0.08);">
+                            <div style="font-size: 0.88rem; color: #c2410c; font-weight: 800; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                <span><i class="fa-solid fa-truck-fast" style="color: #ea580c; margin-right: 6px;"></i> [500평+ 상가 스펙] 반경 7km 광역 배후수요 & 아울렛/배달 측정</span>
+                                <span style="background: #ea580c; color: #fff; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 800;">광역 7km</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;">
+                                <div style="background: #ffffff; padding: 10px; border-radius: 8px; border: 1px solid #ffedd5;">
+                                    <div style="font-size: 0.7rem; color: #9a3412;">7km 광역 주거인구</div>
+                                    <div style="font-size: 1.05rem; font-weight: 800; color: #ea580c;">${Number(demo7k.population_7km).toLocaleString()}<span style="font-size: 0.75rem; font-weight: normal; margin-left: 2px;">명 (${Number(demo7k.households_7km).toLocaleString()}세대)</span></div>
+                                </div>
+                                <div style="background: #ffffff; padding: 10px; border-radius: 8px; border: 1px solid #ffedd5;">
+                                    <div style="font-size: 0.7rem; color: #9a3412;">20~40대 주요 인구 비중</div>
+                                    <div style="font-size: 1.05rem; font-weight: 800; color: #c2410c;">${demo7k.age_distribution_7km.pct_20_40s}% <span style="font-size: 0.75rem; font-weight: normal; margin-left: 2px;">(${Number(demo7k.age_distribution_7km.target_20_40s).toLocaleString()}명)</span></div>
+                                </div>
+                            </div>
+                            <div style="background: #ffffff; padding: 10px; border-radius: 8px; border: 1px solid #ffedd5; font-size: 0.78rem; color: #431407; display: flex; justify-content: space-between; align-items: center;">
+                                <span><strong>가구 추정 월소득수준</strong>: <span style="color:#c2410c; font-weight:800;">${demo7k.income_level.income_display}</span></span>
+                                <span style="background: #ffedd5; color: #9a3412; padding: 2px 8px; border-radius: 6px; font-weight: 800; font-size: 0.72rem;">${demo7k.income_level.income_bracket}</span>
+                            </div>
+                            <div style="font-size: 0.75rem; color: #7c2d12; margin-top: 8px; line-height: 1.4; background: #fff7ed; padding: 6px 8px; border-radius: 6px;">
+                                🚚 <strong>배달/아울렛 가능 거리를 위한 반경 7km 분석 완료</strong> (대형 아울렛, F&B 테마 몰, 광역 배달 클러스터 적합)
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 공유창고 유효수요 카드 HTML (상가 50평 이상)
+                let swCardHtml = '';
+                const swDemand = resData && resData.shared_warehouse_demand;
+                if (swDemand) {
+                    swCardHtml = `
+                        <div class="demand-card" style="border-left: 4px solid #0284c7; background: linear-gradient(135deg, #f0f9ff, #ffffff); margin-bottom: 14px; padding: 16px; border: 1px solid #bae6fd; border-radius: 12px; box-shadow: 0 2px 6px rgba(2, 132, 199, 0.08);">
+                            <div style="font-size: 0.88rem; color: #0369a1; font-weight: 800; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                <span><i class="fa-solid fa-boxes-stacked" style="color: #0284c7; margin-right: 6px;"></i> [50평+ 상가 스펙] 공유창고(Self-Storage) 유효수요 분석</span>
+                                <span style="background: #0284c7; color: #fff; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 800;">적합도: ${swDemand.suitability_score}</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; font-size: 0.75rem; text-align: center;">
+                                <div style="background: #ffffff; padding: 8px 4px; border-radius: 8px; border: 1px solid #e0f2fe;">
+                                    <div style="color: #0369a1; font-size: 0.68rem; margin-bottom: 2px;">20~40대 타겟인구</div>
+                                    <div style="font-weight: 800; color: #0284c7; font-size: 0.92rem;">${swDemand.target_age_pct}% <span style="font-size: 0.68rem; font-weight: normal;">(${Number(swDemand.target_age_20_40s_pop).toLocaleString()}명)</span></div>
+                                </div>
+                                <div style="background: #ffffff; padding: 8px 4px; border-radius: 8px; border: 1px solid #e0f2fe;">
+                                    <div style="color: #0369a1; font-size: 0.68rem; margin-bottom: 2px;">1~2인 가구 세대</div>
+                                    <div style="font-weight: 800; color: #0369a1; font-size: 0.92rem;">${Number(swDemand.single_two_person_households).toLocaleString()}<span style="font-size: 0.68rem; font-weight: normal;">세대 (${swDemand.single_two_person_ratio}%)</span></div>
+                                </div>
+                                <div style="background: #ffffff; padding: 8px 4px; border-radius: 8px; border: 1px solid #e0f2fe;">
+                                    <div style="color: #0369a1; font-size: 0.68rem; margin-bottom: 2px;">직장인구 수</div>
+                                    <div style="font-weight: 800; color: #0f172a; font-size: 0.92rem;">${Number(swDemand.workplace_pop).toLocaleString()}<span style="font-size: 0.68rem; font-weight: normal;">명</span></div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.75rem; color: #0c4a6e; line-height: 1.4; background: #e0f2fe; padding: 6px 8px; border-radius: 6px;">
+                                📦 <strong>진단 소견</strong>: ${swDemand.recommendation_reason}
+                            </div>
+                        </div>
+                    `;
+                }
+
                 content.innerHTML = `
                     ${bldgCardHtml}
                     ${priceCardHtml}
                     ${demographicsHtml}
+                    ${demo7kCardHtml}
+                    ${swCardHtml}
                     ${typeof createCommercialStoresCardHtml === 'function' ? createCommercialStoresCardHtml(storesData) : ''}
                     ${specsCardHtml}
                     ${guideHtml}
@@ -7512,7 +8060,7 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
 
             function printDemandReport() {
                 const content = document.getElementById('demand-panel-content');
-                if (!content || !content.innerHTML.trim() || content.innerHTML.includes('fa-spinner') || content.innerHTML.includes('분석 실패') || content.innerHTML.includes('오류')) {
+                if (!content || !content.innerHTML.trim() || content.innerHTML.includes('fa-spinner') || content.innerHTML.includes('분석 실패') || content.innerHTML.includes('데이터 분석 오류') || content.querySelector('.demand-error-card')) {
                     alert('출력할 배후수요 및 상권 분석 데이터가 없습니다. 먼저 지도에서 경공매 물건을 클릭해주세요.');
                     return;
                 }
@@ -8283,11 +8831,19 @@ async function executeNaverPriceAnalysis(radiusVal) {
             
             // Badges
             const cats = data.target_categories || {};
+            let ageLabelStr = cats.age || cats.age_label || '-';
+            let ageBadgeStyle = 'background:#f1f5f9; color:#334155; font-weight:700;';
+            if (cats.age_label === '10년 이내' || (ageLabelStr && ageLabelStr.includes('10년 이내'))) {
+                ageBadgeStyle = 'background:#dcfce7; color:#15803d; font-weight:800;';
+            } else if (cats.age_label === '25년 이내' || (ageLabelStr && ageLabelStr.includes('25년 이내'))) {
+                ageBadgeStyle = 'background:#e0f2fe; color:#0369a1; font-weight:700;';
+            }
+
             let badgesHtml = `
                 <span style="background:#e0f2fe; color:#0369a1; font-weight:800; padding:4px 10px; border-radius:8px; font-size:0.82rem;">${cats.type_label || '부동산'}</span>
                 <span style="background:#f1f5f9; color:#334155; font-weight:700; padding:4px 10px; border-radius:8px; font-size:0.82rem;">층수: ${cats.floor || '-'}</span>
                 <span style="background:#f1f5f9; color:#334155; font-weight:700; padding:4px 10px; border-radius:8px; font-size:0.82rem;">평수: ${cats.area || '-'}</span>
-                <span style="background:#f1f5f9; color:#334155; font-weight:700; padding:4px 10px; border-radius:8px; font-size:0.82rem;">연식: ${cats.age || '-'}</span>
+                <span style="${ageBadgeStyle} padding:4px 10px; border-radius:8px; font-size:0.82rem;">노후도: ${ageLabelStr}</span>
             `;
             document.getElementById('naverTargetBadges').innerHTML = badgesHtml;
             if (data.special_rule_applied) {
@@ -8541,7 +9097,15 @@ async function showNaverDetails(lat, lng, estateType, address) {
                 const floorStr = item.floor || '-';
                 const areaStr = item.area || '-';
                 const pyungStr = item.pyung ? `${item.pyung}평` : '-';
-                const ageInfo = item.age_info || '-';
+                const rawAge = item.age_info || item.age_display || item.age_category || '-';
+                let ageBadgeHtml = `<span style="color:#64748b;">${rawAge}</span>`;
+                if (rawAge.includes('10년 이내') || rawAge.includes('10년이내') || rawAge.includes('신축')) {
+                    ageBadgeHtml = `<span style="background:#dcfce7; color:#15803d; font-weight:bold; padding:2px 6px; border-radius:4px; font-size:0.78rem;">${rawAge}</span>`;
+                } else if (rawAge.includes('25년 이내') || rawAge.includes('25년이내')) {
+                    ageBadgeHtml = `<span style="background:#e0f2fe; color:#0369a1; font-weight:bold; padding:2px 6px; border-radius:4px; font-size:0.78rem;">${rawAge}</span>`;
+                } else if (rawAge.includes('25년 이상') || rawAge.includes('25년이상') || rawAge.includes('구축')) {
+                    ageBadgeHtml = `<span style="background:#f1f5f9; color:#475569; font-weight:bold; padding:2px 6px; border-radius:4px; font-size:0.78rem;">${rawAge}</span>`;
+                }
                 const typeDetail = item.type_detail || '-';
                 const estateId = item.estate_id || '-';
                 
@@ -8553,7 +9117,7 @@ async function showNaverDetails(lat, lng, estateType, address) {
                         <td style="padding:8px 10px; text-align:right; color:#475569;">${pppStr}</td>
                         <td style="padding:8px 10px; text-align:center;">${floorStr}</td>
                         <td style="padding:8px 10px; text-align:right;">${pyungStr}<br><span style="font-size:0.75rem; color:gray;">(${areaStr})</span></td>
-                        <td style="padding:8px 10px; text-align:center; color:#f59e0b;">${ageInfo}</td>
+                        <td style="padding:8px 10px; text-align:center;">${ageBadgeHtml}</td>
                         <td style="padding:8px 10px; text-align:left;">${typeDetail}</td>
                     </tr>
                 `;
@@ -9098,7 +9662,12 @@ async function triggerHeaderAddressAnalysis() {
                 const doc = data.documents[0];
                 const lat = parseFloat(doc.y);
                 const lng = parseFloat(doc.x);
-                const addr = doc.road_address_name || doc.address_name || doc.place_name || inputVal;
+                let addr = '';
+                if (doc.address_name && doc.road_address_name) {
+                    addr = `${doc.address_name} (${doc.road_address_name})`;
+                } else {
+                    addr = doc.address_name || doc.road_address_name || doc.place_name || inputVal;
+                }
 
                 if (typeof map !== 'undefined' && map) {
                     map.setView([lat, lng], 16);
@@ -9403,18 +9972,34 @@ function renderAddressSummaryData(data) {
     if (sampleList) {
         const samples = nav.sample_properties || [];
         if (samples.length > 0) {
-            sampleList.innerHTML = samples.map(s => `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
-                    <div>
-                        <strong style="color:#1e293b; font-size:0.9rem;">${s.name}</strong>
-                        <span style="font-size:0.8rem; color:#64748b; margin-left:8px;">${s.area} · ${s.floor}층</span>
+            sampleList.innerHTML = samples.map(s => {
+                const ageText = s.age_display || s.age_category || '';
+                let ageBadgeClass = 'background:#f1f5f9; color:#475569;'; // 기본 (25년 이상 / 보통)
+                if (s.age_category === '10년 이내' || (ageText && ageText.includes('10년 이내'))) {
+                    ageBadgeClass = 'background:#dcfce7; color:#15803d; font-weight:800;';
+                } else if (s.age_category === '25년 이내' || (ageText && ageText.includes('25년 이내'))) {
+                    ageBadgeClass = 'background:#e0f2fe; color:#0369a1; font-weight:700;';
+                } else if (s.age_category === '25년 이상' || (ageText && ageText.includes('25년 이상'))) {
+                    ageBadgeClass = 'background:#f1f5f9; color:#475569; font-weight:700;';
+                }
+                const ageBadgeHtml = ageText ? `<span style="${ageBadgeClass} padding:2px 7px; border-radius:6px; font-size:0.72rem; margin-left:6px;"><i class="fa-regular fa-calendar"></i> ${ageText}</span>` : '';
+
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:6px;">
+                        <div>
+                            <strong style="color:#1e293b; font-size:0.9rem;">${s.name}</strong>
+                            <div style="font-size:0.78rem; color:#64748b; margin-top:2px;">
+                                <span>${s.area} · ${s.floor}층</span>
+                                ${ageBadgeHtml}
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <strong style="color:#2563eb; font-size:0.95rem;">${s.price}</strong>
+                            <div style="font-size:0.75rem; color:#94a3b8;">약 ${s.distance_m}m 인근</div>
+                        </div>
                     </div>
-                    <div style="text-align:right;">
-                        <strong style="color:#2563eb; font-size:0.95rem;">${s.price}</strong>
-                        <div style="font-size:0.75rem; color:#94a3b8;">약 ${s.distance_m}m 인근</div>
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         } else {
             sampleList.innerHTML = `<div style="font-size:0.85rem; color:#64748b; text-align:center; padding:12px;">반경 500m 내 ${data.property_type || '선택 유형'} 등록 매물 검색 완료</div>`;
         }

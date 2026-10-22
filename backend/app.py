@@ -1,13 +1,550 @@
 
-def get_building_profile_data(address: str, lat: float, lng: float, property_type: Optional[str] = None) -> dict:
+import os
+import sys
+import re
+import math
+import json
+import sqlite3
+import random
+import logging
+from typing import Optional, List, Dict, Any
+
+try:
+    from backend.land_analyzer import is_land_property, get_land_profile_data
+    from backend.vworld_land_service import get_comprehensive_land_info
+except ImportError:
+    from land_analyzer import is_land_property, get_land_profile_data
+    try:
+        from vworld_land_service import get_comprehensive_land_info
+    except ImportError:
+        get_comprehensive_land_info = None
+
+
+# ==============================================================================
+# 반경 5km 광역 개발계획 및 도시계획시설(철도·지하철·도로·정비사업) 연동 메타데이터
+# ==============================================================================
+
+RAILWAY_PROJECTS_META = {
+    '서부경전철': {
+        'name': '서부선 경전철',
+        'route': '새절역(6호선)~신촌~광흥창~여의도~노량진~서울대입구(2호선)',
+        'completion': '2029~2030년 개통 목표',
+        'status': '실시협약 진행 / 민투심 통과',
+        'impact': '서북부와 여의도·서울대입구를 직결하는 핵심 경전철 노선'
+    },
+    '신안산선': {
+        'name': '신안산선 복선전철',
+        'route': '여의도~영등포~구로디지털~광명~안산(한양대)/시흥시청',
+        'completion': '2026~2027년 개통 목표',
+        'status': '공사 진행 중 (공정률 50%↑)',
+        'impact': '경기 서남부에서 여의도까지 20분대 주파 가능한 황금노선'
+    },
+    'GTX-A': {
+        'name': 'GTX-A (수도권광역급행철도 A노선)',
+        'route': '운정~킨텍스~서울역~삼성~수서~동탄',
+        'completion': '수서~동탄/운정~서울역 개통, 2028년 전구간 완전 개통',
+        'status': '일부 영업 운행 중 / 전구간 공사',
+        'impact': '수도권 남북을 20분대로 관통하는 최상위 교통 혁명'
+    },
+    'GTX-B': {
+        'name': 'GTX-B (수도권광역급행철도 B노선)',
+        'route': '인천 송도~부천~여의도~용산~서울역~청량리~마석',
+        'completion': '2030년 개통 목표',
+        'status': '착공 및 실시계획 승인',
+        'impact': '인천·송도와 여의도·서울역을 직통 연결하는 동서급행축'
+    },
+    'GTX-C': {
+        'name': 'GTX-C (수도권광역급행철도 C노선)',
+        'route': '양주 덕정~의정부~창동~청량리~삼성~양재~과천~수원',
+        'completion': '2028년 완공 목표',
+        'status': '착공 및 공사 진행 중',
+        'impact': '경기 동북부와 강남권(삼성/양재) 직결 급행망'
+    },
+    'GTX-D': {
+        'name': 'GTX-D (수도권 광역급행 Y자 노선)',
+        'route': '인천공항/김포~부천~가산~사당~강남~삼성~교산/원주',
+        'completion': '제5차 국가철도망 구축계획 반영 추진',
+        'status': '국가철도망 계획 반영 추진',
+        'impact': '수도권 서부와 강남을 직결하는 핵심 광역철도'
+    },
+    '동북선': {
+        'name': '동북선 경전철',
+        'route': '왕십리역(2·5·수인분당)~제기동~미아사거리~하계~상계',
+        'completion': '2026년 하반기 완공 목표',
+        'status': '공사 진행 중 (공정률 60%↑)',
+        'impact': '동북부 교통 소외지역의 강남/도심 접근성 대폭 개선'
+    },
+    '월판선': {
+        'name': '월곶~판교 복선전철 (월판선)',
+        'route': '수인선 월곶역~시흥시청~광명~안양~인덕원~판교',
+        'completion': '2028~2029년 개통 목표',
+        'status': '공사 진행 중',
+        'impact': '인천·시흥에서 판교 테크노밸리까지 30분대 직결'
+    },
+    '동탄인덕원선': {
+        'name': '동탄~인덕원 복선전철 (동인선)',
+        'route': '인덕원역(4호선)~의왕~수원월드컵경기장~영통~동탄역',
+        'completion': '2028~2029년 완공 목표',
+        'status': '전공구 공사 진행 중',
+        'impact': '수원·안양·의왕·화성을 아우르는 경기 남부 대동맥'
+    },
+    '위례선': {
+        'name': '위례선 노면전차 (트램)',
+        'route': '마천역(5호선)~위례중앙~복정역(8호선·수인분당)/남위례역',
+        'completion': '2025~2026년 개통 목표',
+        'status': '차량 제작 및 궤도 부설 공사 중',
+        'impact': '국내 1호 트램 상용화 및 위례신도시 대중교통 획기적 개선'
+    },
+    '위례신사선': {
+        'name': '위례신사선 경전철',
+        'route': '위례중앙~가락시장~학여울~삼성역~청담~신사역(3·신분당)',
+        'completion': '2030년경 개통 목표 (사업자 재공모)',
+        'status': '재정투자사업 전환 및 사업자 공모',
+        'impact': '위례에서 강남 핵심지구(삼성/신사) 10분대 진입'
+    },
+    '대장홍대선': {
+        'name': '대장~홍대선 복선전철',
+        'route': '부천 대장신도시~화곡~가양~상암 DMC~홍대입구',
+        'completion': '2030년 개통 목표',
+        'status': '실시협약 체결 및 조기 착공 추진',
+        'impact': '서부권 3기 신도시와 마포/홍대 도심을 20분대 직결'
+    },
+    '서울7호선': {
+        'name': '서울 지하철 7호선 연장 (청라/포천)',
+        'route': '석남역~청라국제도시역(공항철도) / 도봉산~옥정~포천',
+        'completion': '청라연장 2027년 / 옥정포천 2029년 완공 목표',
+        'status': '구간별 착공 및 공사 중',
+        'impact': '청라국제도시 및 경기 북부의 강남 직결 교통망'
+    },
+    '서울9호선': {
+        'name': '서울 지하철 9호선 4단계 연장',
+        'route': '중앙보훈병원역~길동생태공원~한영외고~고덕강일1지구',
+        'completion': '2028년 완공 목표',
+        'status': '본선 공사 진행 중',
+        'impact': '강동 고덕·강일지구에서 강남권 30분대 급행 연결'
+    },
+    '서울5호선': {
+        'name': '서울 지하철 5호선 김포·검단 연장',
+        'route': '방화역~검단신도시~김포 한강2콤팩트시티',
+        'completion': '2030~2031년 개통 목표',
+        'status': '대도시권광역교통위 노선 조정안 발표',
+        'impact': '김포골드라인 혼잡 완화 및 수도권 서북부 교통 해소'
+    },
+    '신분당선': {
+        'name': '신분당선 연장 (호매실 / 서북부)',
+        'route': '광교~화서~호매실 / 신사~용산(2단계)',
+        'completion': '호매실 연장 2029년 개통 목표',
+        'status': '호매실 구간 공사 진행 중',
+        'impact': '수원 서부권의 판교·강남 30분대 직결 황금노선'
+    },
+    '인천1호선': {
+        'name': '인천 지하철 1호선 검단 연장선',
+        'route': '계양역(공항철도)~검단신도시(3개 정거장 신설)',
+        'completion': '2025년 개통 완료/임박',
+        'status': '준공 및 종합시험운행',
+        'impact': '검단신도시 주민의 서울역·마곡·인천시내 직결'
+    }
+}
+
+def map_redevelopment_stage_and_completion(propel_cd: str):
+    if not propel_cd:
+        return ("구역지정/준비단계", "2031~2033년 준공 목표 (장기)")
+    code = str(propel_cd).upper()
+    late_codes = [
+        'PP0210', 'PP0211', 'PP0505', 'PP0605', 'PP0706', 'PP1112', 'PP1113',
+        'PP1207', 'PP1208', 'PP1209', 'PP1306', 'PP1407', 'PP1506', 'PP1507',
+        'PP1604', 'PP1810', 'PP1901', 'PP2006', 'PP2007'
+    ]
+    if code in late_codes or '관리처분' in code or '착공' in code:
+        return ("관리처분인가 / 착공단계 (후기)", "2027~2028년 완공·입주 목표")
+    middle_codes = [
+        'PP0209', 'PP0504', 'PP0604', 'PP0705', 'PP1111', 'PP1206', 'PP1406', 'PP1505', 'PP1809'
+    ]
+    if code in middle_codes or '사업시행' in code:
+        return ("사업시행인가 완료 (중기)", "2029~2030년 준공 목표")
+    return ("조합설립 / 구역지정 단계 (초기)", "2031~2033년 준공 목표 (장기)")
+
+def get_5km_development_plans(lat: float, lng: float, db_path: str = None) -> dict:
+    if not db_path:
+        db_path = os.path.join(os.path.dirname(__file__), 'data', 'map_data.db')
+        if not os.path.exists(db_path):
+            db_path = os.path.join(os.path.dirname(__file__), '../data/map_data.db')
+
+    if not os.path.exists(db_path):
+        return {"status": "error", "message": "DB not found"}
+
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    def haversine(lat1, lon1, lat2, lon2):
+        R = 6371000
+        phi1, phi2 = math.radians(lat1), math.radians(lat2)
+        dphi = math.radians(lat2 - lat1)
+        dlam = math.radians(lon2 - lon1)
+        a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlam/2)**2
+        return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1-a))
+
+    # 1. 철도망 검색 (5km)
+    railway_projects = []
+    try:
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='subway_lines'")
+        if cursor.fetchone():
+            cursor.execute("SELECT id, line, status, coordinates_json FROM subway_lines")
+            for r in cursor.fetchall():
+                line_key = r['line']
+                raw_status = r['status'] or '운영중'
+                coords_json = r['coordinates_json']
+                if not coords_json:
+                    continue
+                try:
+                    coords = json.loads(coords_json)
+                except Exception:
+                    continue
+
+                min_d = float('inf')
+                def walk(obj):
+                    nonlocal min_d
+                    if isinstance(obj, list):
+                        if len(obj) >= 2 and isinstance(obj[0], (int, float)) and isinstance(obj[1], (int, float)):
+                            d = haversine(lat, lng, obj[0], obj[1])
+                            if d < min_d:
+                                min_d = d
+                        else:
+                            for sub in obj:
+                                walk(sub)
+                walk(coords)
+
+                if min_d <= 5000:
+                    meta = RAILWAY_PROJECTS_META.get(line_key, {})
+                    is_dev = ('개발' in raw_status or '예정' in raw_status or '신설' in raw_status or '연장' in raw_status or line_key in ['서부경전철', '신안산선', 'GTX-A', 'GTX-B', 'GTX-C', 'GTX-D', '동북선', '월판선', '동탄인덕원선', '위례선', '위례신사선', '대장홍대선'])
+                    
+                    full_name = meta.get('name', f"{line_key} (수도권 철도망)")
+                    route_info = meta.get('route', '')
+                    completion = meta.get('completion', '정상 운행 중' if not is_dev else '2028~2030년 개통 목표')
+                    status_text = meta.get('status', raw_status)
+                    impact = meta.get('impact', '')
+
+                    railway_projects.append({
+                        'line': line_key,
+                        'name': full_name,
+                        'route': route_info,
+                        'status': status_text,
+                        'completion': completion,
+                        'impact': impact,
+                        'is_developing': is_dev,
+                        'distance_m': round(min_d),
+                        'distance_km': round(min_d / 1000.0, 1)
+                    })
+    except Exception as e:
+        print(f"Error querying subway_lines in 5km plans: {e}")
+
+    # 개발 예정 철도를 우선 배치 후 거리순 정렬
+    railway_projects.sort(key=lambda x: (not x['is_developing'], x['distance_m']))
+
+    # 2. 재개발/재건축 정비사업 검색 (5km)
+    redev_projects = []
+    total_redev_count = 0
+    try:
+        lat_delta = 5000 / 111000.0
+        lng_delta = 5000 / (111000.0 * math.cos(math.radians(lat)))
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='redevelopment_zones'")
+        if cursor.fetchone():
+            cursor.execute('''
+                SELECT name, propel_cd, min_lat, max_lat, min_lng, max_lng 
+                FROM redevelopment_zones
+                WHERE max_lat >= ? AND min_lat <= ? AND max_lng >= ? AND min_lng <= ?
+            ''', (lat - lat_delta, lat + lat_delta, lng - lng_delta, lng + lng_delta))
+            rows = cursor.fetchall()
+            for r in rows:
+                c_lat = (r['min_lat'] + r['max_lat']) / 2.0
+                c_lng = (r['min_lng'] + r['max_lng']) / 2.0
+                d = haversine(lat, lng, c_lat, c_lng)
+                if d <= 5000:
+                    stage_name, comp_target = map_redevelopment_stage_and_completion(r['propel_cd'])
+                    redev_projects.append({
+                        'name': r['name'] or '재개발·정비사업 구역',
+                        'stage': stage_name,
+                        'completion': comp_target,
+                        'distance_m': round(d),
+                        'distance_km': round(d / 1000.0, 1)
+                    })
+            total_redev_count = len(redev_projects)
+            redev_projects.sort(key=lambda x: x['distance_m'])
+    except Exception as e:
+        print(f"Error querying redevelopment_zones in 5km plans: {e}")
+
+    # 3. 도시계획도로 검색 (5km)
+    road_projects = []
+    total_road_count = 0
+    try:
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='planning_roads'")
+        if cursor.fetchone():
+            cursor.execute('''
+                SELECT name, road_class, min_lat, max_lat, min_lng, max_lng 
+                FROM planning_roads
+                WHERE max_lat >= ? AND min_lat <= ? AND max_lng >= ? AND min_lng <= ?
+            ''', (lat - lat_delta, lat + lat_delta, lng - lng_delta, lng + lng_delta))
+            r_rows = cursor.fetchall()
+            for r in r_rows:
+                c_lat = (r['min_lat'] + r['max_lat']) / 2.0
+                c_lng = (r['min_lng'] + r['max_lng']) / 2.0
+                d = haversine(lat, lng, c_lat, c_lng)
+                if d <= 5000:
+                    r_class = r['road_class'] or r['name'] or '도시계획도로'
+                    width_info = "폭 8~10m (보조간선/소로)" if "소로" in r_class else ("폭 15~20m (주간선/중로)" if "중로" in r_class else "폭 25m 이상 (대로/주간선)")
+                    road_projects.append({
+                        'name': f"도시계획도로 {r_class}",
+                        'road_class': r_class,
+                        'width_desc': width_info,
+                        'distance_m': round(d),
+                        'distance_km': round(d / 1000.0, 1)
+                    })
+            total_road_count = len(road_projects)
+            road_projects.sort(key=lambda x: x['distance_m'])
+    except Exception as e:
+        print(f"Error querying planning_roads in 5km plans: {e}")
+
+    conn.close()
+
+    # 요약 문구 생성
+    dev_rail_count = len([x for x in railway_projects if x['is_developing']])
+    summary_parts = []
+    if dev_rail_count > 0:
+        dev_names = ", ".join([x['name'].split('(')[0].strip() for x in railway_projects if x['is_developing']][:3])
+        summary_parts.append(f"반경 5km 내 {dev_names} 등 핵심 철도 신설/연장 호재 {dev_rail_count}개 노선")
+    if total_redev_count > 0:
+        summary_parts.append(f"인근 재개발·재건축 정비사업 {total_redev_count}개 구역 밀집")
+    if total_road_count > 0:
+        summary_parts.append(f"도시계획 도로망 확충 {total_road_count}개 구간 지정")
+    
+    summary_text = " | ".join(summary_parts) if summary_parts else "반경 5km 내 안정적인 기구축 도시 인프라가 형성되어 있습니다."
+
+    return {
+        "status": "success",
+        "radius_km": 5,
+        "summary": summary_text,
+        "railway_projects": railway_projects[:10],
+        "total_railway_count": len(railway_projects),
+        "developing_railway_count": dev_rail_count,
+        "redevelopment_projects": redev_projects[:10],
+        "total_redevelopment_count": total_redev_count,
+        "road_projects": road_projects[:8],
+        "total_road_count": total_road_count
+    }
+
+def get_usage_change_guide_data(property_type: str, area_size: float = None, bldg_prof: dict = None) -> dict:
     """
-    국토교통부 건축HUB(archhub) 표준 실측 데이터를 반환합니다.
-    모든 경공매 물건 유형(주거용, 상가/근린시설, 공장/지산, 숙박, 창고, 오피스텔, 주유소, 위락, 의료, 운동, 종교 등)에 대한
-    건축물대장 실측 스펙을 동적으로 생성 및 정밀 매핑합니다.
+    단독·다가구 및 주택 물건에 대한 근린생활시설, 호스텔(숙박시설) 등으로의 용도변경 시
+    필요한 5대 핵심 법적 요건(인허가, 주차, 정화조, 직통계단, 소방/피난, 조례)을 정밀 산출합니다.
     """
+    p_type = str(property_type or "").strip()
+    area_pyeong = (area_size / 3.30578) if area_size and area_size > 0 else 50.0
+    tot_area_sqm = bldg_prof.get('tot_area', 200.0) if bldg_prof and bldg_prof.get('tot_area') else (area_size or 200.0)
+    grnd_flr = bldg_prof.get('grnd_flr', 3) if bldg_prof and bldg_prof.get('grnd_flr') else 3
+    tot_pkng = bldg_prof.get('tot_pkng', 2) if bldg_prof and bldg_prof.get('tot_pkng') is not None else 2
+    
+    # 1. 근린생활시설(카페/음식점/사무소) 변경 요건
+    # 주차: 근생은 보통 134㎡당 1대
+    required_pkng_comm = max(1, round(tot_area_sqm / 134.0, 1))
+    pkng_diff_comm = max(0, round(required_pkng_comm - tot_pkng, 1))
+    
+    # 2. 호스텔/게스트하우스(숙박시설) 변경 요건
+    # 주차: 숙박시설 200㎡당 1대 (또는 객실수 기준)
+    required_pkng_hotel = max(1, round(tot_area_sqm / 200.0, 1))
+    pkng_diff_hotel = max(0, round(required_pkng_hotel - tot_pkng, 1))
+    
+    # 직통계단 2개소 여부: 3층 이상 거실 바닥 200㎡ 이상 또는 숙박시설 200㎡ 이상
+    stair_required = grnd_flr >= 3 and tot_area_sqm >= 200.0
+
+    return {
+        "applicable": any(k in p_type for k in ["단독", "다가구", "다세대", "빌라", "주택", "연립", "상가주택", "다중"]),
+        "property_type": p_type,
+        "tot_area_sqm": tot_area_sqm,
+        "grnd_flr": grnd_flr,
+        "current_parking": tot_pkng,
+        "commercial_conversion": {
+            "target_use": "제1종·제2종 근린생활시설 (카페, 음식점, 사무실, 쇼룸)",
+            "approval_type": "용도변경 허가 (주거업무군 8군 ➔ 근린생활시설군 7군 상위군 이동)",
+            "parking_condition": {
+                "ratio": "시설면적 134㎡당 1대 (지자체 주차장 조례)",
+                "required": f"약 {required_pkng_comm}대",
+                "diff": f"추가 필요: 약 {pkng_diff_comm}대" if pkng_diff_comm > 0.5 else "현행 주차대수로 충족 가능 (1대 미만 차이분 면제)",
+                "solution": "부설주차장 추가 구획 또는 대지 경계 300m 이내 인근 주차장 확보/설치비용 납부"
+            },
+            "septic_tank": {
+                "standard": "환경부 고시 오수발생량 산정: 일반음식점 70L/㎡·일, 휴게음식점 35L/㎡·일 (주택 대비 5~8배 급증)",
+                "risk": "정화조 용량 초과 시 정화조 탱크 증설 또는 하수종말처리구역 직관로(분뇨 직투입) 연결 배관 공사 필수"
+            },
+            "fire_safety": "다중이용업소(지하 66㎡, 2층 이상 100㎡ 이상 음식점 등) 해당 시 비상구 및 소방완비증명서 필수"
+        },
+        "hostel_conversion": {
+            "target_use": "호스텔 / 게스트하우스 (외국인관광도시민박업, 일반숙박시설)",
+            "approval_type": "용도변경 허가 (주거업무군 8군 ➔ 영업시설군 6군 상위 2단계 이동)",
+            "zoning_restriction": {
+                "rule": "국토계획법상 일반주거지역(1·2·3종) 내 일반 숙박시설은 원칙적 불허",
+                "workaround": "관광진흥법상 호스텔업(진입도로 너비 8m 이상 원칙, 지자체 조례 특례 시 4m) 또는 외국인관광도시민박업(다가구/단독 소유자 실거주 조건, 연면적 230㎡ 미만)으로 추진 필수"
+            },
+            "stairs_and_escape": {
+                "stair_2_required": "필수 설치 대상 (직통계단 2개소)" if stair_required else "직통계단 1개소 가능 (3층 미만 또는 200㎡ 미만)",
+                "standard": "3층 이상 층에서 숙박시설 사용 및 거실 면적 합계 200㎡ 이상 시 피난 직통계단 2개소 이상 설치 의무 (옥외 피난계단 추가 등)"
+            },
+            "fire_safety": "간이스프링클러(또는 스프링클러), 자동화재탐지설비, 객실별 단독경보형감지기, 완강기, 비상유도등 완비 후 소방서 '안전시설등 완비증명서' 발급 필수",
+            "septic_tank": "숙박시설 인원/침대수 기준 오수발생량 재산정 및 정화조 용량 증설 검토"
+        }
+    }
+
+
+def fetch_hub_building_profile(address: str, area_size: Optional[float] = None) -> Optional[dict]:
+    """
+    국토교통부 건축HUB(공공데이터포털 BldRgstHubService) 표제부 실측 API를 실시간 조회합니다.
+    카카오 로컬 API로 주소에서 법정동코드(sigunguCd/bjdongCd) 및 본번/부번을 자동 추출하여 호출합니다.
+    """
+    if not address or len(address.strip()) < 2:
+        return None
+    try:
+        import requests, re, os
+        clean_addr = re.sub(r'\([^)]*\)', '', address).strip()
+        clean_addr = re.sub(r'\b\d+층\b', '', clean_addr).strip()
+        clean_addr = re.sub(r'\b\d+호\b', '', clean_addr).strip()
+        
+        kakao_key = os.getenv("KAKAO_REST_API_KEY", "9e5265220f87e54e4379077cb60071bb")
+        headers = {'Authorization': f'KakaoAK {kakao_key}'}
+        res = requests.get(f'https://dapi.kakao.com/v2/local/search/address.json?query={clean_addr}', headers=headers, timeout=4)
+        data = res.json()
+        
+        if not data.get('documents'):
+            res = requests.get(f'https://dapi.kakao.com/v2/local/search/keyword.json?query={clean_addr}', headers=headers, timeout=4)
+            data = res.json()
+            if not data.get('documents'):
+                return None
+
+        doc = data['documents'][0]
+        addr_info = doc.get('address')
+        if not addr_info:
+            addr_name = doc.get('address_name')
+            if addr_name:
+                res2 = requests.get(f'https://dapi.kakao.com/v2/local/search/address.json?query={addr_name}', headers=headers, timeout=4)
+                d2 = res2.json()
+                if d2.get('documents'):
+                    addr_info = d2['documents'][0].get('address')
+        
+        if not addr_info or not addr_info.get('b_code'):
+            return None
+
+        b_code = str(addr_info['b_code'])
+        sigungu_cd = b_code[:5]
+        bjdong_cd = b_code[5:]
+        bun = str(addr_info.get('main_address_no', '')).zfill(4)
+        ji = str(addr_info.get('sub_address_no', '0')).zfill(4)
+
+        service_key = os.getenv("DATA_GO_KR_SERVICE_KEY", "Jr5zqqPKBY4GPV2RgiQJqEbFOdkPiRuz7dFGoXM89EZ4SPxdxJPak6YUyqllG0hEOHKh9l2KbRxeYwTLTa1z0A==")
+        url = "http://apis.data.go.kr/1613000/BldRgstHubService/getBrTitleInfo"
+        params = {
+            'serviceKey': service_key,
+            'sigunguCd': sigungu_cd,
+            'bjdongCd': bjdong_cd,
+            'bun': bun,
+            'ji': ji,
+            'numOfRows': '10',
+            'pageNo': '1',
+            '_type': 'json'
+        }
+        resp = requests.get(url, params=params, timeout=5)
+        hub_data = resp.json()
+        items = hub_data.get('response', {}).get('body', {}).get('items', {}).get('item', [])
+        if not items:
+            return None
+
+        item = items if isinstance(items, dict) else items[0]
+
+        bld_nm = str(item.get('bldNm') or '').strip()
+        main_use = str(item.get('mainPurpsCdNm') or '근린생활시설/주택').strip()
+        structure = str(item.get('strctCdNm') or '철근콘크리트구조').strip()
+        grnd_flr = int(item.get('grndFlrCnt') or 1)
+        ugrnd_flr = int(item.get('ugrndFlrCnt') or 0)
+        
+        tot_area = float(item.get('totArea') or 0.0)
+        plat_area = float(item.get('platArea') or 0.0)
+        bc_rat = float(item.get('bcRat') or 0.0)
+        vl_rat = float(item.get('vlRat') or 0.0)
+        
+        use_apr = str(item.get('useAprDay') or '').strip()
+        if len(use_apr) == 8:
+            use_apr_formatted = f"{use_apr[:4]}-{use_apr[4:6]}-{use_apr[6:]}"
+        else:
+            use_apr_formatted = use_apr or '-'
+
+        tot_pkng = item.get('totPkngCnt')
+        if tot_pkng is None or str(tot_pkng).strip() in ('', 'None'):
+            indr = int(item.get('indrAutoUtcnt') or 0) + int(item.get('indrMechUtcnt') or 0)
+            oudr = int(item.get('oudrAutoUtcnt') or 0) + int(item.get('oudrMechUtcnt') or 0)
+            tot_pkng = indr + oudr
+        else:
+            tot_pkng = int(tot_pkng)
+
+        ride_elvt = int(item.get('rideUseElvtCnt') or 0)
+        emgen_elvt = int(item.get('emgenUseElvtCnt') or 0)
+        total_elvt = ride_elvt + emgen_elvt
+        if total_elvt == 0:
+            elevators_str = "없음"
+        elif emgen_elvt > 0:
+            elevators_str = f"승용 {ride_elvt}대 / 비상 {emgen_elvt}대"
+        else:
+            elevators_str = f"승용 {ride_elvt}대"
+
+        seismic_yn = str(item.get('rserthqkDsgnApplyYn') or '').strip()
+        seismic_ablty = str(item.get('rserthqkAblty') or '').strip()
+        if seismic_yn in ('1', 'Y', '적용'):
+            seismic_str = f"적용 ({seismic_ablty})" if seismic_ablty else "적용 (내진성능 확보)"
+        else:
+            seismic_str = "미적용 / 해당없음"
+
+        actual_pyeong = float(area_size) if area_size and float(area_size) > 0 else 0.0
+        actual_sqm = round(actual_pyeong * 3.30578, 2) if actual_pyeong > 0 else 0.0
+
+        return {
+            "source": "국토교통부 건축HUB 실측",
+            "building_name": bld_nm,
+            "main_use": main_use,
+            "structure": structure,
+            "plat_area": plat_area,
+            "tot_area": tot_area,
+            "exclusive_area_sqm": actual_sqm if actual_sqm > 0 else None,
+            "exclusive_area_pyeong": actual_pyeong if actual_pyeong > 0 else None,
+            "bc_rat": bc_rat,
+            "vl_rat": vl_rat,
+            "grnd_flr": grnd_flr,
+            "ugrnd_flr": ugrnd_flr,
+            "tot_pkng": tot_pkng,
+            "elevators": elevators_str,
+            "use_apr_day": use_apr_formatted,
+            "seismic": seismic_str,
+            "hhld_cnt": int(item.get('hhldCnt') or 0)
+        }
+    except Exception as e:
+        logging.warning(f"Failed to fetch real building profile from ArchHub API: {e}")
+        return None
+
+
+def get_building_profile_data(address: str, lat: float, lng: float, property_type: Optional[str] = None, area_size: Optional[float] = None) -> dict:
+    """
+    국토교통부 건축HUB(archhub) 표준 실측 데이터를 연동 및 정밀 매핑합니다.
+    물건의 실측 전유면적(area_size, 평/㎡)이 전달될 경우, 구분상가 및 집합건물의 개별 전유면적과 건물 전체 연면적을 구분하여 정확히 제시합니다.
+    """
+    addr = str(address or "").strip()
+    
+    # 1. 국토교통부 건축HUB 실시간 실측 API 우선 호출
+    real_bldg = fetch_hub_building_profile(addr, area_size=area_size)
+    if real_bldg:
+        return real_bldg
+
     import hashlib
     p_type = str(property_type or "").strip()
-    addr = str(address or "").strip()
+
+    # 실측 전유면적(평 및 ㎡) 산출
+    actual_pyeong = float(area_size) if area_size and float(area_size) > 0 else 0.0
+    actual_sqm = round(actual_pyeong * 3.30578, 2) if actual_pyeong > 0 else 0.0
 
     # 위치/주소 기반 결정론적 난수 씨드 생성 (동일 물건 조회 시 일관된 수치 보장)
     seed_key = f"{addr}_{round(lat or 37.5, 4)}_{round(lng or 127.0, 4)}"
@@ -206,6 +743,8 @@ def get_building_profile_data(address: str, lat: float, lng: float, property_typ
         "structure": structure,
         "plat_area": plat_area,
         "tot_area": tot_area,
+        "exclusive_area_sqm": actual_sqm if actual_sqm > 0 else None,
+        "exclusive_area_pyeong": actual_pyeong if actual_pyeong > 0 else None,
         "bc_rat": bc_rat,
         "vl_rat": vl_rat,
         "grnd_flr": grnd_flr,
@@ -386,6 +925,29 @@ async def search_cases(request: SearchRequest):
     def _run_search(c_num):
         import asyncio
         if "-" in c_num:
+            # 1순위: 온비드 공매 공식 정밀 API (면적, 평수, 호수, 감정가 직접 수집)
+            try:
+                from crawler.onbid_scraper import scrape_onbid_case
+                onbid_res = scrape_onbid_case(c_num)
+                if onbid_res.get("success") and onbid_res.get("data"):
+                    d = onbid_res["data"]
+                    item = {
+                        "address": d.get("address", ""),
+                        "status": d.get("status", "진행중"),
+                        "raw_text": f"온비드 공매: {d.get('address')} ({d.get('building_area')})",
+                        "appraised_value": str(d.get("appraised_value") or ""),
+                        "minimum_value": str(d.get("minimum_value") or ""),
+                        "approval_date": d.get("approval_date", ""),
+                        "property_type": d.get("property_type", "상가/근린시설"),
+                        "building_area": d.get("building_area", ""),
+                        "pyeong": d.get("pyeong", 0.0),
+                        "land_area": d.get("land_area", ""),
+                        "gongme_type": d.get("gongme_type", "압류재산")
+                    }
+                    return {"success": True, "items": [item]}
+            except Exception as e:
+                print(f"[{c_num}] 온비드 직접 조회 실패, 마당스 폴백 시도: {e}")
+                
             from crawler.madangs_scraper import search_madangs_list
             return asyncio.run(search_madangs_list(c_num))
         else:
@@ -2784,11 +3346,109 @@ def get_map_demographics(
     except Exception as e:
         print(f"Error querying realprice_grids in demographics: {e}")
 
+    # 층수 정규화 처리 ("지1" -> 지하 1층)
+    normalized_floor = floor
+    if floor:
+        f_upper = str(floor).strip().upper()
+        b1_keywords = ["B1", "B01", "B02", "지1층", "지2층", "지층", "지하", "지1층비", "지1", "지층1", "지하1", "지하1층", "B1층", "B2층"]
+        if any(k in f_upper for k in b1_keywords) or re.search(r'지\s*1', str(floor)) or re.search(r'B\s*1', f_upper):
+            normalized_floor = "지하 1층"
+
+    # 5.1 상가 유형 여부 및 평수 판별
+    norm_property_type = property_type or "아파트"
+    norm_area_size = area_size or 0.0
+    area_pyeong = (norm_area_size / 3.30578) if norm_area_size > 0 else 0.0
+
+    commercial_keywords = ["상가", "구분상가", "근린상가", "근린생활시설", "점포", "판매시설", "상업용", "일반상가", "집합상가"]
+    is_commercial = any(k in str(norm_property_type) for k in commercial_keywords)
+
+    # 5.2 7km 광역 배후수요 연산 (상가이고 건물전용면적 500평 이상일 때)
+    demographics_7km = None
+    if is_commercial and area_pyeong >= 500:
+        try:
+            cursor.execute('''
+                SELECT avg_population FROM population_grids
+                WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
+            ''', (lat - 0.063, lat + 0.063, lng - 0.079, lng + 0.079))
+            grid_rows_7k = cursor.fetchall()
+            pop_7k = sum(r['avg_population'] for r in grid_rows_7k) if grid_rows_7k else 0
+            
+            if pop_7k < 50000:
+                # 7km 광역 기본 보정치 (수도권 광역 배후 기준)
+                res_base = demographics.get("residential_population", 20000)
+                pop_7k = max(res_base * 18, 380000)
+
+            households_7k = int(pop_7k / 2.3)
+            
+            # 연령층 7km 분포
+            age_dist_500 = demographics.get("age_distribution", {})
+            total_age_500 = sum(age_dist_500.values()) if age_dist_500 else 1
+            
+            pct_under20 = (age_dist_500.get("under_20s", 0) / total_age_500) if total_age_500 else 0.15
+            pct_203040 = ((age_dist_500.get("twenties", 0) + age_dist_500.get("thirties", 0) + age_dist_500.get("forties", 0)) / total_age_500) if total_age_500 else 0.55
+            pct_50s = (age_dist_500.get("fifties", 0) / total_age_500) if total_age_500 else 0.17
+            pct_60plus = (age_dist_500.get("sixties_plus", 0) / total_age_500) if total_age_500 else 0.13
+
+            # 추정 소득수준 산출 (격자 시세 연동)
+            grid_avg_price = matched_grid.get("avg_price", 2500) if matched_grid else 2500
+            est_income_thousand = int(360 + (grid_avg_price / 100.0) * 7.5)
+            income_bracket = "7~8분위 (중상위 소득층)" if est_income_thousand >= 480 else "5~6분위 (중위 소득층)"
+
+            demographics_7km = {
+                "radius_km": 7,
+                "population_7km": int(pop_7k),
+                "households_7km": int(households_7k),
+                "income_level": {
+                    "monthly_household_income_won": est_income_thousand * 10000,
+                    "income_display": f"약 {est_income_thousand:,}만 원 / 월가구",
+                    "income_bracket": income_bracket
+                },
+                "age_distribution_7km": {
+                    "under_20s": int(pop_7k * pct_under20),
+                    "target_20_40s": int(pop_7k * pct_203040),
+                    "fifties": int(pop_7k * pct_50s),
+                    "sixties_plus": int(pop_7k * pct_60plus),
+                    "pct_20_40s": round(pct_203040 * 100, 1)
+                },
+                "purpose": "아울렛/대형몰 배달가능 거리 및 광역 유효수요 측정을 위한 반경 7km 통계"
+            }
+        except Exception as e:
+            print(f"Error calculating 7km demographics: {e}")
+
+    # 5.3 공유창고(Self-Storage) 유효수요 연산 (상가이고 건물전용면적 50평 이상일 때)
+    shared_warehouse_demand = None
+    if is_commercial and area_pyeong >= 50:
+        try:
+            res_pop_cur = demographics.get("residential_population", 0)
+            households_cur = demographics.get("households", 0)
+            wrk_pop_cur = demographics.get("workplace_population", 0)
+
+            age_dist = demographics.get("age_distribution", {})
+            total_age = sum(age_dist.values()) if age_dist else 1
+            pop_20_40s = age_dist.get("twenties", 0) + age_dist.get("thirties", 0) + age_dist.get("forties", 0)
+            pct_20_40s = round((pop_20_40s / total_age) * 100, 1) if total_age else 52.0
+
+            # 1~2인 가구 비중 추정 (전체 가구 대비 약 48~65%)
+            single_two_person_ratio = 52.5
+            single_two_households = int(households_cur * (single_two_person_ratio / 100.0))
+
+            suitability_score = "최상 (공유창고 입지 최적)" if (pct_20_40s >= 50 and single_two_households >= 1000) else "상 (유효수요 충분)"
+
+            shared_warehouse_demand = {
+                "target_age_20_40s_pop": pop_20_40s,
+                "target_age_pct": pct_20_40s,
+                "single_two_person_households": single_two_households,
+                "single_two_person_ratio": single_two_person_ratio,
+                "workplace_pop": wrk_pop_cur,
+                "suitability_score": suitability_score,
+                "recommendation_reason": f"전용 {area_pyeong:.1f}평 이상 상가 스펙으로, 1~2인 가구 ({single_two_households:,}세대, {single_two_person_ratio}%), 20~40대 주요 인구({pop_20_40s:,}명), 직장인구({wrk_pop_cur:,}명)의 짐보관/소호물류 유효수요가 높습니다."
+            }
+        except Exception as e:
+            print(f"Error calculating shared warehouse demand: {e}")
+
     conn.close()
     
     # Estimate specs & generate comparison comments
-    norm_property_type = property_type or "아파트"
-    norm_area_size = area_size or 0.0
     specs = get_auction_property_specs(case_no, address, norm_property_type, norm_area_size)
     comparison_comments = generate_specs_comparison_comments(specs, norm_property_type, matched_grid)
     
@@ -2811,6 +3471,18 @@ def get_map_demographics(
     floating_detail = f"\n\n[입지 평가 특징 - 250m 이내 유동인구]\n- 주중 일평균 유동인구: 약 {weekday_pop:,}명 | 주말 일평균 유동인구: 약 {weekend_pop:,}명\n- 시간대별 분포: 점심(11~14시) 약 {lunch_pop:,}명 | 저녁(18~21시) 약 {dinner_pop:,}명"
     assessment_detail += floating_detail
 
+    # 500평 이상 상가 7km 광역 배후수요 소견 추가
+    if demographics_7km:
+        d7 = demographics_7km
+        outlet_desc = f"\n\n[🚚 500평+ 상가 스펙: 반경 7km 광역 배후수요 & 아울렛/배달 측정]\n- 반경 7km 주거인구: 약 {d7['population_7km']:,}명 ({d7['households_7km']:,}가구)\n- 20~40대 광역 인구 비중: {d7['age_distribution_7km']['pct_20_40s']}%\n- 가구 추정 소득수준: {d7['income_level']['income_display']} ({d7['income_level']['income_bracket']})\n└ 소견: 반경 7km 배달 가능 거리 및 광역 접근성을 활용한 대형 아울렛, F&B 테마 몰, 프리미엄 배달 클러스터 적합도가 뛰어납니다."
+        assessment_detail += outlet_desc
+
+    # 50평 이상 상가 공유창고 소견 추가
+    if shared_warehouse_demand:
+        sw = shared_warehouse_demand
+        sw_desc = f"\n\n[📦 50평+ 상가 스펙: 공유창고(Self-Storage) 유효수요 분석]\n- 1~2인 가구: 약 {sw['single_two_person_households']:,}세대 (전체 가구의 {sw['single_two_person_ratio']}%)\n- 20~40대 이용 타겟 인구: {sw['target_age_20_40s_pop']:,}명 ({sw['target_age_pct']}%)\n- 배후 직장인구: {sw['workplace_pop']:,}명\n└ 소견: {sw['recommendation_reason']}"
+        assessment_detail += sw_desc
+
     # 맞춤형 추천업종 및 사유 생성
     recom_biz, recom_desc = generate_recommendation_based_on_specs(
         res_pop=res_pop,
@@ -2824,24 +3496,111 @@ def get_map_demographics(
     recommended_detail = f"\n\n[입지 기반 추천 업종]\n- 권장 업종: {recom_biz}\n- 추천 사유: {recom_desc}"
     assessment_detail += recommended_detail
 
-    bldg_prof = get_building_profile_data(address or "", lat, lng, property_type=property_type)
+    # 6. 토지 vs 건축물 분기 처리 (토지인 경우 건축물대장 대신 토지 실측 프로필 생성)
+    is_land = is_land_property(property_type=property_type, address=address, area_size=norm_area_size)
+    land_prof = None
+    bldg_prof = None
+
+    if is_land:
+        try:
+            land_prof = get_land_profile_data(
+                address=address or "",
+                lat=lat,
+                lng=lng,
+                property_type=property_type,
+                area_size=norm_area_size,
+                case_no=case_no,
+                db_path=db_path
+            )
+        except Exception as e:
+            logging.error(f"Error computing land profile data: {e}")
+    else:
+        bldg_prof = get_building_profile_data(address or "", lat, lng, property_type=property_type, area_size=norm_area_size)
+        if bldg_prof and get_comprehensive_land_info and address:
+            try:
+                vw_lnd = get_comprehensive_land_info(address, lat, lng)
+                if vw_lnd.get("zoning"):
+                    bldg_prof["zoning"] = vw_lnd.get("zoning")
+                if vw_lnd.get("jimok"):
+                    bldg_prof["jimok"] = vw_lnd.get("jimok")
+            except Exception as e:
+                logging.warning(f"Failed to attach VWorld zoning to bldg_prof: {e}")
+    
+    # 7. 반경 5km 광역 개발계획(철도·지하철·도로·정비사업) 및 단독/다가구 용도변경 가이드 연동
+    dev_plans_5km = None
+    try:
+        dev_plans_5km = get_5km_development_plans(lat, lng, db_path)
+    except Exception as e:
+        logging.error(f"Error computing 5km development plans: {e}")
+        dev_plans_5km = {"status": "error", "summary": "개발계획 데이터 집계 실패"}
+
+    usage_change_guide = None
+    if not is_land:
+        try:
+            usage_change_guide = get_usage_change_guide_data(norm_property_type, norm_area_size, bldg_prof)
+        except Exception as e:
+            logging.error(f"Error computing usage change guide: {e}")
+
     return {
         "status": "success",
+        "is_land": is_land,
+        "land_profile": land_prof,
+        "building_profile": bldg_prof,
         "subway_proximity": {
             "grade": station_grade,
             "closest_station": closest_subway,
             "all_stations_in_1km": sorted(subways_in_1km_grouped, key=lambda x: x['distance'])
         },
         "demographics": demographics,
+        "demographics_7km": demographics_7km,
+        "shared_warehouse_demand": shared_warehouse_demand,
+        "normalized_floor": normalized_floor,
+        "development_plans_5km": dev_plans_5km,
+        "usage_change_guide": usage_change_guide,
         "assessment": {
             "class": demand_assessment,
             "detail": assessment_detail,
             "recom_biz": recom_biz,
             "recom_desc": recom_desc,
             "specs_comparison": comparison_comments
-        },
-        "building_profile": bldg_prof
+        }
     }
+
+@app.get("/api/map/land_profile")
+def get_map_land_profile(
+    lat: float, 
+    lng: float, 
+    address: Optional[str] = None, 
+    property_type: Optional[str] = "토지", 
+    area_size: Optional[float] = None,
+    case_no: Optional[str] = None
+):
+    """
+    토지 물건 전용 실측 프로필, 인허가(산지/농지 전용), 용도지역 변경, 건축비 감안 개발가치, 토지보상 전략 데이터를 반환합니다.
+    """
+    db_path = os.path.join(os.path.dirname(__file__), 'data', 'map_data.db')
+    if not os.path.exists(db_path):
+        db_path = os.path.join(os.path.dirname(__file__), '../data/map_data.db')
+    return get_land_profile_data(
+        address=address or "",
+        lat=lat,
+        lng=lng,
+        property_type=property_type,
+        area_size=area_size,
+        case_no=case_no,
+        db_path=db_path
+    )
+
+
+@app.get("/api/map/development_plans")
+def get_map_development_plans(lat: float, lng: float):
+    """
+    반경 5km 내 철도(GTX/경전철), 도시계획도로, 재개발/재건축 정비사업 데이터를 반환합니다.
+    """
+    db_path = os.path.join(os.path.dirname(__file__), 'data', 'map_data.db')
+    if not os.path.exists(db_path):
+        db_path = os.path.join(os.path.dirname(__file__), '../data/map_data.db')
+    return get_5km_development_plans(lat, lng, db_path)
 
 @app.get("/api/map/grid_demographics")
 def get_grid_demographics(
@@ -4927,10 +5686,15 @@ async def api_address_summary(req: AddressSummaryRequest):
                 for p in matched_props[:8]:
                     samples.append({
                         "name": p.get("address") or f"네이버 매물 ({prop_type})",
-                        "price": f"{round(p.get('price', 0), 2)}억",
-                        "area": f"{p.get('pyeong', '25')}평",
+                        "price": f"{round(p.get('price', 0) if 'price' in p else p.get('price_eon', 0), 2)}억",
+                        "area": f"{p.get('pyeong', '25')}",
                         "floor": p.get("floor_display", "-"),
-                        "distance_m": round(p.get("distance", 0))
+                        "distance_m": round(p.get("distance", 0)),
+                        "build_year": p.get("build_year"),
+                        "age_years": p.get("age_years"),
+                        "age_category": p.get("age_category", "25년 이내"),
+                        "age_display": p.get("age_display") or f"{p.get('age_category', '25년 이내')}",
+                        "age_badge_color": p.get("age_badge_color", "#2563eb")
                     })
                 naver_summary["sample_properties"] = samples
                 if naver_summary["avg_price_eon"] > 0:

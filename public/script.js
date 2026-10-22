@@ -196,7 +196,7 @@ function renderAddressList(results) {
         btn.style.cssText = 'padding: 15px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff; text-align: left; cursor: pointer; transition: all 0.2s;';
         btn.innerHTML = `
             <div style="font-size:1.1rem; margin-bottom:5px;"><strong>물건 ${index + 1}</strong>: ${item.address}</div>
-            <div style="font-size:0.9rem; color:var(--text-muted);">감정가: ${formatNumber(item.appraised_value)}원 | 최저가: ${formatNumber(item.minimum_value)}원 | 승인일: ${item.approval_date || '알 수 없음'}</div>
+            <div style="font-size:0.9rem; color:var(--text-muted);">감정가: ${formatNumber(item.appraised_value)}원 | 최저가: ${formatNumber(item.minimum_value)}원 | 면적: <b style="color:#10b981;">${item.building_area || (item.pyeong ? item.pyeong + '평' : '정보없음')}</b> | 승인일: ${item.approval_date || '알 수 없음'}</div>
         `;
         
         btn.addEventListener('mouseover', () => {
