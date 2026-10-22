@@ -1,4 +1,6 @@
 import os
+import re
+import logging
 import google.generativeai as genai
 from dotenv import load_dotenv
 import json
@@ -260,6 +262,7 @@ def generate_deep_research(data: dict) -> str:
         raise Exception(last_err_msg or "모든 API 키에 대해 호출이 실패했습니다. (할당량 초과 또는 권한 문제)")
                     
     except Exception as e:
+        logging.exception("Deep research analysis failed")
         return f"⚠️ 심층 분석 중 오류 발생: {str(e)}"
 
 
