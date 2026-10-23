@@ -5723,6 +5723,14 @@ async def api_address_summary_get(address: str, lat: Optional[float] = None, lng
     req = AddressSummaryRequest(address=address, lat=lat, lng=lng)
     return await api_address_summary(req)
 
+@app.get("/api/ping")
+async def api_ping():
+    """
+    초경량 Keep-Alive 하트비트 엔드포인트:
+    장시간 방치 시 Cloudflare 터널 및 브라우저 세션 타임아웃/프리징 방지
+    """
+    import time
+    return {"status": "ok", "timestamp": int(time.time() * 1000)}
 
 public_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "public")
 

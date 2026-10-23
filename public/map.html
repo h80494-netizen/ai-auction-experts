@@ -8504,6 +8504,7 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
                             <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1; position: sticky; top: 0; z-index: 1;">
                                 <th style="padding: 10px 12px; font-weight: 700; color: #334155;">위치/주소</th>
                                 <th style="padding: 10px 8px; font-weight: 700; color: #334155;">구분</th>
+                                <th style="padding: 10px 8px; font-weight: 700; color: #334155; text-align: center;">경과년수</th>
                                 <th style="padding: 10px 8px; font-weight: 700; color: #334155;">층수</th>
                                 <th style="padding: 10px 8px; font-weight: 700; color: #334155;">면적</th>
                                 <th style="padding: 10px 8px; font-weight: 700; color: #334155; text-align: right;">호가(억원)</th>
@@ -8533,8 +8534,8 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
                 <!-- Card 2: Avg Pyeong Price -->
                 <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <div style="font-size: 0.82rem; font-weight: 700; color: #1e40af;">유사 매물 평균 평당가</div>
-                        <div style="font-size: 0.75rem; color: #3b82f6; margin-top: 2px;">(반경 내 동일 그룹 매물 기준)</div>
+                        <div style="font-size: 0.82rem; font-weight: 700; color: #1e40af;">유사 매물 평균 평당가 <span style="font-size:0.72rem; color:#2563eb; background:#dbeafe; padding:1px 6px; border-radius:4px; font-weight:800;">순수 매매</span></div>
+                        <div style="font-size: 0.73rem; color: #3b82f6; margin-top: 2px;">(월세·전세 제외, 동일 그룹 매매 기준)</div>
                     </div>
                     <div style="text-align: right;">
                         <span id="naverAvgPyeongPrice" style="font-size: 1.35rem; font-weight: 900; color: #1d4ed8;">0</span>
@@ -8548,10 +8549,10 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
                         <div style="font-size: 0.85rem; font-weight: 800; color: #166534; display: flex; align-items: center; gap: 5px;">
                             <i class="fa-solid fa-bullseye" style="color: #16a34a;"></i> 추정 시세 (탁상감정가)
                         </div>
-                        <span style="font-size: 0.75rem; font-weight: 800; background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 10px;">산출액 90% 반영</span>
+                        <span style="font-size: 0.75rem; font-weight: 800; background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 10px;">매매가 90% 반영</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px;">
-                        <div style="font-size: 0.78rem; color: #16a34a;">평당가 × 전용평수 × 0.9</div>
+                        <div style="font-size: 0.78rem; color: #16a34a;">매매 평당가 × 전용평수 × 0.9</div>
                         <div>
                             <span id="naverEstimatedMarketPrice" style="font-size: 1.55rem; font-weight: 900; color: #15803d;">0.00</span>
                             <span style="font-size: 0.95rem; font-weight: 800; color: #166534;"> 억원</span>
@@ -8581,7 +8582,7 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <div style="font-size: 0.88rem; font-weight: 800; color: #0f172a;">경공매 최저가율</div>
-                            <div style="font-size: 0.75rem; color: #64748b;">(최저가 ÷ 추정 시세)</div>
+                            <div style="font-size: 0.75rem; color: #64748b;">(최저가 ÷ 매매 추정시세)</div>
                         </div>
                         <div style="text-align: right;">
                             <span id="naverMinPriceRatio" style="font-size: 1.4rem; font-weight: 900; color: #2563eb;">0.0%</span>
@@ -8595,7 +8596,7 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <div style="font-size: 0.88rem; font-weight: 800; color: #0f172a;">추정 전세가율</div>
-                            <div style="font-size: 0.75rem; color: #64748b;">(전세가 ÷ 추정 시세)</div>
+                            <div style="font-size: 0.75rem; color: #64748b;">(월세·전세 환산보증금 기준)</div>
                         </div>
                         <div style="text-align: right;">
                             <span id="naverJeonseRatio" style="font-size: 1.25rem; font-weight: 800; color: #0f172a;">N/A</span>
@@ -8890,7 +8891,9 @@ async function executeNaverPriceAnalysis(radiusVal) {
                 document.getElementById('naverJeonseRatio').innerText = 'N/A (데이터 없음)';
             }
             
-            document.getElementById('naverPropsCountBadge').innerText = `${data.matched_count || 0}건 매칭`;
+            const sCount = calc.sale_count !== undefined ? calc.sale_count : (data.sale_count || 0);
+            const rCount = calc.rent_count !== undefined ? calc.rent_count : (data.rent_count || 0);
+            document.getElementById('naverPropsCountBadge').innerHTML = `매매 <b style="color:#2563eb;">${sCount}건</b> / 전월세 ${rCount}건 (총 ${data.matched_count || 0}건)`;
 
             // Properties list
             let propsHtml = '';
@@ -8898,10 +8901,14 @@ async function executeNaverPriceAnalysis(radiusVal) {
                 data.properties.forEach(p => {
                     const priceDisplay = p.price_eon ? `${p.price_eon}억` : `${(p.price_total || 0).toLocaleString()}만`;
                     const ppDisplay = p.pyeong_price ? `${p.pyeong_price.toLocaleString()}만` : '-';
+                    const ageYearsDisplay = p.age_years !== null && p.age_years !== undefined ? `${p.age_years}년차` : (p.age_category || '-');
+                    const ageBadgeBg = p.age_badge_color ? `${p.age_badge_color}18` : '#f1f5f9';
+                    const ageBadgeColor = p.age_badge_color || '#475569';
                     propsHtml += `
                         <tr style="border-bottom:1px solid #f1f5f9;">
                             <td style="padding:10px 12px; font-weight:600; color:#1e293b;">${p.address}</td>
                             <td style="padding:10px 8px; color:#475569;"><span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:0.8rem;">${p.deal_type || '매매'}</span></td>
+                            <td style="padding:10px 8px; text-align:center;"><span style="background:${ageBadgeBg}; color:${ageBadgeColor}; font-weight:700; padding:2px 7px; border-radius:6px; font-size:0.78rem;" title="${p.age_display || ''}">${ageYearsDisplay}</span></td>
                             <td style="padding:10px 8px; color:#64748b;">${p.floor_cat || p.floor_display}</td>
                             <td style="padding:10px 8px; color:#64748b;">${p.pyeong}</td>
                             <td style="padding:10px 8px; text-align:right; font-weight:700; color:#0f172a;">${priceDisplay}</td>
@@ -8911,7 +8918,7 @@ async function executeNaverPriceAnalysis(radiusVal) {
                     `;
                 });
             } else {
-                propsHtml = `<tr><td colspan="7" style="text-align:center; padding:40px; color:#94a3b8; font-weight:600;">선택한 반경 내 동일 그룹 사례 매물이 없습니다.</td></tr>`;
+                propsHtml = `<tr><td colspan="8" style="text-align:center; padding:40px; color:#94a3b8; font-weight:600;">선택한 반경 내 동일 그룹 사례 매물이 없습니다.</td></tr>`;
             }
             document.getElementById('naverPricePropsBody').innerHTML = propsHtml;
             
@@ -10067,6 +10074,95 @@ function printNaverPriceReport() {
     `);
     win.document.close();
 }
+
+// ==========================================
+// 🛡️ 장시간 유휴/방치 시 화면 멈춤(Freezing) 방지 및 자동 복구 시스템
+// ==========================================
+(function() {
+    let lastActiveTime = Date.now();
+    let isReconnecting = false;
+
+    // 1. 브라우저 탭 복귀 시(VisibilityChange / Focus / MouseMove) 즉시 지도 및 렌더러 깨우기
+    function wakeUpMap() {
+        const now = Date.now();
+        const idleDuration = now - lastActiveTime;
+        lastActiveTime = now;
+
+        if (window.map) {
+            try {
+                // 뷰포트 크기 및 렌더 매트릭스 강제 재연산 (화면 굳음 방지)
+                window.map.invalidateSize({ pan: false, debounceMoveend: true });
+            } catch (e) {
+                console.warn("[WakeUp] Map invalidateSize handled:", e);
+            }
+        }
+
+        // 만약 60초 이상 방치되었다가 다시 조작하는 경우 서버 연결 상태 즉시 검증
+        if (idleDuration > 60000 && !isReconnecting) {
+            checkConnectionAndRecover();
+        }
+    }
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            console.log("[Lifecycle] 탭 복귀 감지 -> 지도 렌더러 즉시 동기화");
+            wakeUpMap();
+        }
+    });
+
+    window.addEventListener('focus', wakeUpMap);
+    
+    // 사용자가 마우스를 다시 움직였을 때도 가볍게 체크
+    let idleCheckThrottle = null;
+    window.addEventListener('mousemove', function() {
+        if (!idleCheckThrottle) {
+            idleCheckThrottle = setTimeout(() => {
+                idleCheckThrottle = null;
+                const now = Date.now();
+                if (now - lastActiveTime > 90000) { // 1.5분 이상 방치 후 움직임
+                    wakeUpMap();
+                } else {
+                    lastActiveTime = now;
+                }
+            }, 1000);
+        }
+    }, { passive: true });
+
+    // 2. 24시간 세션 유지 하트비트 (Keep-Alive Ping: 매 30초마다 Cloudflare 터널/서버 소켓 유지)
+    async function sendHeartbeat() {
+        try {
+            const res = await fetch('/api/ping', { 
+                method: 'GET',
+                cache: 'no-store',
+                headers: { 'Cache-Control': 'no-cache' }
+            });
+            if (res.ok) {
+                lastActiveTime = Date.now();
+            }
+        } catch (err) {
+            console.warn("[Heartbeat] Ping failed (network might be offline or sleeping):", err);
+        }
+    }
+
+    async function checkConnectionAndRecover() {
+        isReconnecting = true;
+        try {
+            const res = await fetch('/api/ping?t=' + Date.now(), { cache: 'no-store' });
+            if (res.ok && window.map) {
+                window.map.invalidateSize({ pan: false });
+            }
+        } catch (e) {
+            console.warn("[Recovery] Server unreachable during wake-up:", e);
+        } finally {
+            isReconnecting = false;
+        }
+    }
+
+    // 30초 간격 하트비트 실행
+    setInterval(sendHeartbeat, 30000);
+    // 초기 2초 후 1회 실행
+    setTimeout(sendHeartbeat, 2000);
+})();
 
 </script>
 </body>

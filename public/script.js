@@ -1706,4 +1706,15 @@ function initNoticeSystem() {
     fetchActiveNotice();
 }
 
+// 🛡️ 장시간 유휴/방치 시 Cloudflare 터널 및 서버 세션 단절 방지 하트비트
+(function() {
+    async function sendHeartbeat() {
+        try {
+            await fetch('/api/ping', { method: 'GET', cache: 'no-store' });
+        } catch (e) {}
+    }
+    setInterval(sendHeartbeat, 30000);
+    setTimeout(sendHeartbeat, 2000);
+})();
+
 

@@ -442,19 +442,37 @@ def analyze_price(target_lat, target_lon, target_type, target_area_pyeong, targe
     if len(matched) == 0:
         matched = df[df['distance'] <= radius_used].copy()
 
-    # Calculate statistics based on matched properties
-    if len(matched) > 0 and 'pyeong_price' in matched.columns:
-        valid_pp = matched['pyeong_price'].dropna()
-        raw_avg_pp = float(valid_pp.mean()) if len(valid_pp) > 0 else 0.0
+    # 🎯 1. 평균 평당가 산출: 오직 '매매' 매물만 필터링하여 계산 (월세, 전세 환산보증금 제외)
+    if 'deal_type_val' in matched.columns:
+        sale_matched = matched[matched['deal_type_val'].str.contains('매매', na=False)].copy()
+    else:
+        sale_matched = matched.copy()
+
+    # 만약 해당 층/평형/연수 조건군 내 매매 매물이 부족한 경우, 동일 반경 내 매매 사례로 단계적 완화
+    if len(sale_matched) == 0:
+        if 'deal_type_val' in df.columns:
+            # 1) 반경 내 동일 평형대 매매
+            sale_fallback = df[(df['distance'] <= radius_used) & 
+                               (df['area_cat'] == target_area_cat) & 
+                               (df['deal_type_val'].str.contains('매매', na=False))].copy()
+            # 2) 반경 내 전체 매매
+            if len(sale_fallback) == 0:
+                sale_fallback = df[(df['distance'] <= radius_used) & 
+                                   (df['deal_type_val'].str.contains('매매', na=False))].copy()
+            sale_matched = sale_fallback
+
+    if len(sale_matched) > 0 and 'pyeong_price' in sale_matched.columns:
+        valid_sale_pp = sale_matched['pyeong_price'].dropna()
+        raw_avg_pp = float(valid_sale_pp.mean()) if len(valid_sale_pp) > 0 else 0.0
     else:
         raw_avg_pp = 0.0
 
     if special_rule_applied and target_floor_cat == 'B1':
-        avg_pyeong_price = raw_avg_pp * 0.6  # 1층 매물시세의 60% 반영!
+        avg_pyeong_price = raw_avg_pp * 0.6  # 1층 매매시세의 60% 반영!
     else:
         avg_pyeong_price = raw_avg_pp
 
-    # 🎯 추정 시세 (탁상감정가) = 평당가 평균 * 해당물건 전용평수 * 0.9 (90% 반영!)
+    # 🎯 추정 시세 (탁상감정가) = 매매 평당가 평균 * 해당물건 전용평수 * 0.9 (90% 반영!)
     estimated_market_price = avg_pyeong_price * target_area_pyeong * 0.9  # 만원 단위
     
     # 📊 최저가율 = (경공매 최저가 / 추정 시세) * 100 (%)
@@ -463,18 +481,24 @@ def analyze_price(target_lat, target_lon, target_type, target_area_pyeong, targe
     else:
         min_price_ratio = 0.0
 
-    # 🏠 전세가 및 전세가율 산출 (매칭 매물 중 전세/월세 데이터가 있는 경우)
+    # 🏠 2. 전세가 및 전세가율 산출: 월세, 전월세의 환산보증금은 오직 전세가율 구할 때만 계산!
     if 'deal_type_val' in matched.columns:
-        jeonse_matched = matched[matched['deal_type_val'].str.contains('전세|월세', na=False)]
+        jeonse_matched = matched[matched['deal_type_val'].str.contains('전세|월세', na=False)].copy()
     else:
-        jeonse_matched = matched.iloc[0:0]
-    if len(jeonse_matched) > 0:
+        jeonse_matched = matched.iloc[0:0].copy()
+
+    # 만약 조건군 내 전월세가 없으면 반경 내 전월세 매물로 보완 탐색
+    if len(jeonse_matched) == 0 and 'deal_type_val' in df.columns:
+        jeonse_matched = df[(df['distance'] <= radius_used) & 
+                            (df['deal_type_val'].str.contains('전세|월세', na=False))].copy()
+
+    if len(jeonse_matched) > 0 and 'pyeong_price' in jeonse_matched.columns:
         jeonse_pp = jeonse_matched['pyeong_price'].dropna()
         avg_jeonse_pyeong_price = float(jeonse_pp.mean()) if len(jeonse_pp) > 0 else 0.0
     else:
         avg_jeonse_pyeong_price = 0.0
         
-    estimated_jeonse_price = avg_jeonse_pyeong_price * target_area_pyeong  # 만원 단위
+    estimated_jeonse_price = avg_jeonse_pyeong_price * target_area_pyeong  # 만원 단위 (환산보증금 기준)
     if estimated_market_price > 0 and estimated_jeonse_price > 0:
         jeonse_ratio = (estimated_jeonse_price / estimated_market_price) * 100.0
     else:
@@ -536,9 +560,14 @@ def analyze_price(target_lat, target_lon, target_type, target_area_pyeong, targe
 
     target_age_info = calculate_building_age_info(target_build_year)
 
+    sale_count = len(sale_matched) if 'sale_matched' in locals() else 0
+    rent_count = len(jeonse_matched) if 'jeonse_matched' in locals() else 0
+
     return {
         "radius_used": radius_used,
         "matched_count": len(matched),
+        "sale_count": sale_count,
+        "rent_count": rent_count,
         "target_categories": {
             "type_label": "주택" if is_housing else "상가/근린",
             "floor": target_floor_cat,
@@ -563,7 +592,9 @@ def analyze_price(target_lat, target_lon, target_type, target_area_pyeong, targe
             "avg_jeonse_pyeong_price": round(avg_jeonse_pyeong_price, 1),
             "estimated_jeonse_price": round(estimated_jeonse_price, 0),
             "estimated_jeonse_price_eon": round(estimated_jeonse_price / 10000.0, 2),
-            "jeonse_ratio": round(jeonse_ratio, 1)
+            "jeonse_ratio": round(jeonse_ratio, 1),
+            "sale_count": sale_count,
+            "rent_count": rent_count
         },
         "properties": properties_list
     }
