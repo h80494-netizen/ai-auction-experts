@@ -81,11 +81,13 @@ def import_auctions():
     count = 0
     for idx, row in df.iterrows():
         try:
-            lat = float(row.get('위도', 0))
-            lng = float(row.get('경도', 0))
-            
-            # Allow strings that look like numbers
-            if pd.isna(lat) or pd.isna(lng) or lat == 0:
+            lat_val = row.get('위도')
+            lng_val = row.get('경도')
+            if pd.isna(lat_val) or pd.isna(lng_val):
+                continue
+            lat = float(str(lat_val).replace(',', '').strip())
+            lng = float(str(lng_val).replace(',', '').strip())
+            if lat == 0 or lng == 0:
                 continue
                 
             case_no = str(row.get('사건번호', '')).strip()
@@ -155,6 +157,17 @@ def import_auctions():
                 official_land_price = float(olp_str) if olp_str and olp_str != 'nan' else 0
             except ValueError:
                 official_land_price = 0
+
+            # If missing official land price, estimate reasonably from appraisal price
+            if official_land_price <= 0 and appraisal_price > 0:
+                prop_str = str(property_type)
+                if '아파트' in prop_str or '오피스텔' in prop_str:
+                    ratio = 0.70
+                elif '다세대' in prop_str or '연립' in prop_str or '빌라' in prop_str or '단독' in prop_str:
+                    ratio = 0.68
+                else:
+                    ratio = 0.65
+                official_land_price = round(appraisal_price * ratio, -4)
             
             # sale date (입찰일)
             sale_date_val = row.get('입찰일')
@@ -182,6 +195,12 @@ def import_auctions():
             # Skip rows with errors
             pass
             
+    print("Creating DB indexes for high-speed queries...")
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_auctions_lat_lng ON auctions(lat, lng)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_auctions_sale_type ON auctions(sale_type)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_auctions_min_rate ON auctions(min_bid_rate)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_auctions_case_no ON auctions(case_no)')
+
     conn.commit()
     conn.close()
     print(f"Successfully inserted {count} auction properties into DB.")
