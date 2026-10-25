@@ -1818,19 +1818,49 @@
         const map = L.map('map', { zoomControl: false, preferCanvas: true }).setView([37.4979, 127.0276], 13);
 
         // Update apt label size on zoom
-        // --- Custom APT Hit Detection using Turf.js ---
+        // --- Custom APT Hit Detection using Turf.js (Optimized with BBox Cache & RAF Throttle) ---
         let aptHoverTooltip = null;
         let lastHoveredApt = null;
+        let aptMouseMoveRaf = null;
 
         function checkAptHit(latlng) {
             if (!aptGeoDataCache || !aptGeoDataCache.features) return null;
-            const pt = turf.point([latlng.lng, latlng.lat]);
             const useMinHouseholds = document.getElementById('use-min-households') ? document.getElementById('use-min-households').checked : false;
             const minH = useMinHouseholds ? (parseInt(document.getElementById('min-households').value, 10) || 500) : 0;
-            for (let feature of aptGeoDataCache.features) {
+            const lng = latlng.lng;
+            const lat = latlng.lat;
+            let pt = null;
+
+            for (let i = 0; i < aptGeoDataCache.features.length; i++) {
+                const feature = aptGeoDataCache.features[i];
                 if ((feature.properties.households || 0) < minH) continue;
+                
+                // Bounding Box (BBox) 사전 계산 및 캐싱으로 99.9% 빠른 스킵
+                if (!feature._bbox && feature.geometry && feature.geometry.coordinates) {
+                    try {
+                        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                        const coords = feature.geometry.type === 'MultiPolygon' ? feature.geometry.coordinates.flat(2) : feature.geometry.coordinates.flat(1);
+                        for (let c = 0; c < coords.length; c++) {
+                            const p = coords[c];
+                            if (p[0] < minX) minX = p[0];
+                            if (p[0] > maxX) maxX = p[0];
+                            if (p[1] < minY) minY = p[1];
+                            if (p[1] > maxY) maxY = p[1];
+                        }
+                        feature._bbox = [minX, minY, maxX, maxY];
+                    } catch (err) {
+                        feature._bbox = [-180, -90, 180, 90];
+                    }
+                }
+
+                const b = feature._bbox;
+                if (b && (lng < b[0] || lng > b[2] || lat < b[1] || lat > b[3])) {
+                    continue; // 마우스 좌표가 피처 BBox 밖이면 정밀 연산 즉각 스킵
+                }
+
                 try {
                     if (feature.geometry && (feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon')) {
+                        if (!pt) pt = turf.point([lng, lat]);
                         if (turf.booleanPointInPolygon(pt, feature)) {
                             return feature;
                         }
@@ -1850,29 +1880,35 @@
                 return;
             }
             
-            const hitFeature = checkAptHit(e.latlng);
-            if (hitFeature) {
-                const props = hitFeature.properties;
-                if (lastHoveredApt !== props.name) {
-                    lastHoveredApt = props.name;
-                    if (!aptHoverTooltip) {
-                        aptHoverTooltip = L.tooltip({ direction: 'top', sticky: false, opacity: 1.0 });
+            // requestAnimationFrame으로 마우스 이동 시 초당 과도한 연산 제한 (60fps 스로틀)
+            if (aptMouseMoveRaf) return;
+            const currentLatLng = e.latlng;
+            aptMouseMoveRaf = requestAnimationFrame(() => {
+                aptMouseMoveRaf = null;
+                const hitFeature = checkAptHit(currentLatLng);
+                if (hitFeature) {
+                    const props = hitFeature.properties;
+                    if (lastHoveredApt !== props.name) {
+                        lastHoveredApt = props.name;
+                        if (!aptHoverTooltip) {
+                            aptHoverTooltip = L.tooltip({ direction: 'top', sticky: false, opacity: 1.0 });
+                        }
+                        const content = `<div style="text-align:center; line-height:1.2; padding:5px; background:white; border:1px solid #ccc; border-radius:5px; pointer-events:none;">
+                            <span style="font-weight:bold; color:#0369a1; font-size:14px;">${props.name}</span><br>
+                            <span style="font-size:12px; font-weight:bold; color:#ef4444;">${props.households}세대 / 주차 ${props.parking_ratio}</span>
+                        </div>`;
+                        aptHoverTooltip.setContent(content);
+                        aptHoverTooltip.setLatLng(currentLatLng).addTo(map);
+                    } else if (aptHoverTooltip) {
+                        aptHoverTooltip.setLatLng(currentLatLng);
                     }
-                    const content = `<div style="text-align:center; line-height:1.2; padding:5px; background:white; border:1px solid #ccc; border-radius:5px; pointer-events:none;">
-                        <span style="font-weight:bold; color:#0369a1; font-size:14px;">${props.name}</span><br>
-                        <span style="font-size:12px; font-weight:bold; color:#ef4444;">${props.households}세대 / 주차 ${props.parking_ratio}</span>
-                    </div>`;
-                    aptHoverTooltip.setContent(content);
-                    aptHoverTooltip.setLatLng(e.latlng).addTo(map);
-                } else if (aptHoverTooltip) {
-                    aptHoverTooltip.setLatLng(e.latlng);
+                } else {
+                    if (aptHoverTooltip && map.hasLayer(aptHoverTooltip)) {
+                        map.removeLayer(aptHoverTooltip);
+                    }
+                    lastHoveredApt = null;
                 }
-            } else {
-                if (aptHoverTooltip && map.hasLayer(aptHoverTooltip)) {
-                    map.removeLayer(aptHoverTooltip);
-                }
-                lastHoveredApt = null;
-            }
+            });
         });
 
         map.on('click', function(e) {
@@ -1985,7 +2021,9 @@
 
         L.tileLayer('https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; VWorld'
+            attribution: '&copy; VWorld',
+            updateWhenIdle: true, // 드래그 중 불필요한 타일 요청 억제로 프레임 드랍 방지
+            keepBuffer: 2         // 상하좌우 타일 버퍼링으로 부드러운 패닝
         }).addTo(map);
 
         // 2. Map Layers Initialization
@@ -2000,6 +2038,10 @@
         
         map.getPane('tooltipPane').style.zIndex = 750; // Ensure tooltips are above Naver markers
         map.getPane('popupPane').style.zIndex = 750; // Ensure popups are above Naver markers
+
+        // [성능 극대화] 커스텀 Pane 전용 하드웨어 가속 Canvas 렌더러 (수천 개 SVG DOM 제거 -> 1개 Canvas GPU 렌더링)
+        const auctionCanvasRenderer = L.canvas({ pane: 'auctionPane', padding: 0.5 });
+        const naverCanvasRenderer = L.canvas({ pane: 'naverPane', padding: 0.5 });
 
         // --- Smart Caching Bounds and Data ---
         let cachedPoisData = null;
@@ -2458,9 +2500,14 @@ let cachedRedevelopmentZonesData = null;
             }
 
             const mode = window.highlighterMode || 'AND';
+            const currentMapBounds = map.getBounds();
 
             layers.auction.eachLayer(marker => {
                 const latlng = marker.getLatLng();
+                // 화면 뷰포트 밖 마커는 연산 즉각 스킵 (프레임 드랍 방지)
+                if (!currentMapBounds.contains(latlng)) {
+                    return;
+                }
                 const pt = window.turf ? turf.point([latlng.lng, latlng.lat]) : null;
                 
                 const matchedLayersList = [];
@@ -4493,6 +4540,7 @@ let cachedRedevelopmentZonesData = null;
             return url;
         }
 
+        let auctionAbortController = null;
         async function loadAuctions() {
             const zoomWarning = document.getElementById('zoom-warning');
             
@@ -4533,8 +4581,14 @@ let cachedRedevelopmentZonesData = null;
                     return;
                 }
 
+                // 이전 대기 중인 경매 데이터 요청 취소 (중복 대기 방지)
+                if (auctionAbortController) {
+                    auctionAbortController.abort();
+                }
+                auctionAbortController = new AbortController();
+
                 try {
-                    const res = await fetch(url);
+                    const res = await fetch(url, { signal: auctionAbortController.signal });
                     const json = await res.json();
 
                     if (json.status === 'success') {
@@ -4547,6 +4601,7 @@ let cachedRedevelopmentZonesData = null;
                         return;
                     }
                 } catch (err) {
+                    if (err.name === 'AbortError') return; // 취소된 요청은 정상 무시
                     console.error("Auction load error:", err);
                     return;
                 }
@@ -4567,7 +4622,8 @@ let cachedRedevelopmentZonesData = null;
 
                 let marker = L.circleMarker([item.lat, item.lng], {
                     radius: rad, fillColor: typeColor, color: '#fff', weight: 2, opacity: 1, fillOpacity: 1,
-                    pane: 'auctionPane'
+                    pane: 'auctionPane',
+                    renderer: auctionCanvasRenderer // GPU Canvas 하드웨어 가속 렌더러 적용
                 });
                 marker.defaultRadius = rad;
                 marker.auctionData = item;
@@ -8932,6 +8988,13 @@ async function executeNaverPriceAnalysis(radiusVal) {
     }
 }
 let naverLayerGroup = null;
+let naverMoveendTimeout = null;
+let naverAbortController = null;
+
+function debouncedFetchNaverRealEstate() {
+    clearTimeout(naverMoveendTimeout);
+    naverMoveendTimeout = setTimeout(fetchNaverRealEstate, 350);
+}
 
 function toggleNaverRealEstate() {
     const isChecked = document.getElementById('toggle-naver').checked;
@@ -8939,10 +9002,15 @@ function toggleNaverRealEstate() {
     if (isChecked) {
         selector.style.display = 'block';
         fetchNaverRealEstate();
-        map.on('moveend', fetchNaverRealEstate);
+        map.on('moveend', debouncedFetchNaverRealEstate);
     } else {
         selector.style.display = 'none';
-        map.off('moveend', fetchNaverRealEstate);
+        map.off('moveend', debouncedFetchNaverRealEstate);
+        clearTimeout(naverMoveendTimeout);
+        if (naverAbortController) {
+            naverAbortController.abort();
+            naverAbortController = null;
+        }
         if (naverLayerGroup) {
             map.removeLayer(naverLayerGroup);
             naverLayerGroup = null;
@@ -8961,21 +9029,28 @@ async function fetchNaverRealEstate() {
     const min_lng = bounds.getSouthWest().lng;
     const max_lng = bounds.getNorthEast().lng;
     
-    if (naverLayerGroup) {
-        map.removeLayer(naverLayerGroup);
+    if (naverAbortController) {
+        naverAbortController.abort();
     }
-    naverLayerGroup = L.markerClusterGroup({
-        chunkedLoading: true,
-        disableClusteringAtZoom: 16,
-        maxClusterRadius: 60,
-        clusterPane: 'naverPane'
-    }).addTo(map);
-    
+    naverAbortController = new AbortController();
+
     try {
-        const res = await fetch(`/api/naver-realestate?estate_type=${encodeURIComponent(type)}&min_lat=${min_lat}&max_lat=${max_lat}&min_lng=${min_lng}&max_lng=${max_lng}`);
+        const res = await fetch(`/api/naver-realestate?estate_type=${encodeURIComponent(type)}&min_lat=${min_lat}&max_lat=${max_lat}&min_lng=${min_lng}&max_lng=${max_lng}`, {
+            signal: naverAbortController.signal
+        });
         const json = await res.json();
         
         if (json.status === 'success' && json.data) {
+            if (naverLayerGroup) {
+                map.removeLayer(naverLayerGroup);
+            }
+            naverLayerGroup = L.markerClusterGroup({
+                chunkedLoading: true,
+                disableClusteringAtZoom: 16,
+                maxClusterRadius: 60,
+                clusterPane: 'naverPane'
+            }).addTo(map);
+
             const markers = [];
             json.data.forEach(item => {
                 const markerHtml = `<div style="background-color: black; border-radius: 50%; width: 14px; height: 14px; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5); pointer-events: none;"></div>`;
@@ -9061,6 +9136,7 @@ async function fetchNaverRealEstate() {
             console.warn(json.message);
         }
     } catch (e) {
+        if (e.name === 'AbortError') return;
         console.error('Error fetching Naver real estate:', e);
     }
 }
