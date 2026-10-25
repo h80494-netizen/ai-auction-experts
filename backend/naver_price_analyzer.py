@@ -234,34 +234,14 @@ def get_cached_dataset(target_type):
     else:
         # 상가, 근린상가, 근린생활시설, 상가주택 등
         cache_key = "상가"
-        keywords = ["상가", "전월세"]
+        keywords = ["상가", "근린"]
 
-    # Dynamically find matching files
-    files = []
-    if os.path.exists(data_dir):
-        for fn in os.listdir(data_dir):
-            if (fn.endswith('.xlsx') or fn.endswith('.xlsm') or fn.endswith('.csv')) and not fn.startswith('~$'):
-                if any(kw in fn for kw in keywords):
-                    files.append(fn)
-
+    # 1. 메모리 캐시 확인
     if cache_key in _DATASET_CACHE:
         return _DATASET_CACHE[cache_key]
-        
-    pkl_cache_file = os.path.join(data_dir, f".cache_naver_{cache_key}.pkl")
-    
-    # Check if pkl cache is valid by comparing last modified time with source excel files
-    cache_valid = False
-    if os.path.exists(pkl_cache_file):
-        cache_mtime = os.path.getmtime(pkl_cache_file)
-        latest_file_mtime = 0
-        for fn in files:
-            fp = os.path.join(data_dir, fn)
-            if os.path.exists(fp):
-                latest_file_mtime = max(latest_file_mtime, os.path.getmtime(fp))
-        if cache_mtime >= latest_file_mtime:
-            cache_valid = True
 
-    if cache_valid:
+    pkl_cache_file = os.path.join(data_dir, f".cache_naver_{cache_key}.pkl")
+    if os.path.exists(pkl_cache_file):
         try:
             import pickle
             with open(pkl_cache_file, "rb") as pf:
@@ -270,6 +250,83 @@ def get_cached_dataset(target_type):
                 return cached_df
         except Exception as e:
             print(f"Pickle cache load failed for {cache_key}: {e}")
+
+    # 2. SQLite DB (map_data.db) 직결 로드 시도 (엑셀 파싱 대비 100배 고속)
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    if os.path.exists(db_path):
+        try:
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            type_cond = ""
+            if cache_key == "아파트":
+                type_cond = "estate_type = '아파트'"
+            elif cache_key == "빌라":
+                type_cond = "estate_type LIKE '%다세대%' OR estate_type LIKE '%빌라%'"
+            elif cache_key == "오피스텔":
+                type_cond = "estate_type LIKE '%오피스텔%'"
+            elif cache_key == "단독":
+                type_cond = "estate_type LIKE '%단독%'"
+            else:
+                type_cond = "estate_type LIKE '%상가%' OR estate_type LIKE '%근린%'"
+
+            sql = f"""
+                SELECT address as '소재지', price as '매매가(보증금)', rent as '월세',
+                       floor as '층수', area as '전용평형', deal_type as '거래유형',
+                       type_detail as '매물명', lat as '위도', lng as '경도', age_info as '보조설명'
+                FROM naver_real_estate
+                WHERE ({type_cond}) AND lat > 0 AND lng > 0
+            """
+            db_df = pd.read_sql_query(sql, conn)
+            conn.close()
+
+            if not db_df.empty:
+                # 층수 분리 (예: 5/10 -> 층수: 5, 전체층: 10)
+                def parse_fl(f_str):
+                    f_str = str(f_str or '')
+                    if '/' in f_str:
+                        parts = f_str.split('/')
+                        return parts[0].strip(), parts[1].strip()
+                    return f_str.strip(), ''
+
+                fl_parsed = db_df['층수'].apply(parse_fl)
+                db_df['층수_num'] = [p[0] for p in fl_parsed]
+                db_df['전체층'] = [p[1] for p in fl_parsed]
+
+                is_housing = any(k in cache_key for k in ["아파트", "빌라", "다세대", "연립", "단독", "다가구"])
+                db_df['floor_cat'] = db_df.apply(lambda row: get_floor_category_excel(row['층수_num'], row['전체층'], is_housing=is_housing), axis=1)
+
+                db_df['area_pyeong_val'] = pd.to_numeric(db_df['전용평형'], errors='coerce')
+                db_df['area_cat'] = db_df['area_pyeong_val'].apply(get_area_category_excel)
+                db_df['age_cat'] = db_df['보조설명'].fillna('').apply(get_age_category_from_text)
+
+                db_df['price_total'] = db_df.apply(
+                    lambda r: extract_price_total(r['매매가(보증금)'], r['월세'], r['거래유형']),
+                    axis=1
+                )
+                db_df['deal_type_val'] = db_df['거래유형'].astype(str)
+                db_df['rent_val'] = pd.to_numeric(db_df['월세'], errors='coerce').fillna(0)
+                db_df['pyeong_price'] = np.where(db_df['area_pyeong_val'] > 0, db_df['price_total'] / db_df['area_pyeong_val'], np.nan)
+                db_df = db_df[db_df['price_total'] > 0]
+
+                try:
+                    import pickle
+                    with open(pkl_cache_file, "wb") as pf:
+                        pickle.dump(db_df, pf, protocol=pickle.HIGHEST_PROTOCOL)
+                except Exception as pe:
+                    print(f"Failed to save pickle cache: {pe}")
+
+                _DATASET_CACHE[cache_key] = db_df
+                return db_df
+        except Exception as dbe:
+            print(f"Failed loading from DB for {cache_key}, fallback to excel: {dbe}")
+
+    # 3. Fallback: 엑셀 파일 로드
+    files = []
+    if os.path.exists(data_dir):
+        for fn in os.listdir(data_dir):
+            if (fn.endswith('.xlsx') or fn.endswith('.xlsm') or fn.endswith('.csv')) and not fn.startswith('~$'):
+                if any(kw in fn for kw in keywords):
+                    files.append(fn)
 
     df_list = []
     for fn in files:
@@ -504,10 +561,11 @@ def analyze_price(target_lat, target_lon, target_type, target_area_pyeong, targe
     else:
         jeonse_ratio = 0.0
 
-    # Properties list formatting
+    # Properties list formatting: 오직 '매매' 매물만 리스트에 표출 (월세, 전세는 전세가율 계산에만 사용)
     properties_list = []
-    if len(matched) > 0:
-        sorted_matched = matched.sort_values(by='distance', ascending=True).head(50)
+    display_df = sale_matched if ('sale_matched' in locals() and len(sale_matched) > 0) else None
+    if display_df is not None and len(display_df) > 0:
+        sorted_matched = display_df.sort_values(by='distance', ascending=True).head(50)
         for _, row in sorted_matched.iterrows():
             loc = row.get('매물위치(주소)', '')
             addr = str(loc) if pd.notnull(loc) else ''
@@ -519,11 +577,19 @@ def analyze_price(target_lat, target_lon, target_type, target_area_pyeong, targe
                 if kakao_addr:
                     addr = kakao_addr
                     
-            floor_val = row.get('층수', '')
-            total_floor_val = row.get('전체층', '')
-            floor_display = f"{floor_val}층" if pd.notnull(floor_val) and str(floor_val).strip() else ""
-            if pd.notnull(total_floor_val) and str(total_floor_val).strip():
-                floor_display += f" / {total_floor_val}층"
+            floor_val = str(row.get('층수', '') or '').strip()
+            total_floor_val = str(row.get('전체층', '') or '').strip()
+            if '/' in floor_val and not total_floor_val:
+                f_parts = floor_val.split('/')
+                floor_val = f_parts[0].replace('층', '').strip()
+                total_floor_val = f_parts[1].replace('층', '').strip()
+            else:
+                floor_val = floor_val.replace('층', '').strip()
+                total_floor_val = total_floor_val.replace('층', '').strip()
+
+            floor_display = f"{floor_val}층" if floor_val else ""
+            if total_floor_val:
+                floor_display = f"{floor_display} / {total_floor_val}층" if floor_display else f"{total_floor_val}층"
             
             pyeong_val = row.get('area_pyeong_val', row.get('전용평형', ''))
             try:
@@ -565,7 +631,7 @@ def analyze_price(target_lat, target_lon, target_type, target_area_pyeong, targe
 
     return {
         "radius_used": radius_used,
-        "matched_count": len(matched),
+        "matched_count": sale_count,
         "sale_count": sale_count,
         "rent_count": rent_count,
         "target_categories": {

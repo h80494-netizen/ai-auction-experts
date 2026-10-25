@@ -17,10 +17,14 @@ def update_naver_db():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    # Drop and recreate table
-    cursor.execute("DROP TABLE IF EXISTS naver_real_estate")
+    import sys
+    drop_table = '--drop' in sys.argv
+    if drop_table:
+        print("Dropping existing naver_real_estate table...")
+        cursor.execute("DROP TABLE IF EXISTS naver_real_estate")
+
     cursor.execute("""
-        CREATE TABLE naver_real_estate (
+        CREATE TABLE IF NOT EXISTS naver_real_estate (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             estate_id TEXT UNIQUE,
             address TEXT,
@@ -39,10 +43,15 @@ def update_naver_db():
     """)
     conn.commit()
     
+    filter_keywords = [arg for arg in sys.argv[1:] if not arg.startswith('--')]
+    
     # Dynamically scan all excel and csv files in data_dir
     files_info = []
     for f in os.listdir(data_dir):
         if not (f.endswith('.xlsx') or f.endswith('.xlsm') or f.endswith('.csv')) or f.startswith('~$'):
+            continue
+            
+        if filter_keywords and not any(kw in f for kw in filter_keywords):
             continue
             
         # Determine region
@@ -92,7 +101,7 @@ def update_naver_db():
             print(f"Skipping missing file: {filename}")
             continue
             
-        print(f"Loading {filename} ({estate_type}, {region})...")
+        print(f"Loading {filename} ({estate_type}, {region})...", flush=True)
         t_load = time.time()
         if filename.endswith('.csv'):
             try:
@@ -105,10 +114,11 @@ def update_naver_db():
         else:
             try:
                 df = pd.read_excel(file_path, engine="calamine")
-            except Exception:
-                df = pd.read_excel(file_path)
+            except Exception as e:
+                print(f"  [WARN] Calamine failed for {filename}: {e}. Trying openpyxl...", flush=True)
+                df = pd.read_excel(file_path, engine="openpyxl")
             
-        print(f"  Loaded {len(df)} rows in {time.time()-t_load:.2f}s. Preparing records...")
+        print(f"  Loaded {len(df)} rows in {time.time()-t_load:.2f}s. Preparing records...", flush=True)
         
         records = []
         for _, row in df.iterrows():
@@ -140,10 +150,27 @@ def update_naver_db():
                     parts = [p.strip() for p in desc.split(',') if '년' in p]
                     if parts:
                         age_info = parts[0]
+
+                # Determine specific region per row
+                row_region = region
+                if row_region == "전국":
+                    rcode = str(row.get('지역코드', '')).strip()
+                    if rcode.startswith('11'):
+                        row_region = "서울"
+                    elif rcode.startswith('28'):
+                        row_region = "인천"
+                    elif rcode.startswith('41'):
+                        row_region = "경기"
+                    elif '서울' in address:
+                        row_region = "서울"
+                    elif '인천' in address:
+                        row_region = "인천"
+                    elif '경기' in address:
+                        row_region = "경기"
                         
                 records.append((
                     estate_id, address, price, rent, floor, area,
-                    deal_type, type_detail, lat, lng, estate_type, region, age_info
+                    deal_type, type_detail, lat, lng, estate_type, row_region, age_info
                 ))
             except Exception:
                 pass
@@ -163,9 +190,9 @@ def update_naver_db():
             inserted_for_file += len(chunk)
             
         total_inserted += inserted_for_file
-        print(f"  Processed {inserted_for_file} records for {filename}.")
+        print(f"  Processed {inserted_for_file} records for {filename}.", flush=True)
         
-    print("Creating indexes...")
+    print("Creating indexes...", flush=True)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_naver_estate_id ON naver_real_estate(estate_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_naver_type_coords ON naver_real_estate(estate_type, lat, lng)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_naver_region_type_coords ON naver_real_estate(region, estate_type, lat, lng)")
@@ -175,16 +202,16 @@ def update_naver_db():
     # Print statistics
     cursor.execute("SELECT region, estate_type, count(*) FROM naver_real_estate GROUP BY region, estate_type")
     stats = cursor.fetchall()
-    print("\n=== Data Statistics in DB ===")
+    print("\n=== Data Statistics in DB ===", flush=True)
     for s in stats:
-        print(f"Region: {s[0]}, Type: {s[1]}, Count: {s[2]:,}건")
+        print(f"Region: {s[0]}, Type: {s[1]}, Count: {s[2]:,}건", flush=True)
         
     cursor.execute("SELECT count(*) FROM naver_real_estate")
     total_count = cursor.fetchone()[0]
-    print(f"Total Unique Records: {total_count:,}건")
+    print(f"Total Unique Records: {total_count:,}건", flush=True)
     
     conn.close()
-    print(f"Database update complete in {time.time()-start_time:.2f}s!")
+    print(f"Database update complete in {time.time()-start_time:.2f}s!", flush=True)
 
 if __name__ == "__main__":
     update_naver_db()

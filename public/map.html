@@ -8893,7 +8893,7 @@ async function executeNaverPriceAnalysis(radiusVal) {
             
             const sCount = calc.sale_count !== undefined ? calc.sale_count : (data.sale_count || 0);
             const rCount = calc.rent_count !== undefined ? calc.rent_count : (data.rent_count || 0);
-            document.getElementById('naverPropsCountBadge').innerHTML = `매매 <b style="color:#2563eb;">${sCount}건</b> / 전월세 ${rCount}건 (총 ${data.matched_count || 0}건)`;
+            document.getElementById('naverPropsCountBadge').innerHTML = `순수 매매 <b style="color:#2563eb;">${sCount}건</b> (전월세 ${rCount}건 별도 집계)`;
 
             // Properties list
             let propsHtml = '';
@@ -8907,7 +8907,7 @@ async function executeNaverPriceAnalysis(radiusVal) {
                     propsHtml += `
                         <tr style="border-bottom:1px solid #f1f5f9;">
                             <td style="padding:10px 12px; font-weight:600; color:#1e293b;">${p.address}</td>
-                            <td style="padding:10px 8px; color:#475569;"><span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:0.8rem;">${p.deal_type || '매매'}</span></td>
+                            <td style="padding:10px 8px; text-align:center;"><span style="background:#dbeafe; color:#1d4ed8; font-weight:700; padding:2px 6px; border-radius:4px; font-size:0.8rem;">${p.deal_type || '매매'}</span></td>
                             <td style="padding:10px 8px; text-align:center;"><span style="background:${ageBadgeBg}; color:${ageBadgeColor}; font-weight:700; padding:2px 7px; border-radius:6px; font-size:0.78rem;" title="${p.age_display || ''}">${ageYearsDisplay}</span></td>
                             <td style="padding:10px 8px; color:#64748b;">${p.floor_cat || p.floor_display}</td>
                             <td style="padding:10px 8px; color:#64748b;">${p.pyeong}</td>
@@ -8918,7 +8918,7 @@ async function executeNaverPriceAnalysis(radiusVal) {
                     `;
                 });
             } else {
-                propsHtml = `<tr><td colspan="8" style="text-align:center; padding:40px; color:#94a3b8; font-weight:600;">선택한 반경 내 동일 그룹 사례 매물이 없습니다.</td></tr>`;
+                propsHtml = `<tr><td colspan="8" style="text-align:center; padding:40px; color:#94a3b8; font-weight:600;">선택한 반경 내 동일 그룹 매매 사례 매물이 없습니다.</td></tr>`;
             }
             document.getElementById('naverPricePropsBody').innerHTML = propsHtml;
             
