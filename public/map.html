@@ -103,6 +103,42 @@
             pointer-events: none !important;
         }
 
+        .grid-metric-label {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: #0f172a !important;
+            font-size: 0.72rem !important;
+            font-weight: 800 !important;
+            line-height: 1.15 !important;
+            text-align: center !important;
+            text-shadow: -1.5px -1.5px 0 #fff, 1.5px -1.5px 0 #fff, -1.5px 1.5px 0 #fff, 1.5px 1.5px 0 #fff, 0 0 4px rgba(255,255,255,0.95) !important;
+            pointer-events: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        .grid-metric-label::before {
+            display: none !important;
+        }
+
+        .poly-zone-label {
+            background: rgba(255, 255, 255, 0.88) !important;
+            border: 1px solid rgba(15, 23, 42, 0.25) !important;
+            border-radius: 4px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18) !important;
+            color: #0f172a !important;
+            font-size: 0.72rem !important;
+            font-weight: 800 !important;
+            line-height: 1.2 !important;
+            text-align: center !important;
+            padding: 2px 5px !important;
+            pointer-events: none !important;
+            white-space: nowrap !important;
+        }
+        .poly-zone-label::before {
+            display: none !important;
+        }
+
         body {
             margin: 0;
             padding: 0;
@@ -2829,7 +2865,8 @@ let cachedRedevelopmentZonesData = null;
                                 const name = feature.properties.TRDAR_CD_N;
                                 const pop = popData[name] || 0;
                                 let popStr = pop > 0 ? (pop / 10000).toFixed(0) + '만 명' : '데이터 없음';
-                                layer.bindTooltip(`<b>${name}</b><br>상권<br>유동인구: ${popStr}`, { sticky: true, className: 'custom-tooltip' });
+                                layer.bindPopup(`<b>${name}</b><br>상권<br>유동인구: ${popStr}`);
+                                layer.bindTooltip(`${name}<br><span style="color:#be123c;">${popStr}</span>`, { permanent: true, direction: 'center', className: 'grid-metric-label' });
                                 
                                 const stage = feature.properties.stage;
                                 let color = 'gray';
@@ -2925,7 +2962,8 @@ let cachedRedevelopmentZonesData = null;
                             fillOpacity: 0.5,
                             opacity: 0.5,
                             weight: 2
-                        }).bindPopup(`<b>학원 밀집가</b><br>반경 200m 내 ${poly.count}개 학원 밀집`);
+                        }).bindPopup(`<b>학원 밀집가</b><br>반경 200m 내 ${poly.count}개 학원 밀집`)
+                          .bindTooltip(`${Number(poly.count).toLocaleString()}개`, { permanent: true, direction: 'center', className: 'grid-metric-label' });
                         
                         const geojsonCoords = coords.map(c => [c[1], c[0]]);
                         polygonLayer.feature = {
@@ -2985,16 +3023,32 @@ let cachedRedevelopmentZonesData = null;
                             fillOpacity: 0.3,
                             radius: 200,
                             weight: 2
-                        }).bindPopup(`<b>도시혁신구역</b><br>${zone.name}`).addTo(layers.dev4);
+                        }).bindPopup(`<b>도시혁신구역</b><br>${zone.name}`)
+                          .bindTooltip(zone.name, { permanent: true, direction: 'center', className: 'poly-zone-label' })
+                          .addTo(layers.dev4);
                     });
                 }
 
                 if (typeName === '개발행위허가제한지역') {
-                    if (!window.devRestrictionLayer) {
-                        try {
+                    try {
+                        if (!window.devRestrictionData) {
                             const res = await fetch('/dev_restriction.geojson');
-                            const data = await res.json();
-                            window.devRestrictionLayer = L.geoJSON(data, {
+                            window.devRestrictionData = await res.json();
+                        }
+                        if (window.devRestrictionData && window.devRestrictionData.features) {
+                            L.geoJSON(window.devRestrictionData, {
+                                filter: function(feature) {
+                                    if (!feature.geometry || !feature.geometry.coordinates) return false;
+                                    try {
+                                        let c = feature.geometry.coordinates;
+                                        while (Array.isArray(c[0]) && typeof c[0][0] !== 'number') c = c[0];
+                                        const pt = c[0];
+                                        if (Array.isArray(pt) && pt.length >= 2) {
+                                            return bounds.contains([pt[1], pt[0]]);
+                                        }
+                                    } catch (e) {}
+                                    return true;
+                                },
                                 style: {
                                     color: '#f97316', // 주황색
                                     fillColor: '#f97316',
@@ -3016,15 +3070,13 @@ let cachedRedevelopmentZonesData = null;
                                     }
                                     popupHtml += `</div>`;
                                     layer.bindPopup(popupHtml);
+                                    layer.bindTooltip(name, { permanent: true, direction: 'center', className: 'poly-zone-label' });
                                     layer.layerName = typeName;
                                 }
-                            });
-                        } catch (err) {
-                            console.error(`Failed to load ${typeName}:`, err);
+                            }).addTo(layers.dev4);
                         }
-                    }
-                    if (window.devRestrictionLayer) {
-                        window.devRestrictionLayer.addTo(layers.dev4);
+                    } catch (err) {
+                        console.error(`Failed to load ${typeName}:`, err);
                     }
                     continue;
                 }
@@ -3043,7 +3095,10 @@ let cachedRedevelopmentZonesData = null;
                                     dashArray: '5, 5'
                                 },
                                 onEachFeature: function(feature, layer) {
-                                    layer.bindPopup(`<b>${typeName}</b>`);
+                                    const props = feature.properties || {};
+                                    const labelName = props.alias || props.uname || props.dgm_nm || typeName;
+                                    layer.bindPopup(`<b>${typeName}</b><br>${labelName}`);
+                                    layer.bindTooltip(labelName, { permanent: true, direction: 'center', className: 'poly-zone-label' });
                                     layer.layerName = typeName;
                                 }
                             });
@@ -3071,7 +3126,10 @@ let cachedRedevelopmentZonesData = null;
                                     dashArray: '5, 5'
                                 },
                                 onEachFeature: function(feature, layer) {
-                                    layer.bindPopup(`<b>${typeName}</b>`);
+                                    const props = feature.properties || {};
+                                    const labelName = props.ALIAS || props.REMARK || props.uname || typeName;
+                                    layer.bindPopup(`<b>${typeName}</b><br>${labelName}`);
+                                    layer.bindTooltip(labelName, { permanent: true, direction: 'center', className: 'poly-zone-label' });
                                     layer.layerName = typeName;
                                 }
                             });
@@ -3114,7 +3172,9 @@ let cachedRedevelopmentZonesData = null;
                                             dashArray: '4, 4'
                                         },
                                         onEachFeature: function(feature, layer) {
-                                            layer.bindPopup(`<div style="min-width: 150px;"><b>특별계획구역</b><br><span style="color: #ec4899; font-weight: 500;">${item.name || ''}</span>${detailsHtml}</div>`);
+                                            const zName = item.name || '특별계획구역';
+                                            layer.bindPopup(`<div style="min-width: 150px;"><b>특별계획구역</b><br><span style="color: #ec4899; font-weight: 500;">${zName}</span>${detailsHtml}</div>`);
+                                            layer.bindTooltip(zName, { permanent: true, direction: 'center', className: 'poly-zone-label' });
                                             layer.layerName = typeName;
                                         }
                                     }).addTo(layers.dev4);
@@ -3145,7 +3205,10 @@ let cachedRedevelopmentZonesData = null;
                                 dashArray: '5, 5'
                             },
                             onEachFeature: function(feature, layer) {
-                                layer.bindPopup(`<b>${typeName}</b>`);
+                                const props = feature.properties || {};
+                                const vName = props.uname || props.dgm_nm || props.name || typeName;
+                                layer.bindPopup(`<b>${typeName}</b><br>${vName}`);
+                                layer.bindTooltip(vName, { permanent: true, direction: 'center', className: 'poly-zone-label' });
                                 // Custom layer name tag for highlighter intersection logic
                                 layer.layerName = typeName;
                             }
@@ -3206,6 +3269,7 @@ let cachedRedevelopmentZonesData = null;
             layers.dev2.clearLayers();
             data.forEach(item => {
                 let geojson = JSON.parse(item.geojson);
+                const zName = item.name || '지구단위계획';
                 L.geoJSON(geojson, {
                     style: {
                         color: '#4ade80', // 연한 초록색
@@ -3213,8 +3277,12 @@ let cachedRedevelopmentZonesData = null;
                         fillOpacity: 0.15,
                         weight: 2,
                         dashArray: '5, 5'
+                    },
+                    onEachFeature: function(feature, layer) {
+                        layer.bindPopup(`<b>개발행위허가제한/지구단위계획</b><br>${zName}`);
+                        layer.bindTooltip(zName, { permanent: true, direction: 'center', className: 'poly-zone-label' });
                     }
-                }).bindPopup(`<b>개발행위허가제한지역</b><br>${item.name}`).addTo(layers.dev2);
+                }).addTo(layers.dev2);
             });
             triggerHighlighter();
         }
@@ -3295,13 +3363,17 @@ let cachedRedevelopmentZonesData = null;
                     const props = feature.properties;
                     const stepCode = (props.stepCode || props.zoneCode || props.zone_cd || '').toUpperCase();
                     let stageName = '초기 단계 (지구지정 등)';
-                    if (['SA'].includes(stepCode)) stageName = '초기 단계 (지구지정 등)';
-                    else if (['DA', 'RA', 'PC'].includes(stepCode)) stageName = '중기 단계 (지구계획승인 등)';
-                    else if (['CP'].includes(stepCode)) stageName = '후기 단계 (착공/분양/완료 등)';
+                    let shortStage = '초기';
+                    if (['SA'].includes(stepCode)) { stageName = '초기 단계 (지구지정 등)'; shortStage = '초기'; }
+                    else if (['DA', 'RA', 'PC'].includes(stepCode)) { stageName = '중기 단계 (지구계획승인 등)'; shortStage = '중기'; }
+                    else if (['CP'].includes(stepCode)) { stageName = '후기 단계 (착공/분양/완료 등)'; shortStage = '후기'; }
                     
-                    layer.bindTooltip(`<b>택지지구 (${stageName})</b><br>${props.zoneName || '이름 없음'}`, {
-                        sticky: true,
-                        className: 'custom-tooltip'
+                    const zName = props.zoneName || '택지지구';
+                    layer.bindPopup(`<b>택지지구 (${stageName})</b><br>${zName}`);
+                    layer.bindTooltip(`<span style="color:#1d4ed8;">[${shortStage}]</span> ${zName}`, {
+                        permanent: true,
+                        direction: 'center',
+                        className: 'poly-zone-label'
                     });
                 }
             }).addTo(layers.dev1);
@@ -3394,6 +3466,7 @@ let cachedRedevelopmentZonesData = null;
                 if (stage === '중기') stageLabel = '중기 단계 (사업시행 등)';
                 else if (stage === '후기') stageLabel = '후기 단계 (관리처분 등)';
                 
+                const zName = item.name || '재개발/재건축구역';
                 L.geoJSON(geojson, {
                     style: {
                         color: '#f97316',
@@ -3401,8 +3474,16 @@ let cachedRedevelopmentZonesData = null;
                         fillOpacity: 0.15,
                         weight: 2,
                         dashArray: '5, 5'
+                    },
+                    onEachFeature: function(feature, layer) {
+                        layer.bindPopup(`<b>재개발/재건축구역 (${stageLabel})</b><br>${zName}`);
+                        layer.bindTooltip(`<span style="color:#ea580c;">[${stage}]</span> ${zName}`, {
+                            permanent: true,
+                            direction: 'center',
+                            className: 'poly-zone-label'
+                        });
                     }
-                }).bindPopup(`<b>재개발/재건축구역 (${stageLabel})</b><br>${item.name}`).addTo(layers.dev3);
+                }).addTo(layers.dev3);
             });
             triggerHighlighter();
         }
@@ -3426,7 +3507,9 @@ let cachedRedevelopmentZonesData = null;
                             weight: 2,
                             fillColor: '#fef08a',
                             fillOpacity: 0.5
-                        }).bindPopup(`<b>숙박업소 밀집지역</b><br>밀집 개수: ${item.count}개`).addTo(layers.lodging);
+                        }).bindPopup(`<b>숙박업소 밀집지역</b><br>밀집 개수: ${item.count}개`)
+                          .bindTooltip(`${Number(item.count).toLocaleString()}개`, { permanent: true, direction: 'center', className: 'grid-metric-label' })
+                          .addTo(layers.lodging);
                     });
                 }
             } catch (e) {
@@ -3453,7 +3536,9 @@ let cachedRedevelopmentZonesData = null;
                             fillColor: '#fbcfe8',
                             fillOpacity: 0.6,
                             weight: 1
-                        }).bindPopup(`<b>${item.name}</b><br>${item.area_nm} ${item.signgu_nm}<br>집중도: ${item.rate}%<br>(반경 1km)`).addTo(layers.touristDensity);
+                        }).bindPopup(`<b>${item.name}</b><br>${item.area_nm} ${item.signgu_nm}<br>집중도: ${item.rate}%<br>(반경 1km)`)
+                          .bindTooltip(`${item.name}<br><span style="color:#be185d;">${item.rate}%</span>`, { permanent: true, direction: 'center', className: 'grid-metric-label' })
+                          .addTo(layers.touristDensity);
                     });
                 }
             } catch (e) {
@@ -3517,7 +3602,7 @@ let cachedRedevelopmentZonesData = null;
                         fillOpacity: 0.5,
                         weight: 2
                     }
-                }).bindPopup(`<b>산업단지</b><br>${item.name}`).bindTooltip(item.name, {permanent: false, direction: 'top'});
+                }).bindPopup(`<b>산업단지</b><br>${item.name}`).bindTooltip(item.name, {permanent: true, direction: 'center', className: 'poly-zone-label'});
                 
                 polyLayer.addTo(layers.ind);
                 
@@ -3715,7 +3800,9 @@ let cachedRedevelopmentZonesData = null;
                         };
                     },
                     onEachFeature: function(feature, layer) {
-                        layer.bindPopup(`<b>용도지역 (${feature.properties.zoningType})</b><br>${feature.properties.name}`);
+                        const zLabel = feature.properties.name || feature.properties.zoningType || '용도지역';
+                        layer.bindPopup(`<b>용도지역 (${feature.properties.zoningType})</b><br>${zLabel}`);
+                        layer.bindTooltip(zLabel, { permanent: true, direction: 'center', className: 'poly-zone-label' });
                     }
                 });
                 layers.zoning.addLayer(batchLayer);
@@ -3884,6 +3971,7 @@ let cachedRedevelopmentZonesData = null;
                     },
                     onEachFeature: function(feature, layer) {
                         layer.bindPopup(`<b>도시계획도로 10m 완충구역</b><br>${feature.properties.name}`);
+                        layer.bindTooltip(feature.properties.name, { permanent: true, direction: 'center', className: 'poly-zone-label' });
                     }
                 });
                 layers.planningRoad.addLayer(bufferBatchLayer);
@@ -3902,6 +3990,9 @@ let cachedRedevelopmentZonesData = null;
                     },
                     onEachFeature: function(feature, layer) {
                         layer.bindPopup(`<b>도시계획도로 (${feature.properties.roadClass})</b><br>${feature.properties.name}`);
+                        if (!isBufferEnabled) {
+                            layer.bindTooltip(feature.properties.name, { permanent: true, direction: 'center', className: 'poly-zone-label' });
+                        }
                     }
                 });
                 layers.planningRoad.addLayer(lineBatchLayer);
@@ -4321,13 +4412,15 @@ let cachedRedevelopmentZonesData = null;
 
                         const regionLabel = rName === 'seoul' ? '서울' : (rName === 'gyeonggi' ? '경기' : '인천');
 
+                        const popNumStr = `${Math.round(item.avg_population).toLocaleString()}명`;
                         L.rectangle(rectBounds, {
                             color: color,
                             weight: 0.5,
                             opacity: 0.3,
                             fillColor: color,
                             fillOpacity: 0.3
-                        }).bindPopup(`<b>거주인구 격자 (${regionLabel})</b><br>구분: ${classification}<br>밀집도: ${step}단계<br>인구수: ${Math.round(item.avg_population).toLocaleString()}명`)
+                        }).bindPopup(`<b>거주인구 격자 (${regionLabel})</b><br>구분: ${classification}<br>밀집도: ${step}단계<br>인구수: ${popNumStr}`)
+                          .bindTooltip(popNumStr, { permanent: true, direction: 'center', className: 'grid-metric-label' })
                           .addTo(layers.resHeatmap);
                     });
 
@@ -4453,13 +4546,15 @@ let cachedRedevelopmentZonesData = null;
 
                         const regionLabel = rName === 'seoul' ? '서울' : (rName === 'gyeonggi' ? '경기' : '인천');
 
+                        const workNumStr = `${Math.round(item.avg_population).toLocaleString()}명`;
                         L.rectangle(rectBounds, {
                             color: color,
                             weight: 0.5,
                             opacity: 0.3,
                             fillColor: color,
                             fillOpacity: 0.3
-                        }).bindPopup(`<b>직장인구 격자 (${regionLabel})</b><br>구분: ${classification}<br>밀집도: ${step}단계<br>종사자수: ${Math.round(item.avg_population).toLocaleString()}명`)
+                        }).bindPopup(`<b>직장인구 격자 (${regionLabel})</b><br>구분: ${classification}<br>밀집도: ${step}단계<br>종사자수: ${workNumStr}`)
+                          .bindTooltip(workNumStr, { permanent: true, direction: 'center', className: 'grid-metric-label' })
                           .addTo(layers.workHeatmap);
                     });
 
@@ -5545,9 +5640,11 @@ let cachedRedevelopmentZonesData = null;
                                     const props = feature.properties;
                                     const resVal = props.resolution || '1km';
                                     const gridLabel = resVal === '250m' ? '250m 격자' : '1km 격자';
-                                    layer.bindTooltip(`<b>노후화 집중 구역 (${gridLabel})</b><br>건축물: ${props.val} / ${props.total_val}개<br>노후화 비율: ${props.ratio_pct}%`, {
-                                        sticky: true,
-                                        className: 'custom-tooltip'
+                                    layer.bindPopup(`<b>노후화 집중 구역 (${gridLabel})</b><br>건축물: ${props.val} / ${props.total_val}개<br>노후화 비율: ${props.ratio_pct}%`);
+                                    layer.bindTooltip(`<span style="color:#be123c;">${props.ratio_pct}%</span><br><span style="font-size:0.65rem;">(${props.val}/${props.total_val}동)</span>`, {
+                                        permanent: true,
+                                        direction: 'center',
+                                        className: 'grid-metric-label'
                                     });
                                 }
                             }).addTo(layers.oldBuildings);
@@ -5564,49 +5661,6 @@ let cachedRedevelopmentZonesData = null;
                     }
                 } else {
                     map.removeLayer(layers.oldBuildings);
-                    triggerHighlighter();
-                }
-            });
-
-            document.getElementById('toggle-dev1').addEventListener('change', async (e) => {
-                if (e.target.checked) {
-                    map.addLayer(layers.dev1);
-                    if (layers.dev1.getLayers().length === 0) {
-                        const loadingOverlay = document.getElementById('loading');
-                        if (loadingOverlay) loadingOverlay.style.display = 'flex';
-                        try {
-                            const res = await fetch('/data/taekji.geojson');
-                            if (!res.ok) throw new Error('Network response was not ok');
-                            const geojsonData = await res.json();
-                            
-                            L.geoJSON(geojsonData, {
-                                style: function (feature) {
-                                    return {
-                                        fillColor: '#3b82f6', // 파란색
-                                        weight: 2,
-                                        opacity: 0.8,
-                                        color: '#2563eb',
-                                        dashArray: '4',
-                                        fillOpacity: 0.2
-                                    };
-                                },
-                                onEachFeature: function (feature, layer) {
-                                    const props = feature.properties;
-                                    layer.bindTooltip(`<b>택지지구</b><br>${props.zoneName || '이름 없음'}`, {
-                                        sticky: true,
-                                        className: 'custom-tooltip'
-                                    });
-                                }
-                            }).addTo(layers.dev1);
-                        } catch (error) {
-                            console.error('Error loading taekji:', error);
-                            alert('택지지구 데이터를 불러오는 데 실패했습니다.');
-                        } finally {
-                            if (loadingOverlay) loadingOverlay.style.display = 'none';
-                        }
-                    }
-                } else {
-                    map.removeLayer(layers.dev1);
                     triggerHighlighter();
                 }
             });
@@ -5635,9 +5689,11 @@ let cachedRedevelopmentZonesData = null;
                                 onEachFeature: function (feature, layer) {
                                     const props = feature.properties;
                                     const districtsStr = (props.school_districts || []).join(', ');
-                                    layer.bindTooltip(`<b>명문학군 행정동</b><br>동이름: ${props.dong_name} (${props.sido_name} ${props.sgg_name})<br>배정 학군: ${districtsStr}`, {
-                                        sticky: true,
-                                        className: 'custom-tooltip'
+                                    layer.bindPopup(`<b>명문학군 행정동</b><br>동이름: ${props.dong_name} (${props.sido_name} ${props.sgg_name})<br>배정 학군: ${districtsStr}`);
+                                    layer.bindTooltip(`${props.dong_name}`, {
+                                        permanent: true,
+                                        direction: 'center',
+                                        className: 'grid-metric-label'
                                     });
                                 }
                             }).addTo(layers.eliteSchools);
@@ -8400,7 +8456,10 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
                                 fillOpacity: 0.15
                             },
                             onEachFeature: (feature, layer) => {
-                                layer.bindPopup('<b>예정도로 (100m 버퍼)</b>');
+                                const props = feature.properties || {};
+                                const rName = props.dgm_nm || props.scl_nam || props.name || '예정도로 (100m)';
+                                layer.bindPopup(`<b>예정도로 (100m 버퍼)</b><br>${rName}`);
+                                layer.bindTooltip(rName, { permanent: true, direction: 'center', className: 'poly-zone-label' });
                             }
                         }).addTo(map);
                     } catch (e) {
@@ -8467,7 +8526,18 @@ function renderDemandData(resData, priceData, storesData, caseNo, address, propT
                             weight: 2,
                             fillColor: '#0ea5e9',
                             fillOpacity: 0.4,
-                            interactive: false
+                            interactive: true
+                        },
+                        onEachFeature: function(feature, layer) {
+                            const props = feature.properties || {};
+                            const aptName = props.name || '아파트 단지';
+                            const hh = props.households ? `${Number(props.households).toLocaleString()}세대` : '';
+                            layer.bindPopup(`<b>${aptName}</b>${hh ? '<br>세대수: ' + hh : ''}`);
+                            layer.bindTooltip(`${aptName}${hh ? '<br><span style="color:#0284c7;">' + hh + '</span>' : ''}`, {
+                                permanent: true,
+                                direction: 'center',
+                                className: 'grid-metric-label'
+                            });
                         }
                     }).addTo(map);
 
