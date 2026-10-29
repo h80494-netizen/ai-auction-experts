@@ -8,12 +8,13 @@ ENV/
 env.bak/
 venv.bak/
 
-# Database temp/backup files (Main runtime DBs in backend/data/*.db are tracked via Git LFS)
+# Database temp/backup files (Main runtime DB map_data.db is tracked via Git LFS)
 *.db-wal
 *.db-shm
 *.db.bak*
 data/map_data.db
 backend/auction_data.db
+backend/data/small_business.db
 
 # Python
 __pycache__/
