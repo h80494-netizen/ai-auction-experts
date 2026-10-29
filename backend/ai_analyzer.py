@@ -224,11 +224,105 @@ def generate_deep_research(data: dict) -> str:
         prompt = prompt.replace("{tenants_str}", str(tenants_str))
         prompt = prompt.replace("{pdf_context}", str(pdf_context))
         
-        # V-World 국토교통부 토지특성 및 토지이음 공적데이터 실시간 조회하여 프롬프트 컨텍스트에 추가
+        # V-World 국토교통부 토지특성 및 토지이음 공적데이터 + 택지지구/재개발·재건축 공간 편입 실시간 조회하여 프롬프트 컨텍스트에 추가
         land_context = ""
         try:
+            import json as _json
+            import sqlite3 as _sqlite3
+
+            def _point_in_ring(lng_pt: float, lat_pt: float, ring: list) -> bool:
+                inside = False
+                n = len(ring)
+                if n < 3:
+                    return False
+                j = n - 1
+                for i in range(n):
+                    xi, yi = ring[i][0], ring[i][1]
+                    xj, yj = ring[j][0], ring[j][1]
+                    if ((yi > lat_pt) != (yj > lat_pt)) and (lng_pt < (xj - xi) * (lat_pt - yi) / ((yj - yi) or 1e-12) + xi):
+                        inside = not inside
+                    j = i
+                return inside
+
+            def _point_in_geojson_geom(lng_pt: float, lat_pt: float, geom: dict) -> bool:
+                if not geom:
+                    return False
+                gtype = geom.get("type")
+                coords = geom.get("coordinates") or []
+                if gtype == "Feature":
+                    return _point_in_geojson_geom(lng_pt, lat_pt, geom.get("geometry") or {})
+                if gtype == "Polygon" and coords:
+                    return _point_in_ring(lng_pt, lat_pt, coords[0])
+                if gtype == "MultiPolygon" and coords:
+                    for poly in coords:
+                        if poly and _point_in_ring(lng_pt, lat_pt, poly[0]):
+                            return True
+                return False
+
+            # 1) 물건 위경도 조회 (data 전달값 또는 auctions DB)
+            prop_lat = data.get("lat") or data.get("latitude")
+            prop_lng = data.get("lng") or data.get("longitude")
+            db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+            if (not prop_lat or not prop_lng) and os.path.exists(db_path):
+                try:
+                    _conn = _sqlite3.connect(db_path)
+                    _cur = _conn.cursor()
+                    if case_number:
+                        _cur.execute("SELECT lat, lng FROM auctions WHERE case_no = ? AND lat IS NOT NULL LIMIT 1", (str(case_number),))
+                        _row = _cur.fetchone()
+                        if _row:
+                            prop_lat, prop_lng = float(_row[0]), float(_row[1])
+                    if (not prop_lat or not prop_lng) and address:
+                        _cur.execute("SELECT lat, lng FROM auctions WHERE address LIKE ? AND lat IS NOT NULL LIMIT 1", (f"%{str(address)[:12]}%",))
+                        _row = _cur.fetchone()
+                        if _row:
+                            prop_lat, prop_lng = float(_row[0]), float(_row[1])
+                    _conn.close()
+                except Exception:
+                    pass
+
+            matched_taekji = []
+            matched_redev = []
+
+            # 2) 택지지구(taekji.geojson) 및 재개발·재건축구역(redevelopment_zones DB) 실측 공간 편입 스캔
+            if prop_lat and prop_lng:
+                plat, plng = float(prop_lat), float(prop_lng)
+                taekji_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "public", "data", "taekji.geojson"))
+                if os.path.exists(taekji_path):
+                    try:
+                        with open(taekji_path, "r", encoding="utf-8") as tf:
+                            tj_data = _json.load(tf)
+                        for feat in tj_data.get("features", []):
+                            geom = feat.get("geometry")
+                            if _point_in_geojson_geom(plng, plat, geom):
+                                props = feat.get("properties") or {}
+                                step_cd = str(props.get("stepCode") or "").upper()
+                                stage_nm = "초기(지구지정)" if step_cd == "SA" else ("중기(지구계획승인)" if step_cd in ("DA", "RA", "PC") else "후기(착공/조성)")
+                                matched_taekji.append(f"{props.get('zoneName', '택지개발지구')} [{stage_nm}]")
+                    except Exception:
+                        pass
+
+                if os.path.exists(db_path):
+                    try:
+                        _conn = _sqlite3.connect(db_path)
+                        _cur = _conn.cursor()
+                        _cur.execute(
+                            "SELECT name, propel_cd, geojson FROM redevelopment_zones WHERE min_lat <= ? AND max_lat >= ? AND min_lng <= ? AND max_lng >= ?",
+                            (plat, plat, plng, plng)
+                        )
+                        for r_name, r_cd, r_geo in _cur.fetchall():
+                            try:
+                                g_obj = _json.loads(r_geo) if isinstance(r_geo, str) else r_geo
+                                if _point_in_geojson_geom(plng, plat, g_obj):
+                                    matched_redev.append(f"{r_name or '재개발·재건축 정비구역'} (추진코드: {r_cd or '진행중'})")
+                            except Exception:
+                                pass
+                        _conn.close()
+                    except Exception:
+                        pass
+
             from backend.vworld_land_service import get_comprehensive_land_info
-            vw_res = get_comprehensive_land_info(address)
+            vw_res = get_comprehensive_land_info(address, prop_lat, prop_lng)
             if vw_res and (vw_res.get('jimok') or vw_res.get('zoning')):
                 land_context = f"\n\n### [국토교통부 V-World 공적장부 실측 토지 및 토지이음 규제정보]\n"
                 land_context += f"- 공식 지목: {vw_res.get('jimok') or '정보없음'}\n"
@@ -239,18 +333,38 @@ def generate_deep_research(data: dict) -> str:
                 if vw_res.get('official_price_sqm'):
                     land_context += f"- 개별공시지가: ㎡당 {int(vw_res.get('official_price_sqm')):,} 원 (평당 {int(vw_res.get('official_price_sqm')*3.30578):,} 원)\n"
                 use_info = vw_res.get('use_info', {})
-                if use_info.get('all_zones'):
-                    land_context += f"- 토지이음 전체 지정구역: {', '.join(use_info.get('all_zones', []))}\n"
+                all_z = use_info.get('all_zones', [])
+                if all_z:
+                    land_context += f"- 토지이음 전체 지정구역: {', '.join(all_z)}\n"
+                    for zn in all_z:
+                        if any(k in zn for k in ["재개발", "재건축", "정비구역", "재정비촉진", "모아타운", "소규모주택정비"]) and zn not in matched_redev:
+                            matched_redev.append(zn)
+                        if any(k in zn for k in ["공공주택지구", "택지개발", "도시개발구역"]) and zn not in matched_taekji:
+                            matched_taekji.append(zn)
                 if use_info.get('industrial_zones'):
                     land_context += f"- ⚠️ 산업단지 편입: {', '.join([z['name'] for z in use_info['industrial_zones']])} (협의양도인 산업용지 우선공급, 토지보상법 제77조 영업손실보상, 지장물 이전비 전액 청구 전략 서술 필수)\n"
                 if use_info.get('public_housing_zones'):
                     land_context += f"- ⚠️ 공공택지/도시개발구역 편입: {', '.join([z['name'] for z in use_info['public_housing_zones']])} (협의양도인택지 단독주택용지 특별공급, 대토보상 상업용지 양도세 40% 감면, 이주자택지 전략 서술 필수)\n"
                 if use_info.get('urban_facilities'):
                     land_context += f"- ⚠️ 도시계획시설(도로/공원) 저촉: {', '.join([z['name'] for z in use_info['urban_facilities']])} (토지보상법 제74조 잔여지 매수청구권, 20년 일몰제 실효 검토 필수)\n"
-                
+
+            if matched_taekji or matched_redev:
+                land_context += "\n### 🚨 [필수 반영: 택지지구 / 재개발·재건축 정비구역 편입 실측 확인 — 현금보상 및 강제수용 토지보상가 전략 필수 제시]\n"
+                if matched_taekji:
+                    land_context += f"- **편입 택지지구/공공주택지구**: {', '.join(matched_taekji)}\n"
+                if matched_redev:
+                    land_context += f"- **편입 재개발·재건축 정비구역**: {', '.join(matched_redev)}\n"
+                land_context += (
+                    "- **[필수 작성 지침]**: 본 물건은 택지지구 또는 재개발·재건축 사업구역 내 편입이 확인된 물건이므로, `# 4. 권리분석` 및 `# 8. 출구전략`에서 "
+                    "일반 매매/임대나 입주권 취득 전략뿐만 아니라 반드시 **'현금보상(현금청산) 및 강제수용에 따른 토지보상가(수용보상금) 수령 전략'**을 핵심 전략 중 하나로 구체적인 금액 시뮬레이션과 함께 제시하십시오:\n"
+                    "  1) **택지지구·공공주택지구 강제수용 및 토지보상가 전략 (토지보상법 제68조·제70조)**: 비교표준지 공시지가 기준 적정가격 산정(`비교표준지 공시지가 × 지가변동률 × 지역요인 × 개별요인 × 기타보정률`, 통상 개별공시지가의 130%~180% 수준 및 지장물·영업·이주보상 별도 가산), 소유자 추천 감정평가사 선임(동의율 1/2), 협의 불응 후 **수용재결 → 이의재결 → 보상금증액청구소송**을 통한 보상금 증액 및 경매 낙찰 최저가 대비 예상 수용보상 차익(안전마진) 산출.\n"
+                    "  2) **재개발·재건축 현금보상(현금청산) 및 수용재결 전략 (도시 및 주거환경정비법 제73조)**: 투기과열지구 조합원 지위양도 제한(제39조 제2항)·재당첨 제한(제72조 제6항) 해당 여부 또는 자발적 분양 미신청을 통한 **현금청산 전략**, 관리처분계획 인가 고시일 다음 날부터 90일 내 손실보상 협의 및 미합의 시 60일 내 **수용재결(재개발)/매도청구(재건축)** 시가 감정평가 절차, 60일 기한 도과 시 **지연이자(최대 연 15% 이하)** 청구권, 경매 최저가 낙찰 시 현금청산 예상 수령액 대비 순수익 시뮬레이션.\n"
+                )
+
+            if land_context:
                 prompt += land_context
         except Exception as ve:
-            print(f"V-World 토지정보 프롬프트 주입 에러 (무시 가능): {ve}")
+            print(f"V-World 및 개발구역 편입 프롬프트 주입 에러 (무시 가능): {ve}")
 
         prompt += "\n\n**[중요 지시사항]: 응답은 반드시 '# 1. 요약'으로 시작해야 하며, 1번부터 10번까지의 목차를 빠짐없이 순서대로 작성하세요. 절대 중간 목차부터 시작하지 마세요.**\n"
         last_err_msg = ""

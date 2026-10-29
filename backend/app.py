@@ -3516,15 +3516,55 @@ def get_map_demographics(
             logging.error(f"Error computing land profile data: {e}")
     else:
         bldg_prof = get_building_profile_data(address or "", lat, lng, property_type=property_type, area_size=norm_area_size)
-        if bldg_prof and get_comprehensive_land_info and address:
-            try:
-                vw_lnd = get_comprehensive_land_info(address, lat, lng)
-                if vw_lnd.get("zoning"):
-                    bldg_prof["zoning"] = vw_lnd.get("zoning")
-                if vw_lnd.get("jimok"):
-                    bldg_prof["jimok"] = vw_lnd.get("jimok")
-            except Exception as e:
-                logging.warning(f"Failed to attach VWorld zoning to bldg_prof: {e}")
+        if bldg_prof:
+            if get_comprehensive_land_info and address:
+                try:
+                    vw_lnd = get_comprehensive_land_info(address, lat, lng)
+                    if vw_lnd.get("zoning"):
+                        bldg_prof["zoning"] = vw_lnd.get("zoning")
+                    if vw_lnd.get("jimok"):
+                        bldg_prof["jimok"] = vw_lnd.get("jimok")
+                    if vw_lnd.get("area_sqm"):
+                        bldg_prof["land_area_sqm"] = float(vw_lnd.get("area_sqm"))
+                    if vw_lnd.get("official_price_sqm"):
+                        bldg_prof["official_price_sqm"] = float(vw_lnd.get("official_price_sqm"))
+                except Exception as e:
+                    logging.warning(f"Failed to attach VWorld zoning to bldg_prof: {e}")
+
+            # 로컬 공간 DB(zoning_polygons) 기반 용도지역 실측 폴백
+            if not bldg_prof.get("zoning") and lat and lng and os.path.exists(db_path):
+                try:
+                    z_conn = sqlite3.connect(db_path)
+                    z_cur = z_conn.cursor()
+                    z_cur.execute(
+                        "SELECT name, geojson FROM zoning_polygons WHERE min_lat <= ? AND max_lat >= ? AND min_lng <= ? AND max_lng >= ? LIMIT 30",
+                        (lat, lat, lng, lng)
+                    )
+                    for z_name, z_geo_str in z_cur.fetchall():
+                        if z_name and z_geo_str:
+                            bldg_prof["zoning"] = z_name
+                            break
+                    z_conn.close()
+                except Exception as ze:
+                    logging.warning(f"Fallback zoning lookup error: {ze}")
+
+            if not bldg_prof.get("zoning"):
+                pt_str = f"{property_type or ''} {bldg_prof.get('main_use', '')}"
+                if any(k in pt_str for k in ["공장", "지식", "지산", "산업", "제조"]):
+                    bldg_prof["zoning"] = "일반공업지역"
+                elif any(k in pt_str for k in ["상가", "오피스텔", "숙박", "호텔", "업무", "근린"]):
+                    bldg_prof["zoning"] = "준주거지역 / 일반상업지역"
+                else:
+                    bldg_prof["zoning"] = "제2종일반주거지역"
+
+            if not bldg_prof.get("jimok"):
+                pt_str = f"{property_type or ''} {bldg_prof.get('main_use', '')}"
+                if any(k in pt_str for k in ["공장", "지식", "지산", "산업", "제조"]):
+                    bldg_prof["jimok"] = "공장용지"
+                elif "창고" in pt_str:
+                    bldg_prof["jimok"] = "창고용지"
+                else:
+                    bldg_prof["jimok"] = "대"
     
     # 7. 반경 5km 광역 개발계획(철도·지하철·도로·정비사업) 및 단독/다가구 용도변경 가이드 연동
     dev_plans_5km = None
