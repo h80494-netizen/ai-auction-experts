@@ -4691,6 +4691,18 @@ def init_board_db():
         )
     """)
 
+    # Table for email verifications
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS email_verifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            code TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            is_verified INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL
+        )
+    """)
+
     # Table for admin notices (알림판)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS admin_notices (
@@ -4726,6 +4738,17 @@ try:
 except Exception as e:
     print(f"Board DB init warning: {e}")
 
+def validate_user_password(pw: str) -> tuple[bool, str]:
+    if not pw or len(pw.strip()) < 6:
+        return False, "비밀번호는 영문 알파벳, 숫자, 특수문자를 모두 포함하여 최소 6자리 이상이어야 합니다."
+    p = pw.strip()
+    has_letter = bool(re.search(r'[A-Za-z]', p))
+    has_digit = bool(re.search(r'\d', p))
+    has_special = bool(re.search(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?~`]', p))
+    if not (has_letter and has_digit and has_special):
+        return False, "비밀번호는 영문 알파벳, 숫자, 특수문자를 모두 포함해야 합니다."
+    return True, ""
+
 def hash_pin(pin: str) -> str:
     return hashlib.sha256(pin.strip().encode('utf-8')).hexdigest()
 
@@ -4733,6 +4756,13 @@ def verify_admin_key(key: str) -> bool:
     if not key:
         return False
     return key.strip() == "h80494"
+
+class SendEmailCodeRequest(BaseModel):
+    email: str
+
+class VerifyEmailCodeRequest(BaseModel):
+    email: str
+    code: str
 
 class InquiryCreateRequest(BaseModel):
     title: str
@@ -4760,16 +4790,37 @@ class ApproveUserRequest(BaseModel):
     admin_key: str
     reply_message: Optional[str] = ""
 
+class AdminUserActionRequest(BaseModel):
+    admin_key: str
+    status: Optional[str] = "active"
+
+class AdminUserCreateRequest(BaseModel):
+    admin_key: str
+    username: str
+    contact: str
+    pin: str
+
+class AdminUserUpdateRequest(BaseModel):
+    admin_key: str
+    username: str
+    contact: str
+
+class AdminUserResetPwRequest(BaseModel):
+    admin_key: str
+    new_pin: str
+
 @app.get("/api/board/inquiries")
-async def get_inquiries(page: int = 1, limit: int = 20):
+async def get_inquiries(page: int = 1, limit: int = 20, admin_key: Optional[str] = None):
     db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
+    is_admin = verify_admin_key(admin_key) if admin_key else False
+    
     offset = max(0, (page - 1) * limit)
     cursor.execute("""
-        SELECT i.id, i.title, i.author, i.is_secret, i.status, i.is_approved, i.approved_at, i.created_at,
+        SELECT i.id, i.title, i.content, i.author, i.contact, i.is_secret, i.status, i.is_approved, i.approved_at, i.created_at,
                COUNT(c.id) as comment_count,
                MAX(c.is_admin) as has_admin_reply
         FROM board_inquiries i
@@ -4787,21 +4838,27 @@ async def get_inquiries(page: int = 1, limit: int = 20):
     items = []
     for r in rows:
         raw_author = r["author"] or "익명"
-        if len(raw_author) > 2:
-            masked_author = raw_author[0] + "*" * (len(raw_author) - 2) + raw_author[-1]
-        elif len(raw_author) == 2:
-            masked_author = raw_author[0] + "*"
+        if is_admin:
+            display_author = raw_author
+            display_contact = r["contact"] or "-"
         else:
-            masked_author = raw_author
+            if len(raw_author) > 2:
+                display_author = raw_author[0] + "*" * (len(raw_author) - 2) + raw_author[-1]
+            elif len(raw_author) == 2:
+                display_author = raw_author[0] + "*"
+            else:
+                display_author = raw_author
+            display_contact = ""
             
         display_title = r["title"]
         if r["is_secret"]:
             display_title = f"🔒 {display_title}" if not display_title.startswith("🔒") else display_title
             
-        items.append({
+        item_obj = {
             "id": r["id"],
             "title": display_title,
-            "author": masked_author,
+            "author": display_author,
+            "contact": display_contact,
             "is_secret": bool(r["is_secret"]),
             "status": r["status"],
             "is_approved": bool(r["is_approved"]),
@@ -4809,16 +4866,124 @@ async def get_inquiries(page: int = 1, limit: int = 20):
             "created_at": r["created_at"],
             "comment_count": r["comment_count"] or 0,
             "has_admin_reply": bool(r["has_admin_reply"])
-        })
+        }
+        if is_admin:
+            item_obj["content"] = r["content"] or ""
+        items.append(item_obj)
         
     return {"status": "success", "data": {"items": items, "total": total_count, "page": page, "limit": limit}}
 
+import random
+import smtplib
+from email.mime.text import MIMEText
+
+@app.post("/api/auth/send_verification_code")
+async def send_verification_code(req: SendEmailCodeRequest):
+    email = req.email.strip().lower()
+    if not email or "@" not in email or "." not in email:
+        return {"status": "error", "message": "올바른 이메일 주소를 입력해주세요."}
+
+    code = f"{random.randint(100000, 999999)}"
+    
+    kst = timezone(timedelta(hours=9))
+    now = datetime.now(kst)
+    expires_at = (now + timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
+    now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM email_verifications WHERE email = ?", (email,))
+    cursor.execute("""
+        INSERT INTO email_verifications (email, code, expires_at, is_verified, created_at)
+        VALUES (?, ?, ?, 0, ?)
+    """, (email, code, expires_at, now_str))
+    conn.commit()
+    conn.close()
+
+    email_sent = False
+    try:
+        smtp_user = os.environ.get("SMTP_USER")
+        smtp_pw = os.environ.get("SMTP_PASS")
+        smtp_host = os.environ.get("SMTP_HOST", "smtp.naver.com")
+        smtp_port = int(os.environ.get("SMTP_PORT", 465))
+        
+        if smtp_user and smtp_pw:
+            msg = MIMEText(f"""안녕하세요, AI Auction Expert 가입 인증번호입니다.
+
+인증번호 6자리: [{code}]
+
+본 인증번호는 10분간 유효합니다. 가입 화면에 입력하여 인증을 완료해주세요.
+감사합니다.""", 'plain', 'utf-8')
+            msg['Subject'] = f"[AI Auction Expert] 이메일 인증번호 안내 ({code})"
+            msg['From'] = smtp_user
+            msg['To'] = email
+
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=5) as server:
+                server.login(smtp_user, smtp_pw)
+                server.send_message(msg)
+            email_sent = True
+    except Exception as e:
+        print(f"SMTP send warning ({email}): {e}")
+
+    print(f"📧 [Email Verification] To: {email} | Code: {code} | Sent: {email_sent}")
+    return {
+        "status": "success",
+        "message": f"'{email}'(으)로 6자리 인증번호가 발송되었습니다. (유효시간 10분)",
+        "demo_code": code if not email_sent else None
+    }
+
+@app.post("/api/auth/verify_code")
+async def verify_code(req: VerifyEmailCodeRequest):
+    email = req.email.strip().lower()
+    code = req.code.strip()
+    if not email or not code:
+        return {"status": "error", "message": "이메일과 인증번호를 모두 입력해주세요."}
+
+    kst = timezone(timedelta(hours=9))
+    now_str = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
+
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT * FROM email_verifications 
+        WHERE email = ? AND code = ? AND expires_at >= ?
+        ORDER BY id DESC LIMIT 1
+    """, (email, code, now_str))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return {"status": "error", "message": "인증번호가 일치하지 않거나 유효시간(10분)이 만료되었습니다."}
+
+    cursor.execute("UPDATE email_verifications SET is_verified = 1 WHERE email = ?", (email,))
+    conn.commit()
+    conn.close()
+
+    return {"status": "success", "message": "이메일 실명 인증이 성공적으로 완료되었습니다!"}
+
 @app.post("/api/board/inquiries")
 async def create_inquiry(req: InquiryCreateRequest):
-    if not req.pin or len(req.pin.strip()) < 2:
-        return {"status": "error", "message": "비밀번호(PIN)를 최소 2자리 이상 입력해주세요."}
+    # 1. 비밀번호 복잡도 유효성 검사 (영문 + 숫자 + 특수문자 6자리 이상)
+    valid_pw, pw_err = validate_user_password(req.pin)
+    if not valid_pw:
+        return {"status": "error", "message": pw_err}
+
     if not req.title.strip() or not req.content.strip() or not req.author.strip():
-        return {"status": "error", "message": "작성자, 제목, 내용을 모두 입력해주세요."}
+        return {"status": "error", "message": "작성자(이름), 제목, 내용을 모두 입력해주세요."}
+
+    # 2. 이메일 인증 여부 검증 (contact가 이메일인 경우)
+    contact_str = (req.contact or "").strip().lower()
+    if "@" in contact_str:
+        db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT is_verified FROM email_verifications WHERE email = ? AND is_verified = 1", (contact_str,))
+        ver_row = cursor.fetchone()
+        conn.close()
+        if not ver_row:
+            return {"status": "error", "message": "이메일 인증이 완료되지 않았습니다. [인증 확인] 버튼을 먼저 진행해주세요."}
         
     kst = timezone(timedelta(hours=9))
     now_str = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
@@ -4835,7 +5000,7 @@ async def create_inquiry(req: InquiryCreateRequest):
     conn.commit()
     conn.close()
     
-    return {"status": "success", "message": "문의/신청글이 등록되었습니다.", "id": new_id}
+    return {"status": "success", "message": "가입/문의 신청이 성공적으로 접수되었습니다. 관리자 승인 후 본인 비밀번호로 로그인하실 수 있습니다.", "id": new_id}
 
 @app.post("/api/board/inquiries/{inquiry_id}/view")
 async def view_inquiry(inquiry_id: int, req: InquiryViewRequest):
@@ -4980,6 +5145,252 @@ async def check_admin_login(req: AdminLoginRequest):
         return {"status": "success", "message": "관리자 인증 성공"}
     else:
         return {"status": "error", "message": "관리자 인증번호가 일치하지 않습니다."}
+
+# ----------------- 관리자 회원 관리 API (Admin User Management) -----------------
+@app.post("/api/admin/inquiries")
+async def get_admin_inquiries(req: AdminLoginRequest):
+    if not verify_admin_key(req.admin_key):
+        return {"status": "error", "message": "관리자 인증 실패"}
+
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT i.id, i.title, i.content, i.author, i.contact, i.is_secret, i.status, 
+               i.is_approved, i.approved_at, i.created_at,
+               COUNT(c.id) as comment_count,
+               MAX(c.is_admin) as has_admin_reply
+        FROM board_inquiries i
+        LEFT JOIN board_comments c ON i.id = c.inquiry_id
+        GROUP BY i.id
+        ORDER BY i.id DESC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+
+    items = []
+    for r in rows:
+        items.append({
+            "id": r["id"],
+            "title": r["title"],
+            "content": r["content"] or "",
+            "author": r["author"],
+            "contact": r["contact"] or "-",
+            "is_secret": bool(r["is_secret"]),
+            "status": r["status"],
+            "is_approved": bool(r["is_approved"]),
+            "approved_at": r["approved_at"],
+            "created_at": r["created_at"],
+            "comment_count": r["comment_count"] or 0,
+            "has_admin_reply": bool(r["has_admin_reply"])
+        })
+    return {"status": "success", "data": items}
+
+@app.post("/api/admin/users")
+async def get_admin_users(req: AdminLoginRequest):
+    if not verify_admin_key(req.admin_key):
+        return {"status": "error", "message": "관리자 인증 실패"}
+
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT u.id, u.username, u.contact, u.status, u.approved_at, u.inquiry_id,
+               i.title as inquiry_title, i.content as inquiry_content, i.created_at as request_at
+        FROM approved_users u
+        LEFT JOIN board_inquiries i ON u.inquiry_id = i.id
+        ORDER BY u.id DESC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+
+    users = []
+    for r in rows:
+        users.append({
+            "id": r["id"],
+            "username": r["username"],
+            "contact": r["contact"] or "-",
+            "status": r["status"] or "active",
+            "approved_at": r["approved_at"],
+            "inquiry_id": r["inquiry_id"],
+            "inquiry_title": r["inquiry_title"],
+            "request_at": r["request_at"]
+        })
+    return {"status": "success", "data": users}
+
+@app.post("/api/admin/users/{user_id}/status")
+async def update_admin_user_status(user_id: int, req: AdminUserActionRequest):
+    if not verify_admin_key(req.admin_key):
+        return {"status": "error", "message": "관리자 인증 실패"}
+
+    new_status = req.status if req.status in ["active", "blocked"] else "active"
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE approved_users SET status = ? WHERE id = ?", (new_status, user_id))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"회원 상태가 '{new_status}'(으)로 변경되었습니다."}
+
+@app.delete("/api/admin/users/{user_id}")
+async def delete_admin_user(user_id: int, admin_key: str):
+    if not verify_admin_key(admin_key):
+        return {"status": "error", "message": "관리자 인증 실패"}
+
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM approved_users WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "회원이 정상적으로 삭제되었습니다."}
+
+@app.post("/api/admin/users/add")
+async def add_admin_user_direct(req: AdminUserCreateRequest):
+    if not verify_admin_key(req.admin_key):
+        return {"status": "error", "message": "관리자 인증 실패"}
+
+    valid_pw, pw_err = validate_user_password(req.pin)
+    if not valid_pw:
+        return {"status": "error", "message": pw_err}
+
+    kst = timezone(timedelta(hours=9))
+    now_str = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
+    pin_h = hash_pin(req.pin)
+
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO approved_users (username, contact, pin_hash, inquiry_id, status, approved_at)
+        VALUES (?, ?, ?, NULL, 'active', ?)
+    """, (req.username.strip(), req.contact.strip(), pin_h, now_str))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"회원 '{req.username}'님이 직권 등록되었습니다."}
+
+@app.post("/api/admin/users/{user_id}/update")
+async def update_admin_user_info(user_id: int, req: AdminUserUpdateRequest):
+    if not verify_admin_key(req.admin_key):
+        return {"status": "error", "message": "관리자 인증 실패"}
+
+    new_name = req.username.strip()
+    new_contact = req.contact.strip()
+    if not new_name:
+        return {"status": "error", "message": "회원명을 입력해주세요."}
+
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT inquiry_id FROM approved_users WHERE id = ?", (user_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return {"status": "error", "message": "회원을 찾을 수 없습니다."}
+
+    cursor.execute("UPDATE approved_users SET username = ?, contact = ? WHERE id = ?", (new_name, new_contact, user_id))
+    if row["inquiry_id"]:
+        cursor.execute("UPDATE board_inquiries SET author = ?, contact = ? WHERE id = ?", (new_name, new_contact, row["inquiry_id"]))
+
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"회원 정보가 '{new_name}'(으)로 수정되었습니다."}
+
+@app.post("/api/admin/users/{user_id}/reset_pw")
+async def reset_admin_user_pw(user_id: int, req: AdminUserResetPwRequest):
+    if not verify_admin_key(req.admin_key):
+        return {"status": "error", "message": "관리자 인증 실패"}
+
+    valid_pw, pw_err = validate_user_password(req.new_pin)
+    if not valid_pw:
+        return {"status": "error", "message": pw_err}
+
+    pin_h = hash_pin(req.new_pin)
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT username, inquiry_id FROM approved_users WHERE id = ?", (user_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return {"status": "error", "message": "회원을 찾을 수 없습니다."}
+
+    cursor.execute("UPDATE approved_users SET pin_hash = ? WHERE id = ?", (pin_h, user_id))
+    if row["inquiry_id"]:
+        cursor.execute("UPDATE board_inquiries SET pin_hash = ? WHERE id = ?", (pin_h, row["inquiry_id"]))
+
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"'{row['username']}' 회원의 비밀번호가 성공적으로 재설정되었습니다."}
+
+@app.post("/api/admin/users/all")
+async def get_all_users_combined(req: AdminLoginRequest):
+    if not verify_admin_key(req.admin_key):
+        return {"status": "error", "message": "관리자 인증 실패"}
+
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # 1. Approved users
+    cursor.execute("""
+        SELECT u.id as user_id, u.username, u.contact, u.status, u.approved_at, u.inquiry_id,
+               i.title as inquiry_title, i.content as inquiry_content, i.created_at as request_at
+        FROM approved_users u
+        LEFT JOIN board_inquiries i ON u.inquiry_id = i.id
+        ORDER BY u.id DESC
+    """)
+    app_rows = cursor.fetchall()
+    
+    # 2. Pending inquiries
+    cursor.execute("""
+        SELECT i.id, i.title, i.content, i.author, i.contact, i.status, i.created_at
+        FROM board_inquiries i
+        WHERE i.is_approved = 0
+        ORDER BY i.id DESC
+    """)
+    pen_rows = cursor.fetchall()
+    conn.close()
+
+    combined = []
+    # Add approved users
+    for r in app_rows:
+        combined.append({
+            "type": "approved",
+            "user_id": r["user_id"],
+            "inquiry_id": r["inquiry_id"],
+            "username": r["username"],
+            "contact": r["contact"] or "-",
+            "role": "정회원",
+            "status": r["status"] or "active",
+            "approved_at": r["approved_at"],
+            "request_at": r["request_at"] or r["approved_at"],
+            "title": r["inquiry_title"] or "직권등록",
+            "content": r["inquiry_content"] or ""
+        })
+
+    # Add pending users
+    for r in pen_rows:
+        combined.append({
+            "type": "pending",
+            "user_id": None,
+            "inquiry_id": r["id"],
+            "username": r["author"],
+            "contact": r["contact"] or "-",
+            "role": "승인대기",
+            "status": "pending",
+            "approved_at": None,
+            "request_at": r["created_at"],
+            "title": r["title"],
+            "content": r["content"] or ""
+        })
+
+    return {"status": "success", "data": combined}
 
 @app.delete("/api/board/inquiries/{inquiry_id}")
 async def delete_inquiry(inquiry_id: int, pin: Optional[str] = None, admin_key: Optional[str] = None):

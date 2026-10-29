@@ -14,63 +14,78 @@
 
 ---
 
-## 📂 폴더별 구조 및 상세 해설
+## 🏗️ 3대 핵심 아키텍처 (프론트엔드 · 백엔드 · 데이터베이스)
 
-프로젝트는 유지보수성과 배포 효율성을 극대화하기 위해 역할별로 명확히 분리·정리되어 있습니다.
+프로젝트는 유지보수성과 직관적인 탐색을 위해 **프론트엔드(`public/`)**, **백엔드(`backend/`)**, **데이터베이스(`database/`)** 3대 영역으로 명확히 구분되어 있으며, 모든 기존 실행 스크립트와 100% 호환됩니다.
 
-```
+| 구분 | 디렉토리 | 핵심 역할 | 상세 문서 |
+| :--- | :--- | :--- | :--- |
+| 🎨 **Frontend** | [`public/`](./public/) | 대시보드(`index.html`), GIS 경매지도(`map.html`), 비교/이슈/관리자 UI 및 GeoJSON 공간 레이어 | [public/README.md](./public/README.md) |
+| ⚙️ **Backend** | [`backend/`](./backend/) | FastAPI 웹 서버(`app.py`), Gemini AI 10단계 권리분석 엔진, 네이버 시세/토지 분석기, 법원·온비드 크롤러 | [backend/README.md](./backend/README.md) |
+| 🗄️ **Database** | [`database/`](./database/) | 통합 SQLite 스키마(`schema.sql`), 테이블 명세(`schemas/`), DB 적재·마이그레이션 스크립트(`scripts/`) 및 런타임 DB(`backend/data/*.db`) | [database/README.md](./database/README.md) |
+
+---
+
+## 📂 전체 폴더 구조
+
+```text
 ai-auction-experts/
-├── 📁 backend/                # 백엔드 핵심 애플리케이션 및 분석 엔진
-│   ├── app.py                 # FastAPI 메인 웹 서버 및 엔드포인트
-│   ├── ai_analyzer.py         # Google Gemini AI 심층 권리분석 파이프라인
-│   ├── doc_generator.py       # Word(.docx) 분석보고서 생성 모듈
-│   ├── land_analyzer.py       # 토지 특성 및 규제 분석 로직
-│   ├── naver_price_analyzer.py# 네이버 부동산 호가/실거래가 수집 및 분석
-│   ├── vworld_land_service.py # 국토교통부 V-World 공적장부 실시간 연동
-│   ├── sgis_service.py        # 통계청 SGIS 인구 및 통계 데이터 서비스
-│   ├── pdf_analyzer.py        # 법원 서류 PDF 텍스트 추출 엔진
-│   ├── crawler/               # 마이옥션, 온비드, 웹 검색 수집 스크래퍼
-│   ├── parser/                # 경매 문서 및 지적 데이터 파서
-│   ├── prompts/               # AI 심층 리포트 생성용 시스템 프롬프트
-│   ├── scripts/               # 경매 DB 배치 및 공시지가 업데이트 스크립트
-│   └── tests/                 # 백엔드 단위 테스트 및 검증 모듈
 │
-├── 📁 public/                 # 웹 프론트엔드 정적 파일
-│   ├── index.html             # 메인 권리분석 대시보드 화면
-│   ├── map.html               # 인터랙티브 GIS 경매 지도 화면
-│   ├── analysis.html          # AI 추천 BEST 3 중첩 분석 화면
-│   ├── script.js              # 프론트엔드 메인 UI 로직 및 비동기 API 통신
-│   ├── style.css              # 모던 글래스모피즘 테마 스타일시트
-│   └── dev_restriction.geojson# 규제 및 개발계획 공간 레이어
+├── 🎨 public/                      # [프론트엔드] 웹 UI 및 GIS 공간 시각화 정적 파일
+│   ├── README.md                   # 프론트엔드 상세 구조 안내
+│   ├── index.html                  # 메인 AI 권리분석 대시보드 화면
+│   ├── map.html                    # 인터랙티브 GIS 경매 지도 화면
+│   ├── analysis.html               # AI 추천 BEST 3 중첩 분석 화면
+│   ├── compare.html                # 다중 물건 비교 분석 화면
+│   ├── issues.html                 # 개발호재·이슈 레이더 화면
+│   ├── admin.html                  # 관리자 페이지 (공지/문의/승인 관리)
+│   ├── script.js / style.css       # 프론트엔드 메인 로직 및 스타일시트
+│   └── data/                       # 아파트 단지·학군·노후도·택지 등 GeoJSON 레이어
 │
-├── 📁 data/                   # 공시지가, 실거래가, 상권 등 대용량 데이터
-│   ├── 네이버부동산/          # 네이버 부동산 크롤링 캐시 및 시세 데이터베이스
-│   └── ...                    # SHP 지적/상권 원천 데이터
+├── ⚙️ backend/                     # [백엔드] 핵심 API 서버, AI 분석 엔진 및 크롤러
+│   ├── README.md                   # 백엔드 상세 아키텍처 안내
+│   ├── app.py                      # FastAPI 메인 웹 서버 (Port: 8001)
+│   ├── ai_analyzer.py              # Google Gemini AI 심층 권리분석 파이프라인
+│   ├── naver_price_analyzer.py     # 네이버 부동산 매매/전월세 호가·실거래 시세 분석
+│   ├── land_analyzer.py            # 토지 특성 및 공적 규제 분석 로직
+│   ├── vworld_land_service.py      # 국토교통부 V-World 공적장부 실시간 연동
+│   ├── sgis_service.py             # 통계청 SGIS 인구 및 통계 데이터 서비스
+│   ├── doc_generator.py            # Word(.docx) 분석보고서 생성 모듈
+│   ├── pdf_analyzer.py             # 법원 서류 PDF 텍스트 추출 엔진
+│   ├── crawler/                    # 대법원 경매, 마이옥션, 온비드, 마당스 수집 스크래퍼
+│   ├── parser/                     # 경매 문서 및 PDF 파서
+│   ├── prompts/                    # AI 심층 리포트 생성용 시스템 프롬프트
+│   ├── scripts/                    # 런타임 DB 배치 업데이트 스크립트
+│   ├── tests/                      # 백엔드 단위 테스트 모듈
+│   └── data/                       # 런타임 SQLite DB (map_data.db, small_business.db)
 │
-├── 📁 tools/                  # 개발/검증용 스크립트 및 아카이브 덤프
-│   ├── 📁 test_scripts/       # 일회성 테스트, 디버깅, 데이터 검증 스크립트 (120+개)
-│   └── 📁 archive_dumps/      # 개발 및 크롤링 테스트 과정에서 수집된 임시 덤프 데이터
+├── 🗄️ database/                    # [데이터베이스] 스키마, 명세서 및 DB 구축·갱신 도구
+│   ├── README.md                   # DB 테이블 명세(34개 테이블) 및 운영 가이드
+│   ├── schema.sql                  # 전체 SQLite 테이블 및 인덱스 DDL 스키마
+│   ├── schemas/                    # 경공매/GPS 스키마 요약 JSON
+│   └── scripts/                    # DB 빌드·마이그레이션·스키마 추출 스크립트 모음
 │
-├── 📁 scratch/                # 임시 작업용 스크래치 폴더 (Git 무시)
+├── 📁 data/                        # 공시지가(SHP), 실거래가, 네이버부동산 등 원천 데이터셋
+├── 📁 tools/                       # 개발/검증용 테스트 스크립트 및 아카이브 백업 보관소
+├── 📁 scratch/                     # 로컬 전용 임시 스크래치 폴더 (Git 추적 제외)
 │
-├── ⚙️ 실행 및 배포 스크립트
-│   ├── start.bat              # 로컬 백엔드 서버 즉시 기동 (Windows)
-│   ├── start_tunnel.bat       # Cloudflare Tunnel 외부 도메인 연결 기동
-│   ├── deploy_to_aws.py       # AWS EC2 서버 원클릭 자동 배포 스크립트
-│   ├── deploy_to_aws.bat      # 간편 AWS 배포 실행 배치파일
-│   ├── update_data.bat        # 경매 최신 DB 업데이트 배치
-│   ├── update_realprice.bat   # 실거래가 트렌드 업데이트 배치
-│   └── sync_data_to_ec2.bat   # 대용량 DB 파일 원격 서버 동기화
+├── 🚀 실행 및 배포 스크립트
+│   ├── start.bat                   # 로컬 백엔드 서버 및 대시보드 즉시 기동 (Windows)
+│   ├── start_tunnel.bat            # Cloudflare Tunnel 외부 도메인 연결 기동
+│   ├── deploy_to_aws.py            # AWS EC2 서버 원클릭 자동 배포 스크립트
+│   ├── deploy_auction_update.py    # 경공매 업데이트 데이터 & DB 원클릭 배포
+│   ├── deploy_naver_update.py      # 네이버 시세 DB & 분석 로직 원클릭 배포
+│   ├── update_data.bat             # 경매 최신 DB 및 공시지가 업데이트 배치
+│   └── update_realprice.bat        # 국토부 실거래가 트렌드 업데이트 배치
 │
-└── 📄 시스템 설정 및 문서
-    ├── .env                   # API 키 및 서버 설정 (Git 무시)
-    ├── .gitignore             # 깃 형상관리 제외 목록 정의
-    ├── requirements.txt       # 파이썬 의존성 패키지 명세
-    ├── Dockerfile             # 컨테이너 빌드 파일
-    ├── docker-compose.yml     # 멀티 컨테이너 설정
-    ├── GEMINI.md              # AI 어시스턴트 권리분석 최우선 준수 규칙
-    ├── CLAUDE.md              # 프로젝트 개발 표준 및 명령어 가이드
-    └── AWS_DEPLOY_GUIDE.md    # EC2 배포 및 인프라 가이드
+└── 📄 시스템 설정 및 규칙 문서
+    ├── .gitattributes              # Git LFS 대용량 파일(*.db) 추적 설정
+    ├── .gitignore                  # Git 형상관리 제외 목록 정의
+    ├── requirements.txt            # 파이썬 의존성 패키지 명세
+    ├── Dockerfile / docker-compose.yml # 컨테이너 빌드 및 배포 설정
+    ├── GEMINI.md                   # AI 어시스턴트 권리분석 최우선 준수 규칙
+    ├── CLAUDE.md                   # 6대 AI 에이전트 핵심 원칙 가이드
+    └── AWS_DEPLOY_GUIDE.md         # AWS EC2 배포 및 인프라 운영 가이드
 ```
 
 ---
@@ -79,7 +94,7 @@ ai-auction-experts/
 
 ### 1. 로컬 환경 실행
 ```bash
-# 가상환경 활성화 및 패키지 설치
+# 패키지 설치
 pip install -r requirements.txt
 
 # 로컬 서버 실행 (포트 8001)
@@ -101,29 +116,9 @@ python deploy_to_aws.py --with-db
 
 ### 3. 데이터베이스 갱신 배치
 ```bash
-# 마이옥션 경매 데이터 최신화
+# 경·공매 데이터 및 공시지가 최신화
 update_data.bat
 
 # 국토부 실거래가 시세 데이터 갱신
 update_realprice.bat
-```
-
----
-
-## 🔄 Git 형상관리 및 롤백 가이드
-
-본 저장소는 긴급 상황 시 안정된 과거 시점으로 신속히 롤백할 수 있도록 릴리즈 태그를 운영합니다.
-
-### 📌 안정 릴리즈 기준점 (현재 기준)
-- **Tag**: `v2.0-stable-20261022`
-- **Branch**: `backup_apt_update` (Commit: `4fe36a0`)
-- **내용**: AI 권리분석 파이프라인의 `import re` 오류 완전 해결, 10단계 심층 분석 마크다운 보고서 생성 검증 완료, AWS 라이브 서비스 정상 연동
-
-### 롤백 명령어 (원클릭 복원)
-```bash
-# 안정 릴리즈 태그 시점으로 복원할 경우
-git checkout v2.0-stable-20261022
-
-# 최신 작업 브랜치로 복귀할 경우
-git checkout backup_apt_update
 ```

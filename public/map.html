@@ -8869,6 +8869,16 @@ async function executeNaverPriceAnalysis(radiusVal) {
         }
     }
 
+    // Detect basement floors (B3, B2, B1...) accurately from address and floor
+    const fullCheckText = `${targetAddr} ${payload.floor || ''}`.toUpperCase();
+    if (/(?:제\s*)?지하\s*3층?|B\s*0?3|지\s*3층?/.test(fullCheckText)) {
+        payload.floor = "B3";
+    } else if (/(?:제\s*)?지하\s*2층?|B\s*0?2|지\s*2층?/.test(fullCheckText)) {
+        payload.floor = "B2";
+    } else if (/(?:제\s*)?지하\s*1층?|B\s*0?1|지\s*1층?|지층|지하/.test(fullCheckText)) {
+        payload.floor = "B1";
+    }
+
     // Display target property address & case number
     document.getElementById('naverTargetAddressText').innerText = targetAddr;
     document.getElementById('naverTargetCaseNoBadge').innerText = targetCaseNo ? `사건 ${targetCaseNo}` : '';

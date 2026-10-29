@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Auction Expert - 관리자 센터</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            background-color: #0b0f19;
+            color: #f8fafc;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .admin-header {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .admin-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #00f0ff;
+        }
+        .admin-badge {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #fff;
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+        .admin-nav {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .admin-container {
+            max-width: 1300px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 22px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        .stat-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        .stat-val {
+            font-size: 1.8rem;
+            font-weight: 900;
+            margin-top: 4px;
+        }
+        .stat-label {
+            font-size: 0.88rem;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+        .admin-tabs {
+            display: flex;
+            gap: 10px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 24px;
+        }
+        .tab-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.05rem;
+            font-weight: 700;
+            padding: 12px 20px;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            color: #00f0ff;
+        }
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: #00f0ff;
+            box-shadow: 0 0 12px #00f0ff;
+        }
+        .panel {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        table.admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.92rem;
+        }
+        table.admin-table th {
+            background: rgba(15, 23, 42, 0.8);
+            color: #94a3b8;
+            padding: 12px 16px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        table.admin-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #f1f5f9;
+            vertical-align: middle;
+        }
+        table.admin-table tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+        .btn-approve { background: #10b981; color: white; }
+        .btn-approve:hover { background: #059669; }
+        .btn-delete { background: #ef4444; color: white; }
+        .btn-delete:hover { background: #dc2626; }
+        .btn-status-active { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
+        .btn-status-blocked { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+        .btn-direct-add { background: linear-gradient(135deg, #00f0ff, #0284c7); color: #000; font-weight: 800; }
+        
+        /* Auth Overlay Modal */
+        #authLockOverlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 15, 25, 0.96);
+            backdrop-filter: blur(15px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        .auth-card {
+            background: #1e293b;
+            border: 1px solid #00f0ff;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
+            border-radius: 16px;
+            padding: 36px 40px;
+            width: 380px;
+            text-align: center;
+        }
+        .auth-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px 16px;
+            background: #0f172a;
+            border: 1px solid #475569;
+            color: #fff;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            text-align: center;
+            letter-spacing: 2px;
+            margin: 18px 0;
+            outline: none;
+        }
+        .auth-input:focus {
+            border-color: #00f0ff;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Auth Lock Modal -->
+    <div id="authLockOverlay">
+        <div class="auth-card">
+            <i class="fa-solid fa-shield-halved fa-3x" style="color: #00f0ff; margin-bottom: 16px;"></i>
+            <h2 style="margin: 0; font-size: 1.4rem; color: #fff;">관리자 보안 인증</h2>
+            <p style="color: #94a3b8; font-size: 0.88rem; margin: 8px 0 20px;">시스템 관리자 인증번호를 입력하십시오.</p>
+            <input type="password" id="adminAuthInput" class="auth-input" placeholder="관리자 인증키 (h80494)" autofocus>
+            <button onclick="handleAdminAuthenticate()" style="width: 100%; padding: 12px; background: #00f0ff; color: #000; font-weight: 800; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer;">인증 및 대시보드 입장</button>
+            <div style="margin-top: 15px;">
+                <a href="/" style="color: #64748b; font-size: 0.85rem; text-decoration: none;"><i class="fa-solid fa-arrow-left"></i> 일반 사용자 화면으로 돌아가기</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="admin-header">
+        <div class="admin-title">
+            <i class="fa-solid fa-crown" style="color: #f59e0b;"></i>
+            <span>AI Auction Expert</span>
+            <span class="admin-badge">ADMIN CENTER</span>
+        </div>
+        <div class="admin-nav">
+            <button onclick="window.location.href='/'" class="action-btn" style="background: rgba(255,255,255,0.1); color: #fff; padding: 8px 14px;">
+                <i class="fa-solid fa-house"></i> 메인 화면
+            </button>
+            <button onclick="handleAdminLogout()" class="action-btn" style="background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid #ef4444; padding: 8px 14px;">
+                <i class="fa-solid fa-right-from-bracket"></i> 로그아웃
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="admin-container">
+        <!-- Stats Summary -->
+        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+                <div>
+                    <div class="stat-label">승인된 정회원 수</div>
+                    <div class="stat-val" id="statUserCount" style="color: #10b981;">0명</div>
+                </div>
+            </div>
+            <div class="stat-card" style="border: 1px solid rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.05);">
+                <div class="stat-icon" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+                <div>
+                    <div class="stat-label" style="color: #fbbf24; font-weight:700;">승인 대기 신청자</div>
+                    <div class="stat-val" id="statPendingCount" style="color: #fbbf24;">0건</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(0, 240, 255, 0.15); color: #00f0ff;">
+                    <i class="fa-solid fa-inbox"></i>
+                </div>
+                <div>
+                    <div class="stat-label">누적 가입/문의 신청</div>
+                    <div class="stat-val" id="statInquiryCount" style="color: #00f0ff;">0건</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(147, 51, 234, 0.15); color: #c084fc;">
+                    <i class="fa-solid fa-bullhorn"></i>
+                </div>
+                <div>
+                    <div class="stat-label">활성 긴급 공지</div>
+                    <div class="stat-val" id="statNoticeStatus" style="color: #c084fc; font-size:1.3rem;">가동중</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="admin-tabs">
+            <button class="tab-btn active" onclick="switchTab('usersTab')">
+                <i class="fa-solid fa-user-check"></i> 회원 명부 관리
+            </button>
+            <button class="tab-btn" onclick="switchTab('inquiriesTab')">
+                <i class="fa-solid fa-envelope-open-text"></i> 가입 신청 및 문의 <span id="tabPendingBadge" style="display:none; background:#ef4444; color:#fff; font-size:0.75rem; padding:2px 7px; border-radius:10px; margin-left:6px; font-weight:800;">0</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('noticesTab')">
+                <i class="fa-solid fa-bullhorn"></i> 공지사항 관리
+            </button>
+        </div>
+
+        <!-- Tab 1: Approved Users Panel -->
+        <div id="usersTab" class="panel tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <h3 style="margin: 0; font-size: 1.15rem; color: #f8fafc;"><i class="fa-solid fa-users-gear" style="color: #00f0ff;"></i> 승인된 정회원 명부</h3>
+                    <p style="margin: 5px 0 0; font-size: 0.85rem; color: #94a3b8;">본인 비밀번호로 로그인할 수 있는 정식 회원 목록입니다. (총 <span id="usersTableCount" style="color:#00f0ff; font-weight:700;">0</span>명)</p>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <div style="position: relative;">
+                        <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 10px; color: #64748b; font-size: 0.85rem;"></i>
+                        <input type="text" id="userSearchInput" oninput="filterUsersList()" placeholder="회원명 / 연락처 검색..." style="padding: 7px 10px 7px 32px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #fff; font-size: 0.85rem; width: 190px;">
+                    </div>
+                    <button onclick="downloadUsersCSV()" class="action-btn" style="background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; font-weight: 700;">
+                        <i class="fa-solid fa-file-excel"></i> 엑셀(CSV) 다운로드
+                    </button>
+                    <button onclick="openDirectAddUserModal()" class="action-btn btn-direct-add">
+                        <i class="fa-solid fa-user-plus"></i> 직권 등록
+                    </button>
+                    <button onclick="loadAdminUsers()" class="action-btn" style="background: #334155; color: #fff;">
+                        <i class="fa-solid fa-rotate-right"></i> 새로고침
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">ID</th>
+                            <th>회원명(실명)</th>
+                            <th>연락처 / 이메일</th>
+                            <th>신청 출처</th>
+                            <th>승인일시</th>
+                            <th>상태</th>
+                            <th style="text-align: right; width: 250px;">회원 관리 액션</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminUsersTableBody">
+                        <tr><td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">회원 데이터를 불러오는 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab 2: Inquiries Panel -->
+        <div id="inquiriesTab" class="panel tab-content" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <h3 style="margin: 0; font-size: 1.15rem; color: #f8fafc;"><i class="fa-solid fa-envelope" style="color: #00f0ff;"></i> 가입 신청 및 소통 문의 관리</h3>
+                    <p style="margin: 5px 0 0; font-size: 0.85rem; color: #94a3b8;">사용자가 신청한 비밀번호 발급 요청 및 문의 내역을 관리자가 직접 확인하고 즉시 승인합니다.</p>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <div style="position: relative;">
+                        <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 10px; color: #64748b; font-size: 0.85rem;"></i>
+                        <input type="text" id="inquirySearchInput" oninput="renderFilteredInquiries()" placeholder="신청자 / 연락처 / 내용 검색..." style="padding: 7px 10px 7px 32px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #fff; font-size: 0.85rem; width: 220px;">
+                    </div>
+                    <button onclick="loadAdminInquiries()" class="action-btn" style="background: #334155; color: #fff;">
+                        <i class="fa-solid fa-rotate-right"></i> 새로고침
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Buttons Bar -->
+            <div style="display: flex; gap: 8px; margin-bottom: 14px; background: rgba(15, 23, 42, 0.6); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); align-items: center;">
+                <span style="font-size: 0.82rem; color: #94a3b8; font-weight: 600; margin-right: 4px;"><i class="fa-solid fa-filter"></i> 필터:</span>
+                <button id="filterBtnAll" onclick="setInquiryFilter('all')" class="action-btn" style="background: #00f0ff; color: #000; font-weight: 700; padding: 4px 12px; font-size: 0.8rem; border-radius: 4px;">
+                    전체 (<span id="countFilterAll">0</span>)
+                </button>
+                <button id="filterBtnPending" onclick="setInquiryFilter('pending')" class="action-btn" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #fbbf24; font-weight: 700; padding: 4px 12px; font-size: 0.8rem; border-radius: 4px;">
+                    ⏳ 승인 대기 (<span id="countFilterPending">0</span>)
+                </button>
+                <button id="filterBtnApproved" onclick="setInquiryFilter('approved')" class="action-btn" style="background: rgba(255,255,255,0.05); color: #94a3b8; padding: 4px 12px; font-size: 0.8rem; border-radius: 4px;">
+                    ✅ 승인 완료 (<span id="countFilterApproved">0</span>)
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">ID</th>
+                            <th style="width: 85px;">상태</th>
+                            <th style="width: 110px;">신청자(실명)</th>
+                            <th style="width: 180px;">연락처 / 이메일</th>
+                            <th>신청 제목 및 사유</th>
+                            <th style="width: 140px;">접수일시</th>
+                            <th style="text-align: right; width: 170px;">승인 / 관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminInquiriesTableBody">
+                        <tr><td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">신청 데이터를 불러오는 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab 3: Notices Panel -->
+        <div id="noticesTab" class="panel tab-content" style="display: none;">
+            <div style="margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 1.15rem; color: #f8fafc;"><i class="fa-solid fa-bullhorn" style="color: #f59e0b;"></i> 메인 화면 팝업 긴급 공지 관리</h3>
+                <p style="margin: 5px 0 0; font-size: 0.85rem; color: #94a3b8;">구글 AI 쿼터 소진 안내 등 메인 상단에 긴급 공지를 활성화하거나 내용을 수정합니다.</p>
+            </div>
+
+            <div style="background: rgba(15, 23, 42, 0.6); padding: 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); max-width: 700px;">
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-weight: 700; color: #cbd5e1; margin-bottom: 6px;">공지 제목</label>
+                    <input type="text" id="noticeTitleInput" style="width: 100%; box-sizing: border-box; padding: 10px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px;">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-weight: 700; color: #cbd5e1; margin-bottom: 6px;">공지 내용</label>
+                    <textarea id="noticeContentInput" rows="4" style="width: 100%; box-sizing: border-box; padding: 10px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px;"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; margin-top: 20px;">
+                    <button onclick="saveAdminNotice()" class="action-btn" style="background: #f59e0b; color: #000; font-weight: 800; padding: 10px 20px;">
+                        <i class="fa-solid fa-floppy-disk"></i> 공지사항 저장 및 활성화
+                    </button>
+                    <button onclick="toggleNoticeActive(false)" class="action-btn" style="background: #475569; color: #fff; padding: 10px 16px;">
+                        <i class="fa-solid fa-power-off"></i> 공지 비활성화 (끄기)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Direct Add User Modal -->
+    <div id="directAddUserModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: #1e293b; border: 1px solid #00f0ff; border-radius: 14px; width: 440px; padding: 26px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <h3 style="margin: 0 0 16px; color: #00f0ff; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-user-plus"></i> 회원 직권 등록
+            </h3>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 0.85rem; color: #94a3b8; display: block; margin-bottom: 4px;">회원명(실명)</label>
+                <input type="text" id="addUsername" style="width: 100%; box-sizing: border-box; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 0.85rem; color: #94a3b8; display: block; margin-bottom: 4px;">연락처 / 이메일</label>
+                <input type="text" id="addContact" placeholder="예: user@naver.com" style="width: 100%; box-sizing: border-box; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px;">
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="font-size: 0.85rem; color: #94a3b8; display: block; margin-bottom: 4px;">비밀번호 (영문+숫자+특수문자 6자리 이상)</label>
+                <input type="password" id="addPin" placeholder="예: pass123!" style="width: 100%; box-sizing: border-box; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px;">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button onclick="document.getElementById('directAddUserModal').style.display='none'" style="padding: 8px 16px; background: #334155; color: #fff; border: none; border-radius: 6px; cursor: pointer;">취소</button>
+                <button onclick="submitDirectAddUser()" style="padding: 8px 18px; background: #00f0ff; color: #000; font-weight: 800; border: none; border-radius: 6px; cursor: pointer;">등록하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div id="editUserModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: #1e293b; border: 1px solid #38bdf8; border-radius: 14px; width: 440px; padding: 26px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <h3 style="margin: 0 0 16px; color: #38bdf8; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-user-pen"></i> 회원 정보 수정
+            </h3>
+            <input type="hidden" id="editUserId">
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 0.85rem; color: #94a3b8; display: block; margin-bottom: 4px;">회원명(실명)</label>
+                <input type="text" id="editUsername" style="width: 100%; box-sizing: border-box; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px;">
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="font-size: 0.85rem; color: #94a3b8; display: block; margin-bottom: 4px;">연락처 / 이메일</label>
+                <input type="text" id="editContact" style="width: 100%; box-sizing: border-box; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px;">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button onclick="document.getElementById('editUserModal').style.display='none'" style="padding: 8px 16px; background: #334155; color: #fff; border: none; border-radius: 6px; cursor: pointer;">취소</button>
+                <button onclick="submitEditUser()" style="padding: 8px 18px; background: #38bdf8; color: #000; font-weight: 800; border: none; border-radius: 6px; cursor: pointer;">저장하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div id="resetPwModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: #1e293b; border: 1px solid #f59e0b; border-radius: 14px; width: 440px; padding: 26px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <h3 style="margin: 0 0 10px; color: #fbbf24; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-key"></i> 비밀번호 직권 재설정
+            </h3>
+            <p style="margin: 0 0 16px; font-size: 0.85rem; color: #94a3b8;">
+                <strong id="resetPwTargetName" style="color: #fff;"></strong> 회원의 로그인 비밀번호를 즉시 변경합니다.
+            </p>
+            <input type="hidden" id="resetPwUserId">
+            <div style="margin-bottom: 16px;">
+                <label style="font-size: 0.85rem; color: #94a3b8; display: block; margin-bottom: 4px;">새 비밀번호 (영문+숫자+특수문자 6자리 이상)</label>
+                <input type="password" id="resetNewPin" placeholder="예: pass123!" style="width: 100%; box-sizing: border-box; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px;">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button onclick="document.getElementById('resetPwModal').style.display='none'" style="padding: 8px 16px; background: #334155; color: #fff; border: none; border-radius: 6px; cursor: pointer;">취소</button>
+                <button onclick="submitResetPw()" style="padding: 8px 18px; background: #fbbf24; color: #000; font-weight: 800; border: none; border-radius: 6px; cursor: pointer;">변경 완료</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentAdminKey = sessionStorage.getItem('admin_board_key') || '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (currentAdminKey === 'h80494') {
+                document.getElementById('authLockOverlay').style.display = 'none';
+                loadAllDashboardData();
+            } else {
+                document.getElementById('authLockOverlay').style.display = 'flex';
+                document.getElementById('adminAuthInput').focus();
+            }
+        });
+
+        document.getElementById('adminAuthInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleAdminAuthenticate();
+        });
+
+        async function handleAdminAuthenticate() {
+            const inputKey = document.getElementById('adminAuthInput').value.trim();
+            if (inputKey === 'h80494') {
+                currentAdminKey = inputKey;
+                sessionStorage.setItem('admin_board_key', inputKey);
+                document.getElementById('authLockOverlay').style.display = 'none';
+                loadAllDashboardData();
+            } else {
+                alert("관리자 인증번호가 일치하지 않습니다.");
+            }
+        }
+
+        function handleAdminLogout() {
+            if (confirm("관리자 센터에서 로그아웃 하시겠습니까?")) {
+                sessionStorage.removeItem('admin_board_key');
+                window.location.reload();
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(p => p.style.display = 'none');
+            
+            event.currentTarget.classList.add('active');
+            document.getElementById(tabId).style.display = 'block';
+
+            if (tabId === 'usersTab') loadAdminUsers();
+            if (tabId === 'inquiriesTab') loadAdminInquiries();
+            if (tabId === 'noticesTab') loadAdminNotice();
+        }
+
+        let adminUsersData = [];
+        let adminInquiriesData = [];
+        let currentInquiryFilter = 'all';
+
+        async function loadAllDashboardData() {
+            loadAdminUsers();
+            loadAdminInquiries();
+            loadAdminNotice();
+        }
+
+        async function loadAdminUsers() {
+            const tbody = document.getElementById('adminUsersTableBody');
+            try {
+                const res = await fetch('/api/admin/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_key: currentAdminKey })
+                });
+                const json = await res.json();
+
+                if (json.status === 'success') {
+                    adminUsersData = json.data || [];
+                    document.getElementById('statUserCount').innerText = `${adminUsersData.length}명`;
+                    document.getElementById('usersTableCount').innerText = `${adminUsersData.length}`;
+                    filterUsersList();
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #ef4444;">오류: ${json.message}</td></tr>`;
+                }
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #ef4444;">통신 오류가 발생했습니다.</td></tr>`;
+            }
+        }
+
+        function filterUsersList() {
+            const query = (document.getElementById('userSearchInput')?.value || '').trim().toLowerCase();
+            const tbody = document.getElementById('adminUsersTableBody');
+            
+            const filtered = adminUsersData.filter(u => {
+                if (!query) return true;
+                return (u.username && u.username.toLowerCase().includes(query)) ||
+                       (u.contact && u.contact.toLowerCase().includes(query)) ||
+                       (u.inquiry_title && u.inquiry_title.toLowerCase().includes(query));
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">조건에 맞는 회원이 없습니다.</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            filtered.forEach(u => {
+                const statusClass = u.status === 'active' ? 'btn-status-active' : 'btn-status-blocked';
+                const statusText = u.status === 'active' ? '정상(Active)' : '차단(Blocked)';
+                const toggleStatus = u.status === 'active' ? 'blocked' : 'active';
+                const inqSource = u.inquiry_title ? `<span title="${u.inquiry_title}" style="color:#38bdf8; font-size:0.85rem;"><i class="fa-solid fa-link"></i> 신청 #${u.inquiry_id}</span>` : '<span style="color:#64748b;">직권등록</span>';
+
+                html += `
+                    <tr>
+                        <td style="color: #64748b;">${u.id}</td>
+                        <td style="font-weight: 700; color: #00f0ff;"><i class="fa-solid fa-user-check"></i> ${u.username}</td>
+                        <td style="font-weight: 600; color: #e2e8f0;">${u.contact || '-'}</td>
+                        <td>${inqSource}</td>
+                        <td style="color: #94a3b8; font-size: 0.85rem;">${u.approved_at || '-'}</td>
+                        <td>
+                            <button onclick="toggleUserStatus(${u.id}, '${toggleStatus}')" class="action-btn ${statusClass}">
+                                ${statusText}
+                            </button>
+                        </td>
+                        <td style="text-align: right; white-space: nowrap;">
+                            <button onclick="openEditUserModal(${u.id}, '${(u.username||'').replace(/'/g, "\\'")}', '${(u.contact || '').replace(/'/g, "\\'")}')" class="action-btn" style="background:#0284c7; color:#fff;" title="회원 정보 수정">
+                                <i class="fa-solid fa-pen"></i> 수정
+                            </button>
+                            <button onclick="openResetPwModal(${u.id}, '${(u.username||'').replace(/'/g, "\\'")}')" class="action-btn" style="background:#f59e0b; color:#000; font-weight:700; margin-left:3px;" title="비밀번호 직권 재설정">
+                                <i class="fa-solid fa-key"></i> PW
+                            </button>
+                            <button onclick="deleteUser(${u.id}, '${(u.username||'').replace(/'/g, "\\'")}')" class="action-btn btn-delete" style="margin-left:3px;" title="회원 삭제">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function openEditUserModal(id, username, contact) {
+            document.getElementById('editUserId').value = id;
+            document.getElementById('editUsername').value = username;
+            document.getElementById('editContact').value = contact === '-' ? '' : contact;
+            document.getElementById('editUserModal').style.display = 'flex';
+        }
+
+        async function submitEditUser() {
+            const userId = document.getElementById('editUserId').value;
+            const username = document.getElementById('editUsername').value.trim();
+            const contact = document.getElementById('editContact').value.trim();
+            if (!username) {
+                alert("회원명을 입력해주세요.");
+                return;
+            }
+            try {
+                const res = await fetch(`/api/admin/users/${userId}/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_key: currentAdminKey, username, contact })
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    alert(json.message);
+                    document.getElementById('editUserModal').style.display = 'none';
+                    loadAdminUsers();
+                    loadAdminInquiries();
+                } else {
+                    alert("수정 실패: " + json.message);
+                }
+            } catch (e) {
+                alert("통신 오류: " + e.message);
+            }
+        }
+
+        function openResetPwModal(id, username) {
+            document.getElementById('resetPwUserId').value = id;
+            document.getElementById('resetPwTargetName').innerText = username;
+            document.getElementById('resetNewPin').value = '';
+            document.getElementById('resetPwModal').style.display = 'flex';
+            setTimeout(() => document.getElementById('resetNewPin').focus(), 100);
+        }
+
+        async function submitResetPw() {
+            const userId = document.getElementById('resetPwUserId').value;
+            const newPin = document.getElementById('resetNewPin').value.trim();
+            if (!newPin) {
+                alert("새 비밀번호를 입력해주세요.");
+                return;
+            }
+            try {
+                const res = await fetch(`/api/admin/users/${userId}/reset_pw`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_key: currentAdminKey, new_pin: newPin })
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    alert(json.message);
+                    document.getElementById('resetPwModal').style.display = 'none';
+                } else {
+                    alert("비밀번호 변경 실패: " + json.message);
+                }
+            } catch (e) {
+                alert("통신 오류: " + e.message);
+            }
+        }
+
+        function downloadUsersCSV() {
+            if (!adminUsersData || adminUsersData.length === 0) {
+                alert("다운로드할 회원 데이터가 없습니다.");
+                return;
+            }
+            let csv = "\uFEFF회원ID,회원명,연락처/이메일,신청출처,상태,승인일시,신청일시\n";
+            adminUsersData.forEach(u => {
+                const source = u.inquiry_title ? `신청 #${u.inquiry_id} (${u.inquiry_title.replace(/,/g, ' ')})` : "직권등록";
+                const row = [
+                    u.id,
+                    `"${(u.username || '').replace(/"/g, '""')}"`,
+                    `"${(u.contact || '').replace(/"/g, '""')}"`,
+                    `"${source.replace(/"/g, '""')}"`,
+                    u.status || 'active',
+                    `"${u.approved_at || ''}"`,
+                    `"${u.request_at || ''}"`
+                ];
+                csv += row.join(",") + "\n";
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const nowStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            a.href = url;
+            a.download = `ai_auction_users_db_${nowStr}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        async function toggleUserStatus(userId, newStatus) {
+            try {
+                const res = await fetch(`/api/admin/users/${userId}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_key: currentAdminKey, status: newStatus })
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    loadAdminUsers();
+                } else {
+                    alert("상태 변경 실패: " + json.message);
+                }
+            } catch (e) {
+                alert("통신 오류 발생: " + e.message);
+            }
+        }
+
+        async function deleteUser(userId, username) {
+            if (!confirm(`'${username}' 회원을 정말로 삭제하시겠습니까? (삭제 시 해당 회원은 본인 비밀번호로 로그인할 수 없습니다)`)) return;
+            try {
+                const res = await fetch(`/api/admin/users/${userId}?admin_key=${encodeURIComponent(currentAdminKey)}`, {
+                    method: 'DELETE'
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    alert("회원이 정상적으로 삭제되었습니다.");
+                    loadAdminUsers();
+                } else {
+                    alert("삭제 실패: " + json.message);
+                }
+            } catch (e) {
+                alert("통신 오류 발생: " + e.message);
+            }
+        }
+
+        async function loadAdminInquiries() {
+            const tbody = document.getElementById('adminInquiriesTableBody');
+            try {
+                const res = await fetch('/api/admin/inquiries', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_key: currentAdminKey })
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    adminInquiriesData = json.data || [];
+                    
+                    // Count stats
+                    const totalCnt = adminInquiriesData.length;
+                    const pendingCnt = adminInquiriesData.filter(i => !i.is_approved).length;
+                    const approvedCnt = totalCnt - pendingCnt;
+
+                    document.getElementById('statInquiryCount').innerText = `${totalCnt}건`;
+                    document.getElementById('statPendingCount').innerText = `${pendingCnt}건`;
+                    
+                    const badge = document.getElementById('tabPendingBadge');
+                    if (badge) {
+                        if (pendingCnt > 0) {
+                            badge.style.display = 'inline-block';
+                            badge.innerText = `${pendingCnt}`;
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+
+                    document.getElementById('countFilterAll').innerText = `${totalCnt}`;
+                    document.getElementById('countFilterPending').innerText = `${pendingCnt}`;
+                    document.getElementById('countFilterApproved').innerText = `${approvedCnt}`;
+
+                    renderFilteredInquiries();
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #ef4444;">오류: ${json.message}</td></tr>`;
+                }
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #ef4444;">통신 오류가 발생했습니다.</td></tr>`;
+            }
+        }
+
+        function setInquiryFilter(filterType) {
+            currentInquiryFilter = filterType;
+            
+            // Toggle active style on filter buttons
+            const btnAll = document.getElementById('filterBtnAll');
+            const btnPending = document.getElementById('filterBtnPending');
+            const btnApproved = document.getElementById('filterBtnApproved');
+
+            [btnAll, btnPending, btnApproved].forEach(b => {
+                b.style.background = 'rgba(255,255,255,0.05)';
+                b.style.color = '#94a3b8';
+                b.style.fontWeight = '500';
+                b.style.border = '1px solid transparent';
+            });
+
+            if (filterType === 'all') {
+                btnAll.style.background = '#00f0ff';
+                btnAll.style.color = '#000';
+                btnAll.style.fontWeight = '700';
+            } else if (filterType === 'pending') {
+                btnPending.style.background = 'rgba(245, 158, 11, 0.2)';
+                btnPending.style.color = '#fbbf24';
+                btnPending.style.fontWeight = '700';
+                btnPending.style.border = '1px solid #fbbf24';
+            } else if (filterType === 'approved') {
+                btnApproved.style.background = 'rgba(16, 185, 129, 0.2)';
+                btnApproved.style.color = '#34d399';
+                btnApproved.style.fontWeight = '700';
+                btnApproved.style.border = '1px solid #34d399';
+            }
+
+            renderFilteredInquiries();
+        }
+
+        function renderFilteredInquiries() {
+            const tbody = document.getElementById('adminInquiriesTableBody');
+            const query = (document.getElementById('inquirySearchInput')?.value || '').trim().toLowerCase();
+
+            let filtered = adminInquiriesData.filter(item => {
+                // Filter by approval status
+                if (currentInquiryFilter === 'pending' && item.is_approved) return false;
+                if (currentInquiryFilter === 'approved' && !item.is_approved) return false;
+
+                // Filter by search query
+                if (query) {
+                    const matchAuthor = item.author && item.author.toLowerCase().includes(query);
+                    const matchContact = item.contact && item.contact.toLowerCase().includes(query);
+                    const matchTitle = item.title && item.title.toLowerCase().includes(query);
+                    const matchContent = item.content && item.content.toLowerCase().includes(query);
+                    if (!matchAuthor && !matchContact && !matchTitle && !matchContent) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">해당 조건의 가입/문의 신청 내역이 없습니다.</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            filtered.forEach(item => {
+                const isApp = item.is_approved;
+                const statusBadge = isApp 
+                    ? `<span style="background:rgba(16,185,129,0.2); color:#34d399; padding:4px 9px; border-radius:4px; font-weight:700; font-size:0.8rem; border:1px solid rgba(16,185,129,0.3);"><i class="fa-solid fa-check"></i> 승인완료</span>`
+                    : `<span style="background:rgba(245,158,11,0.25); color:#fbbf24; padding:4px 9px; border-radius:4px; font-weight:700; font-size:0.8rem; border:1px solid rgba(245,158,11,0.5); animation: pulse 2s infinite;"><i class="fa-solid fa-clock"></i> 승인대기</span>`;
+
+                const rowBg = isApp ? '' : 'background: rgba(245, 158, 11, 0.04);';
+
+                const approveBtn = isApp 
+                    ? `<span style="color:#64748b; font-size:0.82rem;"><i class="fa-solid fa-calendar-check"></i> ${item.approved_at ? item.approved_at.split(' ')[0] : '승인됨'}</span>`
+                    : `<button onclick="approveInquiryDirect(${item.id}, '${item.author}')" class="action-btn btn-approve" style="background:#10b981; color:#000; font-weight:800; padding:6px 12px; font-size:0.82rem;"><i class="fa-solid fa-user-check"></i> 즉시 승인</button>`;
+
+                const contentPreview = item.content ? `<div style="font-size:0.82rem; color:#94a3b8; margin-top:3px; max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${item.content.replace(/"/g, '&quot;')}"><i class="fa-regular fa-comment-dots"></i> ${item.content}</div>` : '';
+
+                html += `
+                    <tr style="${rowBg}">
+                        <td style="color: #64748b;">${item.id}</td>
+                        <td>${statusBadge}</td>
+                        <td style="font-weight:700; color:#fff; font-size:0.95rem;">${item.author}</td>
+                        <td style="color:#38bdf8; font-weight:600; font-size:0.88rem;">${item.contact || '-'}</td>
+                        <td>
+                            <div style="font-weight:600; color:#f8fafc;">${item.title}</div>
+                            ${contentPreview}
+                        </td>
+                        <td style="color:#64748b; font-size:0.82rem;">${item.created_at || '-'}</td>
+                        <td style="text-align: right; white-space:nowrap;">
+                            ${approveBtn}
+                            <button onclick="deleteInquiryDirect(${item.id})" class="action-btn btn-delete" style="margin-left:4px;" title="신청글 삭제">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        async function approveInquiryDirect(inquiryId, author) {
+            if (!confirm(`'${author}'님의 가입 신청을 즉시 승인하시겠습니까?`)) return;
+            try {
+                const res = await fetch(`/api/board/inquiries/${inquiryId}/approve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_key: currentAdminKey, reply_message: "🎉 정식 회원으로 승인되었습니다. 설정하신 본인 비밀번호로 로그인하실 수 있습니다." })
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    alert(json.message);
+                    loadAdminInquiries();
+                    loadAdminUsers();
+                } else {
+                    alert("승인 실패: " + json.message);
+                }
+            } catch (e) {
+                alert("통신 오류 발생: " + e.message);
+            }
+        }
+
+        async function deleteInquiryDirect(inquiryId) {
+            if (!confirm("해당 신청글을 삭제하시겠습니까?")) return;
+            try {
+                const res = await fetch(`/api/board/inquiries/${inquiryId}?admin_key=${encodeURIComponent(currentAdminKey)}`, {
+                    method: 'DELETE'
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    loadAdminInquiries();
+                } else {
+                    alert("삭제 실패: " + json.message);
+                }
+            } catch (e) {
+                alert("통신 오류 발생: " + e.message);
+            }
+        }
+
+        function openDirectAddUserModal() {
+            document.getElementById('addUsername').value = '';
+            document.getElementById('addContact').value = '';
+            document.getElementById('addPin').value = '';
+            document.getElementById('directAddUserModal').style.display = 'flex';
+        }
+
+        async function submitDirectAddUser() {
+            const username = document.getElementById('addUsername').value.trim();
+            const contact = document.getElementById('addContact').value.trim();
+            const pin = document.getElementById('addPin').value.trim();
+
+            if (!username || !contact || !pin) {
+                alert("모든 필드를 입력해주세요.");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/admin/users/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_key: currentAdminKey, username, contact, pin })
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    alert(json.message);
+                    document.getElementById('directAddUserModal').style.display = 'none';
+                    loadAdminUsers();
+                } else {
+                    alert("등록 실패: " + json.message);
+                }
+            } catch (e) {
+                alert("통신 오류 발생: " + e.message);
+            }
+        }
+
+        async function loadAdminNotice() {
+            try {
+                const res = await fetch('/api/notice');
+                const json = await res.json();
+                if (json.status === 'success' && json.notice) {
+                    document.getElementById('noticeTitleInput').value = json.notice.title || '';
+                    document.getElementById('noticeContentInput').value = json.notice.content || '';
+                    document.getElementById('statNoticeStatus').innerText = json.notice.is_active ? "가동중 (ON)" : "비활성 (OFF)";
+                    document.getElementById('statNoticeStatus').style.color = json.notice.is_active ? "#f59e0b" : "#64748b";
+                }
+            } catch (e) {}
+        }
+
+        async function saveAdminNotice() {
+            const title = document.getElementById('noticeTitleInput').value.trim();
+            const content = document.getElementById('noticeContentInput').value.trim();
+            if (!title || !content) {
+                alert("공지 제목과 내용을 모두 입력해주세요.");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/notice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_key: currentAdminKey, title, content, is_active: true })
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    alert("공지사항이 성공적으로 저장 및 활성화되었습니다.");
+                    loadAdminNotice();
+                } else {
+                    alert("저장 실패: " + json.message);
+                }
+            } catch (e) {
+                alert("통신 오류 발생: " + e.message);
+            }
+        }
+
+        async function toggleNoticeActive(isActive) {
+            try {
+                const res = await fetch('/api/notice/toggle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_key: currentAdminKey, notice_id: 1, is_active: isActive })
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    alert(isActive ? "공지가 활성화되었습니다." : "공지가 비활성화되었습니다.");
+                    loadAdminNotice();
+                } else {
+                    alert("상태 변경 실패: " + json.message);
+                }
+            } catch (e) {
+                alert("통신 오류 발생: " + e.message);
+            }
+        }
+    </script>
+</body>
+</html>

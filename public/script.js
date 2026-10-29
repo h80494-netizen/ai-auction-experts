@@ -1059,6 +1059,18 @@ function initInquiryBoard() {
     if (inqForm) inqForm.addEventListener('submit', handleInquirySubmit);
     if (commentForm) commentForm.addEventListener('submit', handleCommentSubmit);
 
+    // Email verification listeners
+    const sendCodeBtn = document.getElementById('sendEmailCodeBtn');
+    const verifyCodeBtn = document.getElementById('verifyEmailCodeBtn');
+    if (sendCodeBtn) sendCodeBtn.addEventListener('click', handleSendEmailCode);
+    if (verifyCodeBtn) verifyCodeBtn.addEventListener('click', handleVerifyEmailCode);
+
+    // Password validation real-time listener
+    const inqPinInput = document.getElementById('inqPin');
+    if (inqPinInput) {
+        inqPinInput.addEventListener('input', handlePinValidationInput);
+    }
+
     // PIN modal
     if (cancelPinBtn) cancelPinBtn.addEventListener('click', () => { pinModal.style.display = 'none'; });
     if (confirmPinBtn) confirmPinBtn.addEventListener('click', handlePinConfirm);
@@ -1160,6 +1172,25 @@ function showWriteView() {
     document.getElementById('boardDetailView').style.display = 'none';
     document.getElementById('inquiryForm').reset();
     document.getElementById('inqIsSecret').checked = true;
+    isEmailVerified = false;
+    if (emailVerifyCountdown) clearInterval(emailVerifyCountdown);
+    const box = document.getElementById('emailCodeBox');
+    if (box) box.style.display = 'none';
+    const badge = document.getElementById('emailVerifySuccessBadge');
+    if (badge) badge.style.display = 'none';
+    const inqEmail = document.getElementById('inqEmail');
+    if (inqEmail) inqEmail.readOnly = false;
+    const sendBtn = document.getElementById('sendEmailCodeBtn');
+    if (sendBtn) {
+        sendBtn.style.display = 'inline-flex';
+        sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 인증번호 받기';
+        sendBtn.disabled = false;
+    }
+    const hintEl = document.getElementById('pinValidationHint');
+    if (hintEl) {
+        hintEl.style.color = '#94a3b8';
+        hintEl.innerHTML = '<i class="fa-solid fa-circle-info"></i> 영문 알파벳, 숫자, 특수문자를 모두 포함하여 6자리 이상 입력';
+    }
 }
 
 function showDetailView() {
@@ -1315,19 +1346,149 @@ async function loadInquiryDetail(id, pin) {
     }
 }
 
+let isEmailVerified = false;
+let emailVerifyCountdown = null;
+
+function handlePinValidationInput(e) {
+    const val = e.target.value.trim();
+    const hintEl = document.getElementById('pinValidationHint');
+    if (!hintEl) return;
+
+    const hasLetter = /[A-Za-z]/.test(val);
+    const hasDigit = /\d/.test(val);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(val);
+    const hasLength = val.length >= 6;
+
+    if (hasLetter && hasDigit && hasSpecial && hasLength) {
+        hintEl.style.color = '#34d399';
+        hintEl.innerHTML = '<i class="fa-solid fa-circle-check"></i> 사용 가능한 안전한 비밀번호입니다 (영문+숫자+특수문자 6자 이상 충족)';
+    } else {
+        hintEl.style.color = '#f59e0b';
+        hintEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 영문 알파벳, 숫자, 특수문자를 모두 포함하여 6자리 이상이어야 합니다.';
+    }
+}
+
+async function handleSendEmailCode() {
+    const emailInput = document.getElementById('inqEmail');
+    const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+    if (!email || !email.includes('@') || !email.includes('.')) {
+        alert("올바른 이메일 주소를 입력해주세요.");
+        return;
+    }
+
+    const sendBtn = document.getElementById('sendEmailCodeBtn');
+    sendBtn.disabled = true;
+    sendBtn.innerText = '발송 중...';
+
+    try {
+        const res = await fetch('/api/auth/send_verification_code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        const json = await res.json();
+
+        if (json.status === 'success') {
+            alert(json.message);
+            document.getElementById('emailCodeBox').style.display = 'block';
+            document.getElementById('inqEmailCode').focus();
+            
+            if (json.demo_code) {
+                document.getElementById('inqEmailCode').value = json.demo_code;
+            }
+
+            let timeLeft = 600;
+            const timerEl = document.getElementById('emailVerifyTimer');
+            if (emailVerifyCountdown) clearInterval(emailVerifyCountdown);
+            emailVerifyCountdown = setInterval(() => {
+                timeLeft--;
+                if (timeLeft <= 0) {
+                    clearInterval(emailVerifyCountdown);
+                    timerEl.innerText = "만료됨";
+                } else {
+                    const m = Math.floor(timeLeft / 60);
+                    const s = timeLeft % 60;
+                    timerEl.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+                }
+            }, 1000);
+        } else {
+            alert("발송 실패: " + json.message);
+        }
+    } catch (e) {
+        alert("인증번호 발송 중 네트워크 오류가 발생했습니다.");
+    } finally {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> 재발송';
+    }
+}
+
+async function handleVerifyEmailCode() {
+    const email = document.getElementById('inqEmail').value.trim().toLowerCase();
+    const code = document.getElementById('inqEmailCode').value.trim();
+
+    if (!code || code.length !== 6) {
+        alert("6자리 인증코드를 정확히 입력해주세요.");
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/auth/verify_code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, code })
+        });
+        const json = await res.json();
+
+        if (json.status === 'success') {
+            isEmailVerified = true;
+            if (emailVerifyCountdown) clearInterval(emailVerifyCountdown);
+            document.getElementById('emailCodeBox').style.display = 'none';
+            document.getElementById('emailVerifySuccessBadge').style.display = 'block';
+            document.getElementById('inqEmail').readOnly = true;
+            document.getElementById('sendEmailCodeBtn').style.display = 'none';
+            alert("이메일 실명 인증이 완료되었습니다!");
+        } else {
+            alert("인증 실패: " + json.message);
+        }
+    } catch (e) {
+        alert("인증 처리 중 네트워크 오류가 발생했습니다.");
+    }
+}
+
 async function handleInquirySubmit(e) {
     e.preventDefault();
     const author = document.getElementById('inqAuthor').value.trim();
     const pin = document.getElementById('inqPin').value.trim();
-    const contact = document.getElementById('inqContact').value.trim();
+    const emailInput = document.getElementById('inqEmail');
+    const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+    const phoneInput = document.getElementById('inqPhone');
+    const phone = phoneInput ? phoneInput.value.trim() : '';
     const title = document.getElementById('inqTitle').value.trim();
     const content = document.getElementById('inqContent').value.trim();
     const isSecret = document.getElementById('inqIsSecret').checked;
 
-    if (!author || !pin || !title || !content) {
-        alert("신청자명, 사용할 비밀번호(PIN), 제목, 신청 내용을 모두 입력해주세요.");
+    if (!author || !pin || !title || !content || !email) {
+        alert("신청자 실명, 사용할 비밀번호, 이메일, 제목, 신청 내용을 모두 입력해주세요.");
         return;
     }
+
+    // 1. 이메일 인증 여부 검증
+    if (!isEmailVerified) {
+        alert("이메일 실명 인증을 먼저 완료해주세요.\n[인증번호 받기]를 누르신 후 이메일로 발송된 6자리 번호를 인증해야 합니다.");
+        return;
+    }
+
+    // 2. 비밀번호 복잡도 유효성 검사 (영문+숫자+특수문자 6자 이상)
+    const hasLetter = /[A-Za-z]/.test(pin);
+    const hasDigit = /\d/.test(pin);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(pin);
+    if (!hasLetter || !hasDigit || !hasSpecial || pin.length < 6) {
+        alert("비밀번호는 영문 알파벳, 숫자, 특수문자를 모두 포함하여 최소 6자리 이상이어야 합니다.");
+        document.getElementById('inqPin').focus();
+        return;
+    }
+
+    const contact = phone ? `${email} (연락처: ${phone})` : email;
 
     try {
         const res = await fetch('/api/board/inquiries', {
@@ -1338,7 +1499,7 @@ async function handleInquirySubmit(e) {
         const json = await res.json();
 
         if (json.status === 'success') {
-            alert("신청 및 문의글이 성공적으로 등록되었습니다!\n관리자가 확인 후 회원 승인을 진행하며, 승인 완료 시 등록하신 본인 비밀번호로 사이트에 바로 로그인하실 수 있습니다.");
+            alert("가입 및 문의 신청이 성공적으로 등록되었습니다!\n관리자 승인 후 본인이 설정한 비밀번호로 로그인하실 수 있습니다.");
             cachedPins[json.id] = pin;
             showListView();
             fetchInquiries();

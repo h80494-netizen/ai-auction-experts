@@ -54,6 +54,7 @@
 - 사용승인일자: {approval_date}
 - 대지면적: {land_area}
 - 전용면적(건물면적): {building_area}
+  *(주의: 공매/경매 물건의 면적 수치 중 평방미터(㎡)를 평으로 혼동하지 마십시오. 반드시 '○○평 (○○㎡)' 형식의 환산 수치를 준수하여 서술할 것)*
 - 식별된 리스크(키워드): {risks}
 - 매각물건명세서(공매재산명세서) 주의사항/특수권리 원문:
 {precautions}{tenant_warning}{suspended_warning}{ended_warning}

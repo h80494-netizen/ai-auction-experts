@@ -37,18 +37,44 @@ def generate_deep_research(data: dict) -> str:
         def format_area_str(val):
             if not val or val == '알 수 없음':
                 return '알 수 없음'
-            val_str = str(val).replace('㎡', '').replace('평', '').replace(',', '').strip()
-            m = re.search(r'([\d.]+)', val_str)
+            s_val = str(val).strip()
+            
+            # 1. ㎡와 평이 모두 기재된 경우 (예: "1720.43㎡ (520.4평)" 또는 "520.43평 (1720.43㎡)")
+            sqm_m = re.search(r'([\d,]+(?:\.\d+)?)\s*㎡', s_val)
+            pyeong_m = re.search(r'([\d,]+(?:\.\d+)?)\s*평', s_val)
+            
+            if sqm_m and pyeong_m:
+                try:
+                    sqm_num = float(sqm_m.group(1).replace(',', ''))
+                    pyeong_num = float(pyeong_m.group(1).replace(',', ''))
+                    return f"{pyeong_num:.2f}평 ({sqm_num:.2f}㎡)"
+                except Exception:
+                    pass
+
+            # 2. ㎡만 명시된 경우 (예: "1720.43㎡", "1720.43 m2", 온비드 bldSqms)
+            if sqm_m or '㎡' in s_val or 'M2' in s_val.upper():
+                m = re.search(r'([\d,]+(?:\.\d+)?)', s_val)
+                if m:
+                    sqm_num = float(m.group(1).replace(',', ''))
+                    pyeong_num = round(sqm_num / 3.30578, 2)
+                    return f"{pyeong_num:.2f}평 ({sqm_num:.2f}㎡)"
+
+            # 3. 평만 명시된 경우 (예: "520.43평")
+            if pyeong_m or '평' in s_val:
+                m = re.search(r'([\d,]+(?:\.\d+)?)', s_val)
+                if m:
+                    pyeong_num = float(m.group(1).replace(',', ''))
+                    sqm_num = round(pyeong_num * 3.30578, 2)
+                    return f"{pyeong_num:.2f}평 ({sqm_num:.2f}㎡)"
+
+            # 4. 단위 없는 순수 숫자인 경우: 공매/경매 공적장부 기본단위는 ㎡
+            m = re.search(r'([\d,]+(?:\.\d+)?)', s_val)
             if m:
-                num = float(m.group(1))
-                if '평' in str(val):
-                    pyeong = round(num, 2)
-                    sqm = round(pyeong * 3.30578, 2)
-                else:
-                    sqm = round(num, 2)
-                    pyeong = round(sqm / 3.30578, 2)
-                return f"{pyeong:.2f}평 ({sqm:.2f}㎡)"
-            return str(val)
+                sqm_num = float(m.group(1).replace(',', ''))
+                pyeong_num = round(sqm_num / 3.30578, 2)
+                return f"{pyeong_num:.2f}평 ({sqm_num:.2f}㎡)"
+
+            return s_val
 
         land_area = format_area_str(data.get('land_area', '알 수 없음'))
         building_area = format_area_str(data.get('building_area', '알 수 없음'))
@@ -156,6 +182,7 @@ def generate_deep_research(data: dict) -> str:
 2) **배분요구(교부청구)**: 압류재산의 경우 배분요구 종기가 매우 중요합니다.
 3) **인수 금액 리스크 (조세채권 우선 원칙)**: 압류재산의 경우, 법정기일이 빠른 국세/지방세가 먼저 배분되어 임차인이 배분받지 못하는 금액이 발생 시 매수인에게 전액 인수됩니다.
 4) **명도 책임**: 공매는 인도명령 제도가 없으므로 명도소송 및 명도 책임이 전적으로 매수인(낙찰자)에게 있음을 명시하십시오.
+5) **면적 단위(㎡ vs 평) 엄격 구분**: 공매 물건의 건물/대지면적 기본 단위는 ㎡(평방미터)입니다. 예컨대 1,720.43㎡는 약 520.43평(1,720.43 ÷ 3.30578)이며, 1,720.43평이 아닙니다! 절대 평방미터 수치를 평으로 오기하거나 평당가를 왜곡하지 마십시오. 반드시 '520.43평 (1,720.43㎡)'과 같이 평과 ㎡를 명확히 구분하여 서술하십시오.
 """
 
         import datetime

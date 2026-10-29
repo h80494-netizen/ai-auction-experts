@@ -50,9 +50,19 @@ def get_floor_category_excel(floor_val, total_floor_val, is_housing=False, addre
         t_str = str(total_floor_val).strip()
         addr_upper = str(address_str).upper()
         
-        b1_keywords = ["B1", "B01", "B02", "지1층", "지2층", "지층", "지하", "지1층비", "지1", "지층1", "지하1", "지하1층", "B1층", "B2층"]
-        if any(k in f_str for k in b1_keywords) or any(k in addr_upper for k in b1_keywords) or re.search(r'지\s*1', f_str) or re.search(r'B\s*1', f_str):
+        # 1. 지하 층수 정밀 판별 (B3, B2, B1, ...)
+        combined_text = f"{f_str} {addr_upper}"
+        if re.search(r'(?:제\s*)?지하\s*3층?|B\s*0?3|지\s*3층?', combined_text):
+            return "B3"
+        if re.search(r'(?:제\s*)?지하\s*2층?|B\s*0?2|지\s*2층?', combined_text):
+            return "B2"
+        if re.search(r'(?:제\s*)?지하\s*1층?|B\s*0?1|지\s*1층?|지층|지하', combined_text):
             return "B1"
+        b_deep = re.search(r'(?:제\s*)?지하\s*(\d+)층?|B\s*0?(\d+)', combined_text)
+        if b_deep:
+            fl_num = b_deep.group(1) or b_deep.group(2)
+            if fl_num:
+                return f"B{fl_num}"
             
         f_match = re.search(r'\d+', f_str)
         floor = int(f_match.group()) if f_match else 1
@@ -460,15 +470,24 @@ def analyze_price(target_lat, target_lon, target_type, target_area_pyeong, targe
     special_rule_applied = False
     special_rule_msg = ""
 
-    if target_floor_cat == 'B1':
-        # 1. 지하층 매물이 존재하는지 체크
-        b1_matched = df[(df['distance'] <= radius_used) & 
-                        (df['area_cat'] == target_area_cat) & 
-                        (df['floor_cat'] == 'B1')].copy()
-        if len(b1_matched) >= 1:
-            matched = b1_matched
+    is_basement = str(target_floor_cat).startswith('B')
+
+    if is_basement:
+        # 1. 지하층 매물 탐색 (동일 지하층 -> 전체 지하층 순서)
+        same_b_matched = df[(df['distance'] <= radius_used) & 
+                            (df['area_cat'] == target_area_cat) & 
+                            (df['floor_cat'] == target_floor_cat)].copy()
+        
+        all_b_matched = df[(df['distance'] <= radius_used) & 
+                           (df['area_cat'] == target_area_cat) & 
+                           (df['floor_cat'].str.startswith('B', na=False))].copy()
+                           
+        if len(same_b_matched) >= 1:
+            matched = same_b_matched
+        elif len(all_b_matched) >= 1:
+            matched = all_b_matched
         else:
-            # 2. 지하 사례 매물 부재 시 1층 시세의 60% 반영!
+            # 2. 지하 사례 매물 부재 시 1층 시세를 기준 매물로 활용
             one_f_matched = df[(df['distance'] <= radius_used) & 
                                (df['area_cat'] == target_area_cat) & 
                                (df['floor_cat'] == '1층')].copy()
@@ -477,7 +496,6 @@ def analyze_price(target_lat, target_lon, target_type, target_area_pyeong, targe
                                    (df['floor_cat'] == '1층')].copy()
             matched = one_f_matched
             special_rule_applied = True
-            special_rule_msg = "지하 사례 매물 부족으로 1층 시세의 60% 특례 적용됨"
     else:
         matched = df[(df['distance'] <= radius_used) & 
                      (df['area_cat'] == target_area_cat) & 
@@ -485,7 +503,7 @@ def analyze_price(target_lat, target_lon, target_type, target_area_pyeong, targe
                      (df['age_cat'] == target_age_cat)].copy()
                  
     # Fallback 1: 완화 - 경과연수 조건 완화
-    if len(matched) < 2:
+    if len(matched) < 2 and not is_basement:
         matched = df[(df['distance'] <= radius_used) & 
                      (df['area_cat'] == target_area_cat) & 
                      (df['floor_cat'] == target_floor_cat)].copy()
@@ -524,8 +542,27 @@ def analyze_price(target_lat, target_lon, target_type, target_area_pyeong, targe
     else:
         raw_avg_pp = 0.0
 
-    if special_rule_applied and target_floor_cat == 'B1':
-        avg_pyeong_price = raw_avg_pp * 0.6  # 1층 매매시세의 60% 반영!
+    # 🎯 지하 층수별 가격 책정 규칙:
+    # 지하 1층(B1): 1층 시세의 60%
+    # 지하 2층, 지하 3층(B2, B3): 지하 1층 가격의 20% 적은 80% 수준으로 책정!
+    if is_basement:
+        if special_rule_applied:
+            # 1층 매물 기준일 때:
+            b1_base_price = raw_avg_pp * 0.6  # 1층의 60%
+            if target_floor_cat in ['B2', 'B3', 'B4', 'B5']:
+                avg_pyeong_price = b1_base_price * 0.8  # B1 가격의 80% (1층 시세의 48%)
+                special_rule_msg = f"{target_floor_cat} 특례: 1층 시세 60%(B1 기준)의 80% 적용 (실제 48% 반영)"
+            else:
+                avg_pyeong_price = b1_base_price
+                special_rule_msg = "지하 사례 매물 부족으로 1층 시세의 60% 특례 적용됨"
+        else:
+            # 지하 매물이 있는 경우:
+            if target_floor_cat in ['B2', 'B3', 'B4', 'B5']:
+                avg_pyeong_price = raw_avg_pp * 0.8  # B1 가격의 80% (20% 감가)
+                special_rule_applied = True
+                special_rule_msg = f"{target_floor_cat} 특례: 지하1층 시세의 80%(20% 감가) 적용"
+            else:
+                avg_pyeong_price = raw_avg_pp
     else:
         avg_pyeong_price = raw_avg_pp
 
@@ -634,6 +671,8 @@ def analyze_price(target_lat, target_lon, target_type, target_area_pyeong, targe
         "matched_count": sale_count,
         "sale_count": sale_count,
         "rent_count": rent_count,
+        "special_rule_applied": special_rule_applied,
+        "special_rule_msg": special_rule_msg,
         "target_categories": {
             "type_label": "주택" if is_housing else "상가/근린",
             "floor": target_floor_cat,
