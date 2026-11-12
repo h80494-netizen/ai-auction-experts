@@ -4,8 +4,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const pwdInput = document.getElementById('passwordInput');
     const loginBtn = document.getElementById('loginBtn');
 
-    if (sessionStorage.getItem('auth_token') === 'verified') {
+    // 영구 localStorage 자동 로그인 캐시 즉시 폐기 (새 탭·재접속 시 항상 비밀번호 입력 필수)
+    try {
+        localStorage.removeItem('agy_auth_exp');
+        localStorage.removeItem('agy_admin_key');
+        localStorage.removeItem('agy_admin_exp');
+    } catch (e) {}
+
+    if (sessionStorage.getItem('agy_session_v2') === 'active') {
+        sessionStorage.setItem('auth_token', 'verified');
+        document.documentElement.classList.add('session-authenticated');
         overlay.classList.add('hidden');
+    } else {
+        sessionStorage.removeItem('auth_token');
+        sessionStorage.removeItem('admin_board_key');
+        sessionStorage.removeItem('is_admin_verified');
+        sessionStorage.removeItem('agy_admin_session_v2');
+        document.documentElement.classList.remove('session-authenticated');
+        overlay.classList.remove('hidden');
+    }
+
+    if (sessionStorage.getItem('agy_admin_session_v2') === 'active' && sessionStorage.getItem('admin_board_key')) {
+        sessionStorage.setItem('is_admin_verified', '1');
+        adminAuthKey = sessionStorage.getItem('admin_board_key') || '';
     }
 
     // Fetch and display daily visitor count
@@ -33,15 +54,50 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await res.json();
             if (data.status === 'success') {
+                try {
+                    localStorage.removeItem('agy_auth_exp');
+                    localStorage.removeItem('agy_admin_key');
+                    localStorage.removeItem('agy_admin_exp');
+                } catch (e) {}
+                sessionStorage.setItem('agy_session_v2', 'active');
                 sessionStorage.setItem('auth_token', 'verified');
                 if (data.user_type === 'admin') {
-                    sessionStorage.setItem('admin_board_key', 'h80494');
-                    adminAuthKey = 'h80494';
+                    sessionStorage.setItem('admin_board_key', pwd);
+                    sessionStorage.setItem('is_admin_verified', '1');
+                    sessionStorage.setItem('agy_admin_session_v2', 'active');
+                    sessionStorage.removeItem('member_auth_pin');
+                    sessionStorage.setItem('member_can_analyze', '1');
+                    adminAuthKey = pwd;
+                    if (typeof updateAdminUI === 'function') updateAdminUI();
+                } else {
+                    sessionStorage.removeItem('admin_board_key');
+                    sessionStorage.removeItem('is_admin_verified');
+                    sessionStorage.removeItem('agy_admin_session_v2');
+                    sessionStorage.setItem('member_auth_pin', pwd);
+                    sessionStorage.setItem('member_can_analyze', data.can_use_rights_analysis ? '1' : '0');
+                    sessionStorage.setItem('member_user_name', data.user_name || '');
+                    adminAuthKey = '';
                     if (typeof updateAdminUI === 'function') updateAdminUI();
                 }
+                if (typeof fetchAnalysisAccessConfig === 'function') {
+                    await fetchAnalysisAccessConfig();
+                } else if (typeof applyAnalysisAccessState === 'function') {
+                    applyAnalysisAccessState();
+                }
+                pwdInput.value = '';
+                document.documentElement.classList.add('session-authenticated');
                 overlay.classList.add('hidden');
                 if (data.message && (data.user_type === 'member' || data.user_type === 'admin')) {
                     alert(data.message);
+                }
+                if (window.pendingAutoCaseParam && typeof caseNumberInput !== 'undefined' && caseNumberInput && typeof searchCaseBtn !== 'undefined' && searchCaseBtn) {
+                    const lockedForUser = !isUserAllowedForRightsAnalysis();
+                    if (!lockedForUser && !searchCaseBtn.disabled) {
+                        caseNumberInput.value = window.pendingAutoCaseParam;
+                        window.pendingAutoCaseParam = null;
+                        isAutoAnalyze = true;
+                        searchCaseBtn.click();
+                    }
                 }
             } else {
                 alert(data.message || '비밀번호가 일치하지 않습니다.');
@@ -59,6 +115,13 @@ document.addEventListener('DOMContentLoaded', () => {
         loginBtn.addEventListener('click', attemptLogin);
         pwdInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') attemptLogin();
+        });
+    }
+
+    const lockSessionBtnHeader = document.getElementById('lockSessionBtnHeader');
+    if (lockSessionBtnHeader) {
+        lockSessionBtnHeader.addEventListener('click', () => {
+            performFullSessionLock();
         });
     }
 });
@@ -102,6 +165,12 @@ searchCaseBtn.addEventListener('click', async () => {
         return;
     }
 
+    if (!isUserAllowedForRightsAnalysis()) {
+        applyAnalysisAccessState();
+        showError((window.analysisAccessState && window.analysisAccessState.message) || "현재 권리분석은 관리자 및 지정 허용 회원만 이용할 수 있습니다.");
+        return;
+    }
+
     showError("");
     searchCaseBtn.innerHTML = '<div class="spinner" style="display:inline-block; margin-right:8px; border-top-color:#fff;"></div>조회 중...';
     searchCaseBtn.disabled = true;
@@ -113,62 +182,108 @@ searchCaseBtn.addEventListener('click', async () => {
         const response = await fetch('/api/search_cases', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ case_number: caseNumber })
+            body: JSON.stringify({
+                case_number: caseNumber,
+                admin_key: getEffectiveAdminKey(),
+                user_pin: getEffectiveMemberPin()
+            })
         });
         const data = await response.json();
+        if (data && data.status === "restricted") {
+            window.analysisAccessState = {
+                ...(window.analysisAccessState || {}),
+                access_mode: data.access_mode || 'admin_only',
+                admin_only: Boolean(data.admin_only),
+                member_allowed: false,
+                message: data.message || "권리분석 이용 제한 중입니다."
+            };
+            applyAnalysisAccessState();
+            showError(data.message || "현재 권리분석은 관리자 및 지정 허용 회원만 이용할 수 있습니다.");
+            return;
+        }
 
         if (response.ok && data.status === "success") {
-            const results = data.data; // 리스트 형태 반환 가정
+            const results = data.data;
             if (results && results.length > 0) {
-                renderAddressList(results);
+                const subMatch = caseNumber.match(/(?:\(|\[|물건\s*)(\d{1,2})(?:\)|\])?\s*$/);
+                const reqItemNo = data.requested_item_no || (subMatch ? subMatch[1] : "");
+                const hasParenthesis = Boolean(data.has_sub_number) || Boolean(reqItemNo) || /\(\d+\)/.test(caseNumber);
+                const mustSelectManually = hasParenthesis || results.length > 1;
+
+                renderAddressList(results, {
+                    mustSelectManually,
+                    requestedItemNo: reqItemNo,
+                    hasParenthesis,
+                });
                 secondaryInputScreen.style.display = 'flex';
                 
                 let targetBtn = null;
                 const btns = addressListContainer.querySelectorAll('.address-btn');
                 
-                if (typeof isAutoAnalyze !== 'undefined' && isAutoAnalyze && window.addressHintParam) {
-                    const hintTokens = window.addressHintParam.split(' ').slice(0, 3); // 주요 지역명 매칭을 위해 앞 3단어 추출
+                // 지번(예: 24-27)까지 포함한 전체 주소 토큰 + (물건번호) 정밀 가중치 매칭
+                const hintStr = (window.addressHintParam || "").trim();
+                const hintTokens = hintStr ? hintStr.split(/\s+/).filter(Boolean) : [];
+                if (reqItemNo || hintTokens.length > 0) {
                     let bestMatchIndex = 0;
-                    let maxMatches = -1;
-                    
+                    let bestScore = -999999;
                     for (let i = 0; i < results.length; i++) {
-                        let matches = 0;
-                        const addr = results[i].address || "";
-                        const raw = results[i].raw_text || "";
-                        for (let t of hintTokens) {
-                            if (t && (addr.includes(t) || raw.includes(t))) matches++;
+                        let score = 0;
+                        const item = results[i];
+                        const addr = item.address || "";
+                        const raw = item.raw_text || "";
+                        const itemNo = String(item.item_no || "").trim();
+
+                        if (reqItemNo) {
+                            if (item.exact_item_match || itemNo === String(reqItemNo)) {
+                                score += 2000;
+                            } else if (itemNo && itemNo !== String(reqItemNo)) {
+                                score -= 2000;
+                            }
                         }
-                        if (matches > maxMatches) {
-                            maxMatches = matches;
+
+                        for (const t of hintTokens) {
+                            if (addr.includes(t) || raw.includes(t)) {
+                                // 본번-부번(예: 24-27) 일치 시 최우선 가중치 부여
+                                if (/^\d+(-\d+)?$/.test(t)) {
+                                    score += 250;
+                                } else {
+                                    score += 35;
+                                }
+                            }
+                        }
+
+                        if (score > bestScore) {
+                            bestScore = score;
                             bestMatchIndex = i;
                         }
                     }
-                    if (maxMatches > 0) {
+                    if (bestScore > 0 && btns[bestMatchIndex]) {
                         targetBtn = btns[bestMatchIndex];
                     }
                 }
                 
-                if (isAutoAnalyze && !targetBtn && btns.length > 0) {
+                if (!targetBtn && btns.length > 0) {
                     targetBtn = btns[0];
                 }
                 
                 if (targetBtn) {
                     targetBtn.click();
-                } else if (!isAutoAnalyze && results.length === 1) {
-                    // 수동 검색이고 결과가 1개일 때만 자동 선택
-                    btns[0].click();
                 }
-                
-                // 자동 권리분석 실행 연동
-                console.log("[Auto-Analyze] results loaded, isAutoAnalyze =", isAutoAnalyze);
-                if (typeof isAutoAnalyze !== 'undefined' && isAutoAnalyze) {
-                    console.log("[Auto-Analyze] triggering startBtn click in 500ms...");
+
+                // [핵심] 사건번호 뒤 괄호(물건번호)가 있거나 동일 사건번호 물건이 복수(2건 이상)일 때는
+                // 바로 권리분석을 자동 실행하지 않고 사용자가 직접 물건을 확인·선택한 뒤 시작하도록 보장!
+                if (mustSelectManually) {
+                    if (typeof isAutoAnalyze !== 'undefined') {
+                        isAutoAnalyze = false;
+                    }
+                    setTimeout(() => {
+                        secondaryInputScreen.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 150);
+                } else if (typeof isAutoAnalyze !== 'undefined' && isAutoAnalyze && results.length === 1) {
                     isAutoAnalyze = false;
                     setTimeout(() => {
-                        console.log("[Auto-Analyze] startBtn state - disabled:", startBtn.disabled);
                         if (startBtn && !startBtn.disabled) {
                             startBtn.click();
-                            console.log("[Auto-Analyze] startBtn.click() invoked!");
                         }
                     }, 500);
                 }
@@ -184,19 +299,67 @@ searchCaseBtn.addEventListener('click', async () => {
         showError(`통신 오류: ${err.message}`);
     } finally {
         searchCaseBtn.innerHTML = '대법원 스크래핑 <i class="fa-solid fa-search"></i>';
-        searchCaseBtn.disabled = false;
+        const isLockedForUser = !isUserAllowedForRightsAnalysis();
+        searchCaseBtn.disabled = isLockedForUser;
     }
 });
 
-// 주소 리스트 렌더링
-function renderAddressList(results) {
+// 주소 리스트 렌더링 (관할법원 · 사건/물건번호 · 용도 · 지번주소 · 감정가/최저가/면적 명확 표시)
+function renderAddressList(results, meta = {}) {
+    addressListContainer.innerHTML = '';
+
+    if (meta.mustSelectManually) {
+        const guideBanner = document.createElement('div');
+        guideBanner.style.cssText = 'padding: 13px 16px; margin-bottom: 6px; border-radius: 10px; background: linear-gradient(135deg, rgba(0, 240, 255, 0.14), rgba(187, 0, 255, 0.14)); border: 1px solid rgba(0, 240, 255, 0.55); color: #f8fafc; font-size: 0.94rem; line-height: 1.55; text-align: left;';
+        const reasonTxt = results.length > 1
+            ? `동일 사건번호(또는 복수 물건번호·타 관할법원) 물건이 <strong>총 ${results.length}건</strong> 조회되었습니다.`
+            : `괄호 물건번호가 포함된 사건(<strong>${meta.requestedItemNo ? '(' + meta.requestedItemNo + ')번 물건' : '지정 물건'}</strong>)이 조회되었습니다.`;
+        guideBanner.innerHTML = `<i class="fa-solid fa-hand-pointer" style="color:var(--neon-blue); margin-right:6px;"></i> ${reasonTxt} 아래 목록에서 <strong>분석할 정확한 물건을 확인·선택</strong>하신 후 하단의 <strong>[9단계 심층 권리분석 시작]</strong> 버튼을 눌러주세요.`;
+        addressListContainer.appendChild(guideBanner);
+    }
+
     results.forEach((item, index) => {
         const btn = document.createElement('button');
+        btn.type = 'button';
         btn.className = 'address-btn';
-        btn.style.cssText = 'padding: 15px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff; text-align: left; cursor: pointer; transition: all 0.2s;';
+        btn.style.cssText = 'padding: 16px; background: rgba(0,0,0,0.45); border: 1px solid var(--glass-border); border-radius: 10px; color: #fff; text-align: left; cursor: pointer; transition: all 0.2s;';
+
+        const courtBadge = item.court
+            ? `<span style="display:inline-block; padding:2px 8px; border-radius:5px; background:rgba(0,240,255,0.16); border:1px solid rgba(0,240,255,0.45); color:#67e8f9; font-size:0.8rem; font-weight:700; margin-right:6px;">${item.court}</span>`
+            : '';
+        const caseLabel = item.case_no_full || (item.item_no ? `${caseNumberInput.value.replace(/\(\d+\)\s*$/, '').trim()}(${item.item_no})` : `물건 ${index + 1}`);
+        const exactBadge = item.exact_item_match
+            ? `<span style="display:inline-block; padding:2px 8px; border-radius:5px; background:rgba(16,185,129,0.22); border:1px solid #10b981; color:#6ee7b7; font-size:0.78rem; font-weight:800; margin-left:6px;">🎯 요청 물건번호 일치</span>`
+            : '';
+        const propBadge = item.property_type
+            ? `<span style="display:inline-block; padding:2px 8px; border-radius:5px; background:rgba(187,0,255,0.18); border:1px solid rgba(187,0,255,0.45); color:#e9d5ff; font-size:0.78rem; font-weight:700; margin-left:6px;">${item.property_type}</span>`
+            : '';
+        const statusBadge = item.status
+            ? `<span style="display:inline-block; padding:2px 8px; border-radius:5px; background:rgba(245,158,11,0.18); border:1px solid rgba(245,158,11,0.45); color:#fde68a; font-size:0.78rem; font-weight:700; margin-left:6px;">${item.status}</span>`
+            : '';
+
+        const areaParts = [];
+        if (item.building_area) areaParts.push(`건물 ${item.building_area}`);
+        else if (item.pyeong) areaParts.push(`${item.pyeong}평`);
+        if (item.land_area) areaParts.push(`토지 ${item.land_area}`);
+        const areaDisplay = areaParts.length > 0 ? areaParts.join(' / ') : '면적 상세조회';
+
         btn.innerHTML = `
-            <div style="font-size:1.1rem; margin-bottom:5px;"><strong>물건 ${index + 1}</strong>: ${item.address}</div>
-            <div style="font-size:0.9rem; color:var(--text-muted);">감정가: ${formatNumber(item.appraised_value)}원 | 최저가: ${formatNumber(item.minimum_value)}원 | 면적: <b style="color:#10b981;">${item.building_area || (item.pyeong ? item.pyeong + '평' : '정보없음')}</b> | 승인일: ${item.approval_date || '알 수 없음'}</div>
+            <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:7px;">
+                ${courtBadge}
+                <strong style="font-size:1.02rem; color:#f8fafc;">${caseLabel}</strong>
+                ${propBadge}
+                ${statusBadge}
+                ${exactBadge}
+            </div>
+            <div style="font-size:1.06rem; font-weight:700; color:#ffffff; margin-bottom:6px;">📍 ${item.address || '주소 정보 없음'}</div>
+            <div style="font-size:0.88rem; color:var(--text-muted); line-height:1.5;">
+                감정가: <b style="color:#f1f5f9;">${formatNumber(item.appraised_value)}원</b> |
+                최저가: <b style="color:#38bdf8;">${formatNumber(item.minimum_value)}원</b> |
+                면적: <b style="color:#10b981;">${areaDisplay}</b> |
+                승인일: ${item.approval_date || '상세분석 시 확인'}
+                ${item.auction_date ? ' | 매각기일: ' + item.auction_date : ''}
+            </div>
         `;
         
         btn.addEventListener('mouseover', () => {
@@ -208,24 +371,25 @@ function renderAddressList(results) {
         btn.addEventListener('mouseout', () => {
             if(!btn.classList.contains('selected')) {
                 btn.style.borderColor = 'var(--glass-border)';
-                btn.style.background = 'rgba(0,0,0,0.4)';
+                btn.style.background = 'rgba(0,0,0,0.45)';
             }
         });
 
         btn.addEventListener('click', () => {
-            // 모든 버튼 선택 해제
             document.querySelectorAll('.address-btn').forEach(b => {
                 b.classList.remove('selected');
                 b.style.borderColor = 'var(--glass-border)';
-                b.style.background = 'rgba(0,0,0,0.4)';
+                b.style.background = 'rgba(0,0,0,0.45)';
             });
-            // 현재 버튼 선택
             btn.classList.add('selected');
             btn.style.borderColor = 'var(--neon-purple)';
-            btn.style.background = 'rgba(187, 0, 255, 0.2)';
+            btn.style.background = 'rgba(187, 0, 255, 0.22)';
             
-            // 데이터 설정 및 자동 산출
+            // 데이터 설정 및 선택된 물건번호 동기화
             currentCaseData = item;
+            if (item.case_no_full) {
+                caseNumberInput.value = item.case_no_full;
+            }
             
             // 부동산 종류 및 사용승인일자 자동 입력
             const pTypeInput = document.getElementById('propertyType');
@@ -327,11 +491,21 @@ startBtn.addEventListener('click', async () => {
     else if (houseCountStr.includes("2")) houseCount = 2;
     else if (houseCountStr.includes("3")) houseCount = 3;
 
+    if (!isUserAllowedForRightsAnalysis()) {
+        loadingState.style.display = 'none';
+        applyAnalysisAccessState();
+        showError((window.analysisAccessState && window.analysisAccessState.message) || "현재 권리분석은 관리자 및 지정 허용 회원만 이용할 수 있습니다.");
+        return;
+    }
+
     const madangsUrlEl = document.getElementById('madangsUrl');
     const requestData = {
         ...currentCaseData,
-        case_number: caseNumberInput.value.trim(),
+        case_number: (currentCaseData.case_no_full || caseNumberInput.value).trim(),
         address_hint: currentCaseData.address || "",
+        myauction_idx: currentCaseData.myauction_idx || "",
+        item_no: currentCaseData.item_no || "",
+        court: currentCaseData.court || "",
         property_type: document.getElementById('propertyType').value,
         house_count: houseCount,
         investor_type: document.getElementById('investorType').value,
@@ -339,7 +513,9 @@ startBtn.addEventListener('click', async () => {
         target_return_rate: parseFloat(document.getElementById('targetReturnRate').value) || 20.0,
         is_regulated_area: document.getElementById('isRegulatedArea').value === 'true',
         calculated_aging: agingDisplay.innerText,
-        madangs_url: madangsUrlEl ? madangsUrlEl.value.trim() : ""
+        madangs_url: madangsUrlEl ? madangsUrlEl.value.trim() : "",
+        admin_key: getEffectiveAdminKey(),
+        user_pin: getEffectiveMemberPin()
     };
 
     try {
@@ -350,6 +526,19 @@ startBtn.addEventListener('click', async () => {
         });
 
         let data = await response.json();
+        if (data && data.status === "restricted") {
+            loadingState.style.display = 'none';
+            window.analysisAccessState = {
+                ...(window.analysisAccessState || {}),
+                access_mode: data.access_mode || 'admin_only',
+                admin_only: Boolean(data.admin_only),
+                member_allowed: false,
+                message: data.message || "권리분석 이용 제한 중입니다."
+            };
+            applyAnalysisAccessState();
+            showError(data.message || "현재 권리분석은 관리자 및 지정 허용 회원만 이용할 수 있습니다.");
+            return;
+        }
         
         if (response.ok && data.status === "processing") {
             const taskId = data.task_id;
@@ -730,7 +919,36 @@ function renderFinalReport(markdownText, caseData = null) {
     // 1~4는 2~5에서 추출
     document.getElementById('report-section-1').innerHTML = marked.parse(extractSection(2, markdownText) || "내용이 추출되지 않았습니다.");
     document.getElementById('report-section-2').innerHTML = marked.parse(extractSection(3, markdownText) || "내용이 추출되지 않았습니다.");
-    document.getElementById('report-section-3').innerHTML = marked.parse(extractSection(4, markdownText) || "내용이 추출되지 않았습니다.");
+    let sec4Html = marked.parse(extractSection(4, markdownText) || "내용이 추출되지 않았습니다.");
+    if (caseData) {
+        const pdfs = caseData.downloaded_pdfs || [];
+        const hasMulgunPdf = pdfs.includes('매각물건명세서.pdf') || Boolean(caseData.hug_mulgun_pdf_verified);
+        const isHug = Boolean(caseData.hug_waived) || (caseData.risks || []).some(r => String(r).includes('HUG'));
+        if (hasMulgunPdf || isHug) {
+            const pdfUrl = `/api/download_court_doc/${encodeURIComponent(caseData.case_number || '')}/${encodeURIComponent('매각물건명세서.pdf')}`;
+            const pdfBtnHtml = hasMulgunPdf
+                ? `<a href="${pdfUrl}" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:8px; background:rgba(56,189,248,0.2); border:1px solid #0284c7; color:#7dd3fc; font-size:0.82rem; font-weight:700; text-decoration:none;"><i class="fa-solid fa-file-pdf" style="color:#f87171;"></i> 법원 매각물건명세서.pdf 원본 열람</a>`
+                : '';
+            const hugBannerHtml = isHug
+                ? `<div style="margin-bottom:14px; padding:14px 16px; border-radius:10px; background:linear-gradient(135deg, rgba(16,185,129,0.16), rgba(6,95,70,0.24)); border:1px solid #10b981; color:#ecfdf5;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px;">
+                        <div style="font-weight:800; color:#34d399; font-size:0.96rem;">
+                            <i class="fa-solid fa-circle-check"></i> [HUG 대항력포기 물건] 법원 매각물건명세서.pdf 및 문건접수 제출 확인 완료 (인수 보증금 0원)
+                        </div>
+                        ${pdfBtnHtml}
+                    </div>
+                    <div style="font-size:0.85rem; color:#d1fae5; line-height:1.55;">
+                        <strong>법원 제출 확인 근거:</strong> ${caseData.hug_waiver_evidence || '주택도시보증공사(HUG) 잔존 임차보증금반환채권 포기 및 주택임차권등기 말소동의 확약서 법원 제출 확인'}
+                    </div>
+                </div>`
+                : `<div style="margin-bottom:12px; padding:10px 14px; border-radius:8px; background:rgba(15,23,42,0.75); border:1px solid rgba(56,189,248,0.35); display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <span style="font-size:0.85rem; color:#bae6fd; font-weight:700;"><i class="fa-solid fa-file-shield" style="color:#38bdf8;"></i> 법원 매각물건명세서.pdf 원본 자동 추출·대조 완료</span>
+                    ${pdfBtnHtml}
+                </div>`;
+            sec4Html = hugBannerHtml + sec4Html;
+        }
+    }
+    document.getElementById('report-section-3').innerHTML = sec4Html;
     document.getElementById('report-section-4').innerHTML = marked.parse(extractSection(5, markdownText) || "내용이 추출되지 않았습니다.");
     
     // 5~10은 6~11에서 추출 (원문 프롬프트 구조에 맞춰)
@@ -768,12 +986,13 @@ function renderFinalReport(markdownText, caseData = null) {
     // JSON 블록 제거 (```json ... ```)
     section10Text = section10Text.replace(/```json[\s\S]*?```/, '').trim();
     
-    // 투자 판정(GO/Neutral/Danger) 부각 처리
-    section10Text = section10Text.replace(/\[투자 판정:\s*(GO|Neutral|Danger)\]/ig, (match, p1) => {
-        let color = "var(--danger, red)"; // Default to red
-        if (p1.toUpperCase() === "GO") color = "var(--danger, red)"; // User specifically requested "빨간색 진한 글씨로 부각시켜줘"
-        else if (p1.toUpperCase() === "NEUTRAL") color = "var(--warning, orange)";
-        else if (p1.toUpperCase() === "DANGER") color = "var(--danger, red)";
+    // 투자 판정(GO/Neutral/Danger/대기(WAIT)) 부각 처리
+    section10Text = section10Text.replace(/\[투자 판정:\s*(GO|Neutral|Danger|WAIT|대기\(WAIT\)|대기)\]/ig, (match, p1) => {
+        let color = "var(--danger, red)";
+        const upper = p1.toUpperCase();
+        if (upper === "GO") color = "var(--danger, red)";
+        else if (upper === "NEUTRAL" || upper.includes("WAIT") || upper.includes("대기")) color = "var(--warning, orange)";
+        else if (upper === "DANGER") color = "var(--danger, red)";
         
         return `<span style="color: ${color}; font-weight: bold; font-size: 1.5rem; display: block; margin-bottom: 15px; border-bottom: 2px solid ${color}; padding-bottom: 5px;">${match.toUpperCase()}</span>`;
     });
@@ -1001,27 +1220,113 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    console.log("[Auto-Analyze] DOMContentLoaded caseParam:", caseParam);
-    if (caseParam && typeof caseNumberInput !== 'undefined' && caseNumberInput) {
-        caseNumberInput.value = caseParam;
-        if (typeof searchCaseBtn !== 'undefined' && searchCaseBtn && !searchCaseBtn.disabled) {
-            isAutoAnalyze = true;
-            console.log("[Auto-Analyze] Setting isAutoAnalyze = true and triggering searchCaseBtn.click()");
-            searchCaseBtn.click();
-        }
-    }
-
-    // Initialize Inquiry Board Listeners
+    // Initialize Inquiry Board, Notice, and Rights Analysis Access Control
     initInquiryBoard();
     initNoticeSystem();
+    initAnalysisAccessControl().then(() => {
+        console.log("[Auto-Analyze] DOMContentLoaded caseParam:", caseParam);
+        if (caseParam && typeof caseNumberInput !== 'undefined' && caseNumberInput) {
+            caseNumberInput.value = caseParam;
+            const isTabAuthed = sessionStorage.getItem('agy_session_v2') === 'active';
+            const lockedForUser = !isUserAllowedForRightsAnalysis();
+            if (!isTabAuthed) {
+                window.pendingAutoCaseParam = caseParam;
+            } else if (lockedForUser) {
+                window.pendingAutoCaseParam = caseParam;
+                showError((window.analysisAccessState && window.analysisAccessState.message) || "현재 권리분석은 관리자 및 지정 허용 회원 전용 모드로 제한되어 있습니다.");
+            } else if (typeof searchCaseBtn !== 'undefined' && searchCaseBtn && !searchCaseBtn.disabled) {
+                isAutoAnalyze = true;
+                console.log("[Auto-Analyze] Setting isAutoAnalyze = true and triggering searchCaseBtn.click()");
+                searchCaseBtn.click();
+            }
+        }
+    });
 });
 
 /* ----------------- Inquiry Board Interactive Logic ----------------- */
 let currentViewingInquiryId = null;
 let currentPendingPinInquiryId = null;
 let currentViewingInquiryData = null;
-let adminAuthKey = sessionStorage.getItem('admin_board_key') || '';
+let adminAuthKey = (sessionStorage.getItem('agy_admin_session_v2') === 'active') ? (sessionStorage.getItem('admin_board_key') || '') : '';
 let cachedPins = {}; // in-memory cache for pins entered in this session
+window.analysisAccessState = {
+    access_mode: 'all',
+    admin_only: false,
+    restricted: false,
+    allowed_user_ids: [],
+    allowed_user_names: [],
+    member_allowed: false,
+    message: ''
+};
+
+function getEffectiveAdminKey() {
+    if (!isAdminSessionActive()) return '';
+    return adminAuthKey || sessionStorage.getItem('admin_board_key') || '';
+}
+
+function getEffectiveMemberPin() {
+    return sessionStorage.getItem('member_auth_pin') || '';
+}
+
+function isUserAllowedForRightsAnalysis() {
+    if (isAdminSessionActive()) return true;
+    const state = window.analysisAccessState || {};
+    const mode = state.access_mode || (state.admin_only ? 'admin_only' : 'all');
+    if (mode === 'all') return true;
+    if (mode === 'selected') {
+        return Boolean(state.member_allowed) || sessionStorage.getItem('member_can_analyze') === '1';
+    }
+    return false;
+}
+
+function isAdminSessionActive() {
+    const ssKey = sessionStorage.getItem('admin_board_key') || '';
+    if (ssKey && sessionStorage.getItem('is_admin_verified') === '1' && sessionStorage.getItem('agy_admin_session_v2') === 'active') {
+        return true;
+    }
+    return false;
+}
+
+function performAdminLogout() {
+    adminAuthKey = '';
+    sessionStorage.removeItem('admin_board_key');
+    sessionStorage.removeItem('is_admin_verified');
+    sessionStorage.removeItem('agy_admin_session_v2');
+    try {
+        localStorage.removeItem('agy_admin_key');
+        localStorage.removeItem('agy_admin_exp');
+        localStorage.removeItem('agy_auth_exp');
+    } catch (e) {}
+    updateAdminUI();
+    applyAnalysisAccessState();
+}
+
+function performFullSessionLock() {
+    adminAuthKey = '';
+    sessionStorage.removeItem('agy_session_v2');
+    sessionStorage.removeItem('auth_token');
+    sessionStorage.removeItem('admin_board_key');
+    sessionStorage.removeItem('is_admin_verified');
+    sessionStorage.removeItem('agy_admin_session_v2');
+    sessionStorage.removeItem('member_auth_pin');
+    sessionStorage.removeItem('member_can_analyze');
+    sessionStorage.removeItem('member_user_name');
+    try {
+        localStorage.removeItem('agy_auth_exp');
+        localStorage.removeItem('agy_admin_key');
+        localStorage.removeItem('agy_admin_exp');
+    } catch (e) {}
+    if (typeof updateAdminUI === 'function') updateAdminUI();
+    if (typeof applyAnalysisAccessState === 'function') applyAnalysisAccessState();
+    document.documentElement.classList.remove('session-authenticated');
+    const loginOverlayEl = document.getElementById('loginOverlay');
+    if (loginOverlayEl) loginOverlayEl.classList.remove('hidden');
+    const pwdInputEl = document.getElementById('passwordInput');
+    if (pwdInputEl) {
+        pwdInputEl.value = '';
+        setTimeout(() => pwdInputEl.focus(), 50);
+    }
+}
 
 function initInquiryBoard() {
     const boardModal = document.getElementById('inquiryBoardModal');
@@ -1083,12 +1388,10 @@ function initInquiryBoard() {
 
     // Admin login modal
     if (boardAdminBtn) boardAdminBtn.addEventListener('click', () => {
-        if (adminAuthKey) {
+        if (isAdminSessionActive()) {
             if (confirm("관리자 모드가 이미 활성화되어 있습니다. 관리자 로그아웃 하시겠습니까?")) {
-                adminAuthKey = '';
-                sessionStorage.removeItem('admin_board_key');
-                alert("로그아웃 되었습니다.");
-                updateAdminUI();
+                performAdminLogout();
+                alert("관리자 모드에서 로그아웃 되었습니다.");
                 fetchInquiries();
             }
         } else {
@@ -1114,12 +1417,14 @@ function initInquiryBoard() {
 
 function updateAdminUI() {
     const adminBtn = document.getElementById('boardAdminBtn');
+    const dbCenterBtn = document.getElementById('openAdminCenterBtnBoard');
     const adminBadge = document.getElementById('adminBadgeIndicator');
     const deleteBtn = document.getElementById('deleteInqBtn');
     const approveBtn = document.getElementById('approveInqBtn');
 
-    if (adminAuthKey) {
+    if (isAdminSessionActive()) {
         if (adminBtn) adminBtn.innerHTML = '<i class="fa-solid fa-crown"></i> 관리자(ON)';
+        if (dbCenterBtn) dbCenterBtn.style.display = 'inline-flex';
         if (adminBadge) adminBadge.style.display = 'inline-block';
         if (deleteBtn) deleteBtn.style.display = 'inline-block';
         if (approveBtn && currentViewingInquiryData) {
@@ -1136,6 +1441,7 @@ function updateAdminUI() {
         }
     } else {
         if (adminBtn) adminBtn.innerHTML = '<i class="fa-solid fa-user-shield"></i> 관리자 로그인';
+        if (dbCenterBtn) dbCenterBtn.style.display = 'none';
         if (adminBadge) adminBadge.style.display = 'none';
         if (deleteBtn) deleteBtn.style.display = 'none';
         if (approveBtn) approveBtn.style.display = 'none';
@@ -1204,7 +1510,8 @@ async function fetchInquiries() {
     if (!tbody) return;
 
     try {
-        const res = await fetch('/api/board/inquiries?limit=30');
+        const adminParam = isAdminSessionActive() ? `&admin_key=${encodeURIComponent(adminAuthKey)}` : '';
+        const res = await fetch(`/api/board/inquiries?limit=30${adminParam}`);
         const json = await res.json();
 
         if (json.status === 'success') {
@@ -1216,9 +1523,13 @@ async function fetchInquiries() {
 
             let html = '';
             items.forEach(item => {
-                let statusBadge = '<span class="board-badge badge-pending">대기중</span>';
+                let statusBadge = '<span class="board-badge badge-pending">승인대기</span>';
                 if (item.is_approved) {
                     statusBadge = '<span class="board-badge badge-approved"><i class="fa-solid fa-check"></i> 승인완료</span>';
+                } else if (item.status === 'rejected') {
+                    statusBadge = '<span class="board-badge" style="background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.4);">반려됨</span>';
+                } else if (item.status === 'revoked' || item.status === 'blocked') {
+                    statusBadge = '<span class="board-badge" style="background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.4);">승인취소</span>';
                 } else if (item.has_admin_reply) {
                     statusBadge = '<span class="board-badge badge-replied"><i class="fa-solid fa-check-double"></i> 답변완료</span>';
                 }
@@ -1488,13 +1799,13 @@ async function handleInquirySubmit(e) {
         return;
     }
 
-    const contact = phone ? `${email} (연락처: ${phone})` : email;
+    const contact = phone ? `${email} / ${phone}` : email;
 
     try {
         const res = await fetch('/api/board/inquiries', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ author, pin, contact, title, content, is_secret: isSecret })
+            body: JSON.stringify({ author, pin, contact, email, phone, title, content, is_secret: isSecret })
         });
         const json = await res.json();
 
@@ -1562,18 +1873,40 @@ async function handleAdminLogin() {
         const json = await res.json();
 
         if (json.status === 'success') {
+            try {
+                localStorage.removeItem('agy_auth_exp');
+                localStorage.removeItem('agy_admin_key');
+                localStorage.removeItem('agy_admin_exp');
+            } catch (e) {}
             adminAuthKey = key;
             sessionStorage.setItem('admin_board_key', key);
+            sessionStorage.setItem('is_admin_verified', '1');
+            sessionStorage.setItem('agy_admin_session_v2', 'active');
+            sessionStorage.setItem('agy_session_v2', 'active');
+            sessionStorage.setItem('auth_token', 'verified');
+            document.documentElement.classList.add('session-authenticated');
+            const loginOverlayEl = document.getElementById('loginOverlay');
+            if (loginOverlayEl) loginOverlayEl.classList.add('hidden');
+            document.getElementById('adminKeyModalInput').value = '';
             document.getElementById('adminLoginModal').style.display = 'none';
-            alert("관리자 인증이 완료되었습니다. 회원 가입 승인 및 모든 비밀글 열람/답변이 가능합니다.");
+            showError("");
             updateAdminUI();
+            applyAnalysisAccessState();
+            alert("관리자 인증이 완료되었습니다. 권리분석 제한 설정 제어 및 관리자 전용 권리분석 이용이 가능합니다.");
+            if (window.pendingAutoCaseParam && caseNumberInput && searchCaseBtn && !searchCaseBtn.disabled) {
+                caseNumberInput.value = window.pendingAutoCaseParam;
+                window.pendingAutoCaseParam = null;
+                isAutoAnalyze = true;
+                searchCaseBtn.click();
+            }
             if (currentViewingInquiryId) {
                 loadInquiryDetail(currentViewingInquiryId, '');
             } else {
                 fetchInquiries();
             }
         } else {
-            alert("관리자 인증번호가 일치하지 않습니다. (고정키: h80494)");
+            alert("관리자 인증번호가 일치하지 않습니다.");
+            document.getElementById('adminKeyModalInput').value = '';
         }
     } catch (err) {
         alert("인증 처리 중 오류가 발생했습니다.");
@@ -1716,14 +2049,14 @@ function renderNoticeBanner(notice) {
 
 function updateNoticeAdminBtnVisibility() {
     const manageBtn = document.getElementById('noticeAdminManageBtn');
-    const isAdmin = (adminAuthKey === 'h80494' || sessionStorage.getItem('admin_board_key') === 'h80494');
+    const isAdmin = isAdminSessionActive();
     if (manageBtn) {
         manageBtn.style.display = isAdmin ? 'inline-flex' : 'none';
     }
 }
 
 function openNoticeAdminModal() {
-    const isAdmin = (adminAuthKey === 'h80494' || sessionStorage.getItem('admin_board_key') === 'h80494');
+    const isAdmin = isAdminSessionActive();
     if (!isAdmin) {
         const adminLoginModal = document.getElementById('adminLoginModal');
         if (adminLoginModal) {
@@ -1772,7 +2105,7 @@ function closeNoticeAdminModal() {
 
 async function handleSaveNoticeAdmin() {
     const effectiveKey = adminAuthKey || sessionStorage.getItem('admin_board_key');
-    if (!effectiveKey || effectiveKey !== 'h80494') {
+    if (!effectiveKey || !isAdminSessionActive()) {
         alert("관리자 권한이 없습니다.");
         return;
     }
@@ -1832,7 +2165,7 @@ function initNoticeSystem() {
     const openNoticeBtnHeader = document.getElementById('openNoticeBtnHeader');
     if (openNoticeBtnHeader) {
         openNoticeBtnHeader.addEventListener('click', () => {
-            const isAdmin = (adminAuthKey === 'h80494' || sessionStorage.getItem('admin_board_key') === 'h80494');
+            const isAdmin = isAdminSessionActive();
             if (isAdmin) {
                 openNoticeAdminModal();
             } else {
@@ -1879,3 +2212,293 @@ function initNoticeSystem() {
 })();
 
 
+
+
+/* ----------------- 관리자 및 지정회원 전용 권리분석 이용제한 시스템 ----------------- */
+async function fetchAnalysisAccessConfig() {
+    try {
+        const memberPin = getEffectiveMemberPin();
+        const q = memberPin ? `?user_pin=${encodeURIComponent(memberPin)}` : '';
+        const res = await fetch(`/api/analysis_access_config${q}`, { cache: 'no-store' });
+        const json = await res.json();
+        if (json.status === 'success') {
+            window.analysisAccessState = {
+                access_mode: json.access_mode || (json.admin_only ? 'admin_only' : 'all'),
+                admin_only: Boolean(json.admin_only),
+                restricted: Boolean(json.restricted),
+                allowed_user_ids: json.allowed_user_ids || [],
+                allowed_user_names: json.allowed_user_names || [],
+                allowed_count: json.allowed_count || 0,
+                member_allowed: Boolean(json.member_allowed),
+                message: json.message || '현재 권리분석은 관리자 및 지정 허용 회원만 이용할 수 있습니다.',
+                updated_at: json.updated_at || ''
+            };
+            if (memberPin && typeof json.member_allowed === 'boolean') {
+                sessionStorage.setItem('member_can_analyze', json.member_allowed ? '1' : '0');
+            }
+        }
+    } catch (e) {
+        console.warn("권리분석 접근 설정 조회 실패:", e);
+    }
+    applyAnalysisAccessState();
+}
+
+function applyAnalysisAccessState() {
+    const state = window.analysisAccessState || { access_mode: 'all', admin_only: false, message: '' };
+    const mode = state.access_mode || (state.admin_only ? 'admin_only' : 'all');
+    const isAdmin = isAdminSessionActive();
+    const isAllowed = isUserAllowedForRightsAnalysis();
+    const restrictBanner = document.getElementById('analysisRestrictionBanner');
+    const restrictText = document.getElementById('analysisRestrictionText');
+    const adminBanner = document.getElementById('adminModeActiveBanner');
+    const adminStatusLbl = document.getElementById('adminModeStatusLabel');
+    const adminSubText = document.getElementById('adminModeSubText');
+    const headerCtrlBtn = document.getElementById('adminAccessControlBtnHeader');
+
+    if (restrictText && state.message) {
+        restrictText.innerText = state.message;
+    }
+
+    if (!isAllowed) {
+        if (restrictBanner) restrictBanner.style.display = 'block';
+        if (adminBanner) adminBanner.style.display = 'none';
+        if (caseNumberInput) {
+            caseNumberInput.disabled = true;
+            caseNumberInput.placeholder = mode === 'selected'
+                ? '🎯 지정 허용 회원 전용 모드로 제한 중 (관리자 지정 회원만 권리분석 가능)'
+                : '🔒 관리자 전용 모드로 이용 제한 중 (관리자 로그인 필요)';
+        }
+        if (searchCaseBtn) searchCaseBtn.disabled = true;
+        if (secondaryInputScreen) secondaryInputScreen.style.display = 'none';
+        if (headerCtrlBtn) {
+            headerCtrlBtn.innerHTML = '<i class="fa-solid fa-lock"></i> 관리자 로그인 (제한중)';
+            headerCtrlBtn.style.background = 'rgba(239, 68, 68, 0.25)';
+            headerCtrlBtn.style.borderColor = '#ef4444';
+            headerCtrlBtn.style.color = '#fca5a5';
+        }
+    } else {
+        if (restrictBanner) restrictBanner.style.display = 'none';
+        if (caseNumberInput) {
+            caseNumberInput.disabled = false;
+            caseNumberInput.placeholder = '사건번호 (예: 2024타경5020)';
+        }
+        if (searchCaseBtn) searchCaseBtn.disabled = false;
+
+        if (isAdmin) {
+            if (adminBanner) adminBanner.style.display = 'flex';
+            if (adminStatusLbl && adminSubText) {
+                if (mode === 'admin_only') {
+                    adminStatusLbl.innerText = '🔒 현재 [관리자 1인만 권리분석 가능] 제한 ON';
+                    adminSubText.innerText = '일반 회원의 권리분석은 차단되어 있으며, 관리자 권한으로 정상 이용 중입니다.';
+                } else if (mode === 'selected') {
+                    const cnt = state.allowed_count || (state.allowed_user_ids || []).length || 0;
+                    const namesPreview = (state.allowed_user_names || []).slice(0, 5).join(', ');
+                    adminStatusLbl.innerText = `🎯 현재 [지정 회원(${cnt}명) + 관리자만 권리분석 허용] 모드 ON`;
+                    adminSubText.innerText = cnt > 0
+                        ? `지정 허용 회원(${namesPreview}${cnt > 5 ? ' 외' : ''}) 및 관리자만 권리분석 창을 열 수 있습니다.`
+                        : '현재 지정된 허용 회원이 0명이므로 관리자만 열람 가능합니다. [이용제한 설정]에서 회원을 지정하세요.';
+                } else {
+                    adminStatusLbl.innerText = '🔓 현재 [전체 승인 회원 권리분석 허용] 모드';
+                    adminSubText.innerText = '우측 [이용제한 설정] 버튼으로 지정 회원 전용 또는 관리자 전용 모드로 전환할 수 있습니다.';
+                }
+            }
+            if (headerCtrlBtn) {
+                headerCtrlBtn.innerHTML = mode === 'admin_only'
+                    ? '<i class="fa-solid fa-user-lock"></i> 권리분석 제한(관리자전용)'
+                    : (mode === 'selected'
+                        ? `<i class="fa-solid fa-user-check"></i> 권리분석 제한(지정회원 ${state.allowed_count || 0}명)`
+                        : '<i class="fa-solid fa-sliders"></i> 권리분석 제한설정');
+                headerCtrlBtn.style.background = mode === 'admin_only'
+                    ? 'rgba(239, 68, 68, 0.28)'
+                    : (mode === 'selected' ? 'rgba(56, 189, 248, 0.24)' : 'rgba(16, 185, 129, 0.2)');
+                headerCtrlBtn.style.borderColor = mode === 'admin_only'
+                    ? '#ef4444'
+                    : (mode === 'selected' ? '#0284c7' : '#10b981');
+                headerCtrlBtn.style.color = mode === 'admin_only'
+                    ? '#fca5a5'
+                    : (mode === 'selected' ? '#7dd3fc' : '#6ee7b7');
+            }
+        } else {
+            if (adminBanner) adminBanner.style.display = 'none';
+            if (headerCtrlBtn) {
+                headerCtrlBtn.innerHTML = '<i class="fa-solid fa-user-shield"></i> 관리자 모드';
+                headerCtrlBtn.style.background = 'rgba(187, 0, 255, 0.16)';
+                headerCtrlBtn.style.borderColor = 'var(--neon-purple)';
+                headerCtrlBtn.style.color = '#e9d5ff';
+            }
+        }
+    }
+}
+
+function promptAdminLoginModal() {
+    const adminLoginModal = document.getElementById('adminLoginModal');
+    const adminInput = document.getElementById('adminKeyModalInput');
+    if (adminLoginModal) {
+        adminLoginModal.style.display = 'flex';
+        if (adminInput) {
+            adminInput.value = '';
+            adminInput.removeAttribute('readonly');
+            adminInput.focus();
+        }
+    }
+}
+
+async function loadMembersIntoRestrictionModal() {
+    const listEl = document.getElementById('modalSelectedMembersList');
+    const countSpan = document.getElementById('modalSelectedCountSpan');
+    const key = getEffectiveAdminKey();
+    if (!listEl || !key) return;
+    try {
+        const res = await fetch('/api/admin/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admin_key: key })
+        });
+        const json = await res.json();
+        if (json.status === 'success') {
+            const activeUsers = (json.data || []).filter(u => (u.status || 'active') === 'active');
+            if (activeUsers.length === 0) {
+                listEl.innerHTML = '<span style="font-size:0.78rem; color:#64748b;">승인된 정상 정회원이 없습니다.</span>';
+                if (countSpan) countSpan.innerText = '(0명 선택됨)';
+                return;
+            }
+            const updateModalCount = () => {
+                const checkedCnt = listEl.querySelectorAll('input.modal-member-rights-chk:checked').length;
+                if (countSpan) countSpan.innerText = `(${checkedCnt}명 선택됨 / 전체 ${activeUsers.length}명)`;
+            };
+            listEl.innerHTML = activeUsers.map(u => {
+                const checked = u.can_use_rights_analysis ? 'checked' : '';
+                return `<label style="display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:14px; background:rgba(30,41,59,0.9); border:1px solid rgba(56,189,248,0.3); color:#f8fafc; font-size:0.8rem; cursor:pointer;">
+                    <input type="checkbox" class="modal-member-rights-chk" value="${u.id}" ${checked}>
+                    <span>${u.username}</span>
+                </label>`;
+            }).join('');
+            listEl.querySelectorAll('input.modal-member-rights-chk').forEach(chk => {
+                chk.addEventListener('change', () => {
+                    updateModalCount();
+                    const selRadio = document.querySelector('input[name="analysisAccessModeRadio"][value="selected"]');
+                    if (selRadio && chk.checked) selRadio.checked = true;
+                });
+            });
+            updateModalCount();
+        }
+    } catch (e) {
+        console.warn("정회원 목록 로드 실패:", e);
+    }
+}
+
+function openAnalysisRestrictionModal() {
+    if (!isAdminSessionActive()) {
+        promptAdminLoginModal();
+        return;
+    }
+    const modal = document.getElementById('analysisRestrictionModal');
+    if (!modal) return;
+    const state = window.analysisAccessState || { access_mode: 'all', admin_only: false, message: '' };
+    const mode = state.access_mode || (state.admin_only ? 'admin_only' : 'all');
+    const radios = document.getElementsByName('analysisAccessModeRadio');
+    for (const r of radios) {
+        r.checked = (r.value === mode);
+    }
+    const msgInput = document.getElementById('restrictionMessageInput');
+    if (msgInput && state.message) {
+        msgInput.value = state.message;
+    }
+    loadMembersIntoRestrictionModal();
+    modal.style.display = 'flex';
+}
+
+function closeAnalysisRestrictionModal() {
+    const modal = document.getElementById('analysisRestrictionModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function handleSaveAnalysisRestriction() {
+    const key = getEffectiveAdminKey();
+    if (!key) {
+        alert("관리자 인증이 필요합니다.");
+        return;
+    }
+    const radios = document.getElementsByName('analysisAccessModeRadio');
+    let accessMode = 'all';
+    for (const r of radios) {
+        if (r.checked) accessMode = r.value;
+    }
+    const checkedIds = Array.from(document.querySelectorAll('input.modal-member-rights-chk:checked'))
+        .map(el => parseInt(el.value, 10))
+        .filter(n => !isNaN(n));
+    const msgInput = document.getElementById('restrictionMessageInput');
+    const message = msgInput ? msgInput.value.trim() : '';
+
+    try {
+        const res = await fetch('/api/admin/analysis_access_config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                admin_key: key,
+                access_mode: accessMode,
+                admin_only: accessMode === 'admin_only',
+                allowed_user_ids: checkedIds,
+                message: message
+            })
+        });
+        const json = await res.json();
+        if (json.status === 'success') {
+            window.analysisAccessState = {
+                access_mode: json.access_mode || accessMode,
+                admin_only: Boolean(json.admin_only),
+                restricted: Boolean(json.restricted),
+                allowed_user_ids: json.allowed_user_ids || checkedIds,
+                allowed_user_names: json.allowed_user_names || [],
+                allowed_count: json.allowed_count || checkedIds.length,
+                member_allowed: Boolean(json.member_allowed),
+                message: json.message || message,
+                updated_at: json.updated_at || ''
+            };
+            closeAnalysisRestrictionModal();
+            applyAnalysisAccessState();
+            alert(json.summary || '권리분석 이용권한 설정이 저장되었습니다.');
+        } else {
+            alert('설정 저장 실패: ' + (json.message || '오류'));
+        }
+    } catch (e) {
+        alert('설정 저장 중 네트워크 오류: ' + e.message);
+    }
+}
+
+async function initAnalysisAccessControl() {
+    const headerBtn = document.getElementById('adminAccessControlBtnHeader');
+    if (headerBtn) {
+        headerBtn.addEventListener('click', () => {
+            if (isAdminSessionActive()) {
+                openAnalysisRestrictionModal();
+            } else {
+                promptAdminLoginModal();
+            }
+        });
+    }
+    const unlockBtn = document.getElementById('unlockAsAdminBtn');
+    if (unlockBtn) {
+        unlockBtn.addEventListener('click', promptAdminLoginModal);
+    }
+    const quickOpenBtn = document.getElementById('openRestrictionModalQuickBtn');
+    if (quickOpenBtn) {
+        quickOpenBtn.addEventListener('click', openAnalysisRestrictionModal);
+    }
+    const quickLogoutBtn = document.getElementById('logoutAdminQuickBtn');
+    if (quickLogoutBtn) {
+        quickLogoutBtn.addEventListener('click', () => {
+            if (confirm("관리자 모드를 로그아웃 하시겠습니까?")) {
+                performAdminLogout();
+            }
+        });
+    }
+    const closeBtn = document.getElementById('closeRestrictionModalBtn');
+    if (closeBtn) closeBtn.addEventListener('click', closeAnalysisRestrictionModal);
+    const cancelBtn = document.getElementById('cancelRestrictionModalBtn');
+    if (cancelBtn) cancelBtn.addEventListener('click', closeAnalysisRestrictionModal);
+    const saveBtn = document.getElementById('saveRestrictionModalBtn');
+    if (saveBtn) saveBtn.addEventListener('click', handleSaveAnalysisRestriction);
+
+    await fetchAnalysisAccessConfig();
+}

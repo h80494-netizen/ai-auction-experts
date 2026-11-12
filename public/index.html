@@ -9,7 +9,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <script>
+        (function () {
+            try {
+                localStorage.removeItem('agy_auth_exp');
+                localStorage.removeItem('agy_admin_key');
+                localStorage.removeItem('agy_admin_exp');
+                if (sessionStorage.getItem('agy_session_v2') === 'active') {
+                    sessionStorage.setItem('auth_token', 'verified');
+                    document.documentElement.classList.add('session-authenticated');
+                } else {
+                    sessionStorage.removeItem('auth_token');
+                    sessionStorage.removeItem('admin_board_key');
+                    sessionStorage.removeItem('is_admin_verified');
+                    sessionStorage.removeItem('agy_admin_session_v2');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <link rel="stylesheet" href="style.css?v=18">
     <!-- Markdown Parser (Marked.js) -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <!-- html2pdf for PDF Generation -->
@@ -23,14 +41,15 @@
             <h1 class="login-title">Private Access</h1>
             <p class="login-subtitle">AI Auction Expert 2.0</p>
             
-            <div style="background: rgba(0, 240, 255, 0.08); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.85rem; line-height: 1.5; text-align: left; color: #e2e8f0;">
+            <div style="background: rgba(0, 240, 255, 0.08); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.85rem; line-height: 1.6; text-align: left; color: #e2e8f0;">
                 <div style="color: var(--neon-blue); font-weight: bold; margin-bottom: 4px;">
-                    <i class="fa-solid fa-circle-info"></i> 접속 비밀번호 안내
+                    <i class="fa-solid fa-shield-halved"></i> 승인 회원 전용 접속 안내
                 </div>
-                <div>• <b>정식 승인 회원</b>: 가입 신청 시 등록한 <b>본인의 비밀번호</b> 입력</div>
+                <div>• <b>정식 승인 회원</b>: 하단 [가입/비밀번호 신청] 후 <b>관리자가 승인한 본인 비밀번호</b>로만 접속 가능</div>
+                <div style="color: #94a3b8; font-size: 0.78rem; margin-top: 3px;">※ 임시(월일 4자리) 비밀번호 접속은 종료되었습니다.</div>
             </div>
 
-            <input type="password" id="passwordInput" class="login-input" placeholder="비밀번호 입력 (월일 4자리 또는 본인 PIN)">
+            <input type="password" id="passwordInput" class="login-input" placeholder="승인된 회원 비밀번호 입력" autocomplete="new-password" data-lpignore="true">
             <button id="loginBtn" class="login-btn">입장하기</button>
             
             <div style="display: flex; gap: 8px; margin-top: 15px;">
@@ -89,6 +108,9 @@
             <div class="board-header">
                 <h2><i class="fa-solid fa-comments" style="color:var(--neon-blue);"></i> 소통 및 가입·비밀번호 신청 게시판</h2>
                 <div style="display:flex; gap:8px; align-items:center;">
+                    <button id="openAdminCenterBtnBoard" type="button" onclick="window.open('/admin.html', '_blank')" style="display:none; background:rgba(245, 158, 11, 0.2); color:#fbbf24; border:1px solid rgba(245, 158, 11, 0.5); padding:6px 12px; border-radius:6px; font-size:0.85rem; font-weight:700; cursor:pointer;">
+                        <i class="fa-solid fa-database"></i> 회원·신청 DB 관리
+                    </button>
                     <button id="boardAdminBtn" style="background:rgba(187, 0, 255, 0.15); color:#d2a8ff; border:1px solid rgba(187, 0, 255, 0.4); padding:6px 12px; border-radius:6px; font-size:0.85rem; cursor:pointer;">
                         <i class="fa-solid fa-user-shield"></i> 관리자 로그인
                     </button>
@@ -263,8 +285,8 @@
         <div style="background:rgba(18, 24, 48, 0.98); border:1px solid var(--neon-blue); border-radius:14px; padding:24px; max-width:380px; width:100%; text-align:center; box-shadow:0 0 30px rgba(0,240,255,0.3);">
             <i class="fa-solid fa-lock" style="font-size:2.5rem; color:var(--neon-blue); margin-bottom:15px;"></i>
             <h3 style="font-size:1.15rem; color:#fff; margin-bottom:8px;">비밀글 열람</h3>
-            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">작성 시 설정한 4자리 비밀번호(PIN)를 입력해주세요.</p>
-            <input type="password" id="pinModalInput" class="board-input" placeholder="비밀번호 4자리" maxlength="8" style="text-align:center; font-size:1.2rem; letter-spacing:5px; margin-bottom:15px;">
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">작성 시 설정한 본인 비밀번호를 입력해주세요.</p>
+            <input type="password" id="pinModalInput" class="board-input" placeholder="비밀번호 입력" maxlength="64" autocomplete="new-password" style="text-align:center; font-size:1.05rem; letter-spacing:2px; margin-bottom:15px;">
             <div style="display:flex; gap:10px;">
                 <button id="cancelPinBtn" style="flex:1; background:rgba(255,255,255,0.1); color:#fff; border:none; padding:10px; border-radius:8px; cursor:pointer;">취소</button>
                 <button id="confirmPinBtn" class="primary-btn" style="flex:1; background:var(--neon-blue); border-color:var(--neon-blue); justify-content:center;">확인</button>
@@ -276,9 +298,9 @@
     <div id="adminLoginModal" class="board-modal-overlay" style="z-index:10005;">
         <div style="background:rgba(18, 24, 48, 0.98); border:1px solid var(--neon-purple); border-radius:14px; padding:24px; max-width:380px; width:100%; text-align:center; box-shadow:0 0 30px rgba(187,0,255,0.3);">
             <i class="fa-solid fa-shield-halved" style="font-size:2.5rem; color:var(--neon-purple); margin-bottom:15px;"></i>
-            <h3 style="font-size:1.15rem; color:#fff; margin-bottom:8px;">관리자 인증</h3>
-            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">관리자 마스터 비밀번호를 입력해주세요.</p>
-            <input type="password" id="adminKeyModalInput" class="board-input" placeholder="관리자 암호" style="text-align:center; font-size:1.1rem; margin-bottom:15px;">
+            <h3 style="font-size:1.15rem; color:#fff; margin-bottom:8px;">관리자 보안 인증</h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">관리자 보안 인증키를 입력해주세요.</p>
+            <input type="password" id="adminKeyModalInput" class="board-input" placeholder="관리자 보안 인증키 입력" autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" readonly onfocus="this.removeAttribute('readonly');" style="text-align:center; font-size:1.05rem; margin-bottom:15px;">
             <div style="display:flex; gap:10px;">
                 <button id="cancelAdminBtn" style="flex:1; background:rgba(255,255,255,0.1); color:#fff; border:none; padding:10px; border-radius:8px; cursor:pointer;">취소</button>
                 <button id="confirmAdminBtn" class="primary-btn" style="flex:1; background:var(--neon-purple); border-color:var(--neon-purple); justify-content:center;">인증</button>
@@ -342,6 +364,71 @@
         </div>
     </div>
 
+    <!-- Admin Rights Analysis Access Restriction Modal (관리자 전용 권리분석 이용제한 설정 모달) -->
+    <div id="analysisRestrictionModal" class="board-modal-overlay" style="z-index:10007; display:none;">
+        <div style="background:rgba(15, 23, 42, 0.98); border:1px solid #ef4444; border-radius:16px; padding:24px; max-width:540px; width:92%; box-shadow:0 0 35px rgba(239, 68, 68, 0.28); text-align:left;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; border-bottom:1px solid rgba(239, 68, 68, 0.28); padding-bottom:12px;">
+                <h3 style="font-size:1.18rem; color:#fca5a5; display:flex; align-items:center; gap:8px; margin:0;">
+                    <i class="fa-solid fa-user-lock" style="color:#ef4444;"></i> 권리분석 이용권한 · 제한 설정 (관리자 전용)
+                </h3>
+                <button id="closeRestrictionModalBtn" type="button" style="background:none; border:none; color:#94a3b8; font-size:1.4rem; cursor:pointer; padding:2px 6px;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:14px;">
+                <div>
+                    <label style="font-size:0.86rem; color:#cbd5e1; font-weight:700; display:block; margin-bottom:8px;">
+                        권리분석 이용 허용 대상 선택 (3단계 모드)
+                    </label>
+                    <div style="display:flex; flex-direction:column; gap:10px; background:rgba(255,255,255,0.04); padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.1);">
+                        <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; font-size:0.92rem; color:#86efac; font-weight:700;">
+                            <input type="radio" name="analysisAccessModeRadio" value="all" checked style="margin-top:3px;">
+                            <div>
+                                <div>🔓 전체 승인 회원 이용 허용 (기본 운영 모드)</div>
+                                <div style="font-size:0.78rem; color:#94a3b8; font-weight:400; margin-top:2px;">승인된 정회원 및 관리자 모두 권리분석 창을 자유롭게 이용할 수 있습니다.</div>
+                            </div>
+                        </label>
+                        <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; font-size:0.92rem; color:#38bdf8; font-weight:700; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.1);">
+                            <input type="radio" name="analysisAccessModeRadio" value="selected" style="margin-top:3px;">
+                            <div style="flex:1;">
+                                <div>🎯 내가 지정한 회원 + 관리자만 권리분석 이용 허용</div>
+                                <div style="font-size:0.78rem; color:#94a3b8; font-weight:400; margin-top:2px;">관리자와 아래에서 체크(지정)한 정회원만 권리분석 창이 열리며, 미지정 회원은 제한 안내가 표시됩니다.</div>
+                            </div>
+                        </label>
+                        <div id="modalSelectedMembersBox" style="margin-left:22px; padding:10px 12px; border-radius:8px; background:rgba(15, 23, 42, 0.85); border:1px solid rgba(56, 189, 248, 0.35); max-height:165px; overflow-y:auto;">
+                            <div style="font-size:0.79rem; color:#7dd3fc; font-weight:700; margin-bottom:6px;">
+                                <i class="fa-solid fa-user-check"></i> 권리분석 허용 회원 체크리스트 <span id="modalSelectedCountSpan">(0명 선택됨)</span>
+                            </div>
+                            <div id="modalSelectedMembersList" style="display:flex; flex-wrap:wrap; gap:6px;">
+                                <span style="font-size:0.78rem; color:#64748b;">정회원 명부를 불러오는 중...</span>
+                            </div>
+                        </div>
+                        <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; font-size:0.92rem; color:#fca5a5; font-weight:700; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.1);">
+                            <input type="radio" name="analysisAccessModeRadio" value="admin_only" style="margin-top:3px;">
+                            <div>
+                                <div>🔒 관리자 1인만 권리분석 이용 허용 (일반 회원 전체 제한)</div>
+                                <div style="font-size:0.78rem; color:#94a3b8; font-weight:400; margin-top:2px;">관리자로 로그인한 경우에만 사건 조회 및 9단계 권리분석이 실행됩니다.</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label style="font-size:0.86rem; color:#cbd5e1; font-weight:700; display:block; margin-bottom:6px;">일반 회원에게 표시할 이용제한 안내 문구</label>
+                    <textarea id="restrictionMessageInput" class="board-input" rows="3" placeholder="일반 회원 화면에 노출할 이용제한 안내 문구를 입력하세요." style="width:100%; box-sizing:border-box; line-height:1.5; resize:vertical;">현재 권리분석 기능은 시스템 운영 정책에 따라 [관리자 전용 모드]로 이용이 제한되어 있습니다. 일반 회원분들은 지도·상권·실거래 시세 분석 기능을 이용해 주시기 바랍니다.</textarea>
+                </div>
+
+                <div style="display:flex; gap:10px; margin-top:6px;">
+                    <button id="cancelRestrictionModalBtn" type="button" style="flex:1; background:rgba(255,255,255,0.1); color:#fff; border:none; padding:11px; border-radius:8px; cursor:pointer; font-weight:600;">취소</button>
+                    <button id="saveRestrictionModalBtn" type="button" class="primary-btn" style="flex:2; background:#ef4444; border-color:#ef4444; color:#fff; justify-content:center; font-weight:800;">
+                        <i class="fa-solid fa-shield-halved"></i> 권한 설정 저장 및 즉시 적용
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="background-effects">
         <div class="glow-orb orb-1"></div>
         <div class="glow-orb orb-2"></div>
@@ -378,7 +465,7 @@
 
         <!-- Header & Search -->
         <header class="header">
-            <div style="display:flex; justify-content: space-between; align-items: center;">
+            <div class="header-top-row" style="display:flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                 <div>
                     <h1 class="title">AI Auction <span class="neon-text">Expert 2.0</span></h1>
                     <p class="subtitle">20년 경력 실전 경매 전문가 사고모델 탑재</p>
@@ -386,32 +473,76 @@
                         <i class="fa-solid fa-users" style="color: var(--neon-blue);"></i> 당일 현재 접속자 수: <span id="visitorCountValue" style="color: #fff; font-weight: 700; background: rgba(0, 240, 255, 0.15); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(0, 240, 255, 0.3);">-</span> 명
                     </div>
                 </div>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button id="openNoticeBtnHeader" class="primary-btn" style="background:rgba(245, 158, 11, 0.15); border-color:#f59e0b; color:#fbbf24; font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;">
+                <div class="header-nav-btns" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <button id="openNoticeBtnHeader" class="primary-btn" style="background:rgba(245, 158, 11, 0.15); border-color:#f59e0b; color:#fbbf24; font-size:0.95rem; padding:8px 14px; white-space: nowrap; flex-shrink: 0;">
                         <i class="fa-solid fa-bullhorn"></i> 공지 알림
                     </button>
-                    <button id="openBoardBtnHeader" class="primary-btn" style="background:rgba(0, 240, 255, 0.15); border-color:var(--neon-blue); color:var(--neon-blue); font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;">
+                    <button id="openBoardBtnHeader" class="primary-btn" style="background:rgba(0, 240, 255, 0.15); border-color:var(--neon-blue); color:var(--neon-blue); font-size:0.95rem; padding:8px 14px; white-space: nowrap; flex-shrink: 0;">
                         <i class="fa-solid fa-comments"></i> 소통 게시판
                     </button>
-                    <button onclick="window.open('/admin.html', '_blank')" class="primary-btn" style="background:rgba(245, 158, 11, 0.15); border-color:#f59e0b; color:#fbbf24; font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;" title="관리자 전용 회원 및 시스템 관리">
+                    <button id="adminAccessControlBtnHeader" type="button" class="primary-btn" style="background:rgba(239, 68, 68, 0.16); border-color:#ef4444; color:#fca5a5; font-size:0.95rem; padding:8px 14px; white-space: nowrap; flex-shrink: 0;" title="관리자 로그인 및 권리분석 이용제한 설정">
+                        <i class="fa-solid fa-user-shield"></i> 관리자 모드
+                    </button>
+                    <button onclick="window.open('/admin.html', '_blank')" class="primary-btn" style="background:rgba(245, 158, 11, 0.15); border-color:#f59e0b; color:#fbbf24; font-size:0.95rem; padding:8px 14px; white-space: nowrap; flex-shrink: 0;" title="관리자 전용 회원 및 시스템 관리">
                         <i class="fa-solid fa-crown"></i> 관리자 센터
                     </button>
-                    <button onclick="window.open('/issues.html', '_blank')" class="primary-btn" style="background:var(--neon-purple); border-color:var(--neon-purple); font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;">
+                    <button onclick="window.open('/issues.html', '_blank')" class="primary-btn" style="background:var(--neon-purple); border-color:var(--neon-purple); font-size:0.95rem; padding:8px 14px; white-space: nowrap; flex-shrink: 0;">
                         <i class="fa-solid fa-newspaper"></i> 이슈보기
                     </button>
-                    <button onclick="window.open('/map.html?v=33&t=' + Date.now(), '_blank')" class="primary-btn" style="background:var(--neon-blue); border-color:var(--neon-blue); font-size:1rem; padding:8px 16px; white-space: nowrap; flex-shrink: 0;">
+                    <button onclick="window.open('/map.html?v=34&t=' + Date.now(), '_blank')" class="primary-btn" style="background:var(--neon-blue); border-color:var(--neon-blue); font-size:0.95rem; padding:8px 14px; white-space: nowrap; flex-shrink: 0;">
                         <i class="fa-solid fa-map-location-dot"></i> 지도보기
+                    </button>
+                    <button id="lockSessionBtnHeader" type="button" class="primary-btn" style="background:rgba(148, 163, 184, 0.14); border-color:rgba(148, 163, 184, 0.45); color:#cbd5e1; font-size:0.95rem; padding:8px 14px; white-space: nowrap; flex-shrink: 0;" title="현재 접속 세션을 종료하고 비밀번호 입력 초기 화면으로 잠급니다">
+                        <i class="fa-solid fa-lock"></i> 잠금
+                    </button>
+                </div>
+            </div>
+
+            <!-- 일반 회원용 권리분석 이용제한 안내 패널 (관리자 제한 ON 시 자동 표시) -->
+            <div id="analysisRestrictionBanner" style="display:none; margin-bottom:16px; padding:18px 20px; border-radius:12px; background:linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(15, 23, 42, 0.92)); border:1px solid rgba(239, 68, 68, 0.65); box-shadow:0 6px 24px rgba(239, 68, 68, 0.18); text-align:left;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:260px;">
+                        <div style="font-size:1.05rem; font-weight:800; color:#fca5a5; margin-bottom:6px; display:flex; align-items:center; gap:8px;">
+                            <i class="fa-solid fa-lock"></i> 권리분석 관리자 전용 이용제한 안내
+                        </div>
+                        <div id="analysisRestrictionText" style="font-size:0.9rem; color:#f1f5f9; line-height:1.6;">
+                            현재 권리분석 기능은 시스템 운영 정책에 따라 [관리자 전용 모드]로 이용이 제한되어 있습니다.
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <button id="unlockAsAdminBtn" type="button" class="primary-btn" style="background:rgba(187, 0, 255, 0.25); border-color:var(--neon-purple); color:#f3e8ff; font-size:0.88rem; padding:9px 14px;">
+                            <i class="fa-solid fa-key"></i> 관리자 로그인 후 이용
+                        </button>
+                        <button type="button" onclick="window.open('/map.html?v=33&t=' + Date.now(), '_blank')" class="primary-btn" style="background:rgba(0, 240, 255, 0.18); border-color:var(--neon-blue); color:var(--neon-blue); font-size:0.88rem; padding:9px 14px;">
+                            <i class="fa-solid fa-map-location-dot"></i> 지도·상권 분석 이동
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 관리자 로그인 상태에서 권리분석 제한 모드가 켜져 있을 때 표시되는 상태 바 -->
+            <div id="adminModeActiveBanner" style="display:none; margin-bottom:14px; padding:12px 16px; border-radius:10px; background:rgba(187, 0, 255, 0.14); border:1px solid rgba(187, 0, 255, 0.5); color:#f3e8ff; font-size:0.88rem; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                <div>
+                    <i class="fa-solid fa-crown" style="color:#fbbf24;"></i>
+                    <strong id="adminModeStatusLabel">관리자 모드 활성화 중</strong> — <span id="adminModeSubText">권리분석 제한 설정을 변경하거나 관리자 권한으로 모든 분석을 이용할 수 있습니다.</span>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button id="openRestrictionModalQuickBtn" type="button" style="background:#ef4444; color:#fff; border:none; padding:6px 12px; border-radius:6px; font-size:0.82rem; font-weight:700; cursor:pointer;">
+                        <i class="fa-solid fa-sliders"></i> 이용제한 설정
+                    </button>
+                    <button id="logoutAdminQuickBtn" type="button" style="background:rgba(255,255,255,0.12); color:#e2e8f0; border:1px solid rgba(255,255,255,0.2); padding:6px 12px; border-radius:6px; font-size:0.82rem; cursor:pointer;">
+                        관리자 로그아웃
                     </button>
                 </div>
             </div>
 
             <div class="search-container" style="display:flex; flex-direction:column; gap:10px;">
-                <div style="display:flex; gap:10px; width:100%;">
-                    <div class="input-wrapper" style="flex:1;">
+                <div class="case-search-row" style="display:flex; gap:10px; width:100%; flex-wrap:wrap;">
+                    <div class="input-wrapper" style="flex:1; min-width:220px;">
                         <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                        <input type="text" id="caseNumberInput" placeholder="사건번호 (예: 2024타경5020)" autocomplete="off">
+                        <input type="text" id="caseNumberInput" placeholder="사건번호 (예: 2025 타경 51673 또는 2025 타경 51673(1))" autocomplete="off">
                     </div>
-                    <button id="searchCaseBtn" class="primary-btn" style="flex-shrink:0; background:var(--neon-purple); border-color:var(--neon-purple);">대법원 스크래핑 <i class="fa-solid fa-search"></i></button>
+                    <button id="searchCaseBtn" class="primary-btn" style="flex-shrink:0; background:var(--neon-purple); border-color:var(--neon-purple); justify-content:center;">대법원 스크래핑 <i class="fa-solid fa-search"></i></button>
                 </div>
             </div>
 
@@ -463,16 +594,16 @@
                             <label for="targetReturnRate"><i class="fa-solid fa-percent"></i> 연 목표수익률 (%)</label>
                             <input type="number" id="targetReturnRate" class="setting-select" value="20" min="0" max="100">
                         </div>
-                        <div class="setting-item" style="grid-column: span 2;">
+                        <div class="setting-item setting-item-full" style="grid-column: 1 / -1;">
                             <label for="madangsUrl"><i class="fa-solid fa-link"></i> 마당스 팝업 URL (입력 시 해당 사진으로 완전 교체)</label>
-                            <input type="text" id="madangsUrl" class="setting-select" placeholder="예: https://madangs.com/popup/detail_report?link=photo..." value="https://madangs.com/popup/detail_report?link=photo&code=0320240058264001&type=1&photo_idx=2" style="width: 100%;">
+                            <input type="text" id="madangsUrl" class="setting-select" placeholder="예: https://madangs.com/popup/detail_report?link=photo..." value="" style="width: 100%;">
                         </div>
                     </div>
 
                     <div style="margin-top: 20px; padding: 15px; background: rgba(0, 0, 0, 0.4); border-radius: 8px; border: 1px dashed var(--glass-border);">
                         <h4 style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;"><i class="fa-solid fa-robot"></i> AI 자동 산출 (물건지 주소 기반)</h4>
-                        <div style="display: flex; gap: 20px;">
-                            <div class="setting-item" style="flex: 1;">
+                        <div style="display: flex; gap: 14px; flex-wrap: wrap;">
+                            <div class="setting-item" style="flex: 1; min-width: 150px;">
                                 <label><i class="fa-solid fa-map-location-dot"></i> 규제지역 여부</label>
                                 <div id="isRegulatedAreaDisplay" style="padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; color: var(--text-main); font-size: 0.95rem; font-weight: 600;">클릭 시 판독</div>
                                 <input type="hidden" id="isRegulatedArea" value="false">
@@ -487,7 +618,7 @@
                     <!-- 2차 실행 버튼 -->
                     <div style="margin-top: 20px; text-align: center;">
                         <button id="startBtn" class="primary-btn" style="width: 100%; justify-content: center; font-size: 1.2rem; padding: 20px;" disabled>
-                            9단계 심층 분석 시작 (Gemini 2.5 Flash) <i class="fa-solid fa-bolt"></i>
+                            9단계 심층 권리분석 시작 <i class="fa-solid fa-bolt"></i>
                         </button>
                     </div>
                 </div>
@@ -523,9 +654,9 @@
             <div class="report-content-wrapper" style="display: flex; flex-direction: column; gap: 20px;">
                 
                 <!-- 상단: 전경사진(좌) + 1. 기본정보(우) -->
-                <div style="display: flex; gap: 20px; width: 100%; align-items: stretch; flex-wrap: wrap;">
+                <div class="report-top-split" style="display: flex; gap: 20px; width: 100%; align-items: stretch; flex-wrap: wrap;">
                     <!-- 전경사진/위치도/내부구조도 캐러셀 (좌측) -->
-                    <div class="report-item" style="flex: 1; min-width: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px dashed rgba(187, 0, 255, 0.4); background: rgba(0,0,0,0.2); overflow: hidden; padding: 0; min-height: 300px; position: relative;">
+                    <div class="report-item report-photo-box" style="flex: 1; min-width: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px dashed rgba(187, 0, 255, 0.4); background: rgba(0,0,0,0.2); overflow: hidden; padding: 0; min-height: 280px; position: relative;">
                         <!-- 스크롤 가능한 컨테이너 -->
                         <div id="imageCarousel" style="width: 100%; height: 100%; display: none; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--neon-purple) transparent;">
                             <div style="min-width: 100%; height: 100%; scroll-snap-align: center; position: relative; display: flex; align-items: center; justify-content: center;">
@@ -552,7 +683,7 @@
                     </div>
                     
                     <!-- 1. 기본정보 (우측) -->
-                    <div class="report-item" style="flex: 2; min-width: 400px; display: flex; flex-direction: column;">
+                    <div class="report-item report-basic-box" style="flex: 2; min-width: 280px; display: flex; flex-direction: column;">
                         <h4 style="font-size: 1.3rem; font-weight: 800;"><i class="fa-solid fa-circle-info"></i> Ⅰ. 기본정보</h4>
                         <div id="report-section-1" class="markdown-content" style="flex: 1;"></div>
                     </div>
@@ -591,16 +722,16 @@
                     </div>
                     
                     <!-- 동적 인포그래픽 (첫번째 줄 2개, 두번째 줄 1개) -->
-                    <div class="conclusion-box" style="display: flex; gap: 20px; width: 100%; flex-wrap: wrap; margin-bottom: 20px;">
-                        <div style="flex: 1; min-width: 300px; max-width: calc(50% - 10px);" class="report-item">
+                    <div class="conclusion-box infographic-row-box" style="display: flex; gap: 20px; width: 100%; flex-wrap: wrap; margin-bottom: 20px;">
+                        <div style="flex: 1 1 300px;" class="report-item">
                             <h4 style="font-size: 1rem;"><i class="fa-solid fa-chart-line"></i> 수익성 시뮬레이터</h4>
                             <div id="dynamic-sensitivity-chart" class="infographic-container" style="display: none; margin-top: 10px;"></div>
                         </div>
-                        <div style="flex: 1; min-width: 300px; max-width: calc(50% - 10px);" class="report-item">
+                        <div style="flex: 1 1 300px;" class="report-item">
                             <h4 style="font-size: 1rem;"><i class="fa-solid fa-won-sign"></i> 투자금 폭포수</h4>
                             <div id="dynamic-waterfall-chart" class="infographic-container" style="display: none; margin-top: 10px;"></div>
                         </div>
-                        <div style="flex: 1; min-width: 100%;" class="report-item">
+                        <div style="flex: 1 1 100%;" class="report-item">
                             <h4 style="font-size: 1rem;"><i class="fa-solid fa-bolt"></i> 명도 및 출구전략 흐름도</h4>
                             <div id="dynamic-exit-flowchart" class="infographic-container" style="display: none; margin-top: 10px;"></div>
                         </div>
@@ -620,6 +751,6 @@
         </section>
     </main>
 
-    <script src="script.js?v=13"></script>
+    <script src="script.js?v=17"></script>
 </body>
 </html>

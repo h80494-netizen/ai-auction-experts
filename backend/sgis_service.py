@@ -76,11 +76,16 @@ class SGISService:
         x, y = self.gps_to_utmk.transform(lng, lat)
         return x, y
 
-    def fetch_demographics_500(self, lat: float, lng: float) -> Optional[Dict[str, Any]]:
+    def fetch_demographics(self, lat: float, lng: float, radius: int = 500) -> Optional[Dict[str, Any]]:
         """
-        Fetches demographic statistics within a 500m radius circle of the specified GPS coordinate.
-        Combines population, household, and business stats.
+        Fetches demographic statistics within a configurable radius circle (e.g. 500m, 1000m, 2000m)
+        of the specified GPS coordinate. Combines population, household, and business stats.
         """
+        try:
+            radius_m = int(radius) if radius and int(radius) > 0 else 500
+        except Exception:
+            radius_m = 500
+
         token = self.get_access_token()
         if not token:
             logger.warning("No SGIS access token available. Skipping API fetch.")
@@ -93,18 +98,26 @@ class SGISService:
         years_to_try = ["2023", "2022", "2021"]
         
         # 1. Fetch Population Data (거주인구 및 연령층)
-        pop_data = self._query_with_retry("https://sgisapi.kostat.go.kr/OpenAPI3/stats/population.json", token, x, y, 500, years_to_try)
+        pop_data = self._query_with_retry("https://sgisapi.kostat.go.kr/OpenAPI3/stats/population.json", token, x, y, radius_m, years_to_try)
         if not pop_data:
-            logger.warning(f"SGIS population search returned no results at X:{x:.1f}, Y:{y:.1f}")
+            logger.warning(f"SGIS population search returned no results at X:{x:.1f}, Y:{y:.1f} (r={radius_m}m)")
             return None
 
         # 2. Fetch Household Data (세대수)
-        household_data = self._query_with_retry("https://sgisapi.kostat.go.kr/OpenAPI3/stats/household.json", token, x, y, 500, years_to_try)
+        household_data = self._query_with_retry("https://sgisapi.kostat.go.kr/OpenAPI3/stats/household.json", token, x, y, radius_m, years_to_try)
 
         # 3. Fetch Company/Employee Data (업체수 및 직장인구)
-        company_data = self._query_with_retry("https://sgisapi.kostat.go.kr/OpenAPI3/stats/company.json", token, x, y, 500, years_to_try)
+        company_data = self._query_with_retry("https://sgisapi.kostat.go.kr/OpenAPI3/stats/company.json", token, x, y, radius_m, years_to_try)
 
-        return self._parse_statistics(pop_data, household_data, company_data)
+        parsed = self._parse_statistics(pop_data, household_data, company_data)
+        parsed["radius_m"] = radius_m
+        return parsed
+
+    def fetch_demographics_500(self, lat: float, lng: float) -> Optional[Dict[str, Any]]:
+        """
+        Backward-compatible wrapper for 500m radius SGIS demographic statistics.
+        """
+        return self.fetch_demographics(lat, lng, radius=500)
 
     def _query_with_retry(self, url: str, token: str, x: float, y: float, radius: int, years: list) -> Optional[Dict[str, Any]]:
         """

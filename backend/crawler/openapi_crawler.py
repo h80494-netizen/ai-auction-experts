@@ -6,6 +6,8 @@ from datetime import datetime
 import urllib.parse
 import random
 
+from crawler.redevelopment_pipeline import resolve_region_coords
+
 # 공공데이터포털 고시공고 API Endpoint (예시: 행안부 또는 특정 지자체 통합)
 # 실제 작동 시 신청하신 API 명세서에 맞게 URL을 변경해야 합니다.
 API_URL = "http://apis.data.go.kr/1741000/ntcptcNtcAdvcService/getNtcptcNtcAdvcList"
@@ -93,6 +95,7 @@ def fetch_openapi_gosi(region_name, api_key):
                 category = "산업단지"
                 importance = 5
             
+            rlat, rlng, _ = resolve_region_coords(region_name, title)
             results.append({
                 "title": f"[{dept_name}] {title}",
                 "source": "공공데이터포털 (data.go.kr)",
@@ -104,8 +107,8 @@ def fetch_openapi_gosi(region_name, api_key):
                 "region": region_name,
                 "category": category,
                 "importance_stars": importance,
-                "latitude": 37.5665 + random.uniform(-0.01, 0.01),
-                "longitude": 126.9780 + random.uniform(-0.01, 0.01)
+                "latitude": rlat,
+                "longitude": rlng
             })
             
         return results
@@ -117,6 +120,7 @@ def fetch_openapi_gosi(region_name, api_key):
         print("Using Fallback Mock Data for API Demonstration.")
         
         today = datetime.now()
+        rlat, rlng, _ = resolve_region_coords(region_name)
         fallback_data = [
             {
                 "title": f"[{region_name}청 지자체 공고] 도시관리계획(용도지역·지구, 지구단위계획구역 등) 결정안 재공람 공고",
@@ -129,8 +133,8 @@ def fetch_openapi_gosi(region_name, api_key):
                 "region": region_name,
                 "category": "재개발",
                 "importance_stars": 5,
-                "latitude": 37.5665,
-                "longitude": 126.9780
+                "latitude": rlat,
+                "longitude": rlng
             },
             {
                 "title": f"[{region_name}청 고시공고] 관내 첨단 산업단지(반도체, 데이터센터, AI) 조성 및 공장유치 실시설계용역 발주 공고",
@@ -143,8 +147,8 @@ def fetch_openapi_gosi(region_name, api_key):
                 "region": region_name,
                 "category": "SOC/예산",
                 "importance_stars": 5,
-                "latitude": 37.5615,
-                "longitude": 126.9730
+                "latitude": rlat,
+                "longitude": rlng
             }
         ]
         return fallback_data

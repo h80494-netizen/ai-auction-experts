@@ -1589,6 +1589,259 @@
             </div>
         </section>
 
+        <!-- 수도권(서울·경기·인천) 핵심 정비사업 파이프라인 트래커 & 사전 공람·고시 시그널 대시보드 -->
+        <style>
+            .redev-dashboard {
+                background: rgba(15, 23, 42, 0.85);
+                border: 1.5px solid rgba(0, 238, 255, 0.35);
+                border-radius: 18px;
+                padding: 24px;
+                margin-bottom: 35px;
+                backdrop-filter: blur(14px);
+                box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45), 0 0 25px rgba(99, 102, 241, 0.12);
+            }
+            .redev-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                flex-wrap: wrap;
+                gap: 14px;
+                margin-bottom: 18px;
+                padding-bottom: 14px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            }
+            .redev-scope-tabs, .redev-zone-tabs {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 14px;
+            }
+            .redev-scope-btn {
+                background: rgba(30, 41, 59, 0.75);
+                border: 1px solid rgba(148, 163, 184, 0.25);
+                color: #cbd5e1;
+                padding: 7px 15px;
+                border-radius: 999px;
+                font-size: 0.84rem;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .redev-scope-btn.active {
+                background: linear-gradient(135deg, #00eeff, #6366f1);
+                color: #0f172a;
+                border-color: transparent;
+                box-shadow: 0 0 14px rgba(0, 238, 255, 0.35);
+            }
+            .redev-zone-btn {
+                background: rgba(15, 23, 42, 0.9);
+                border: 1px solid rgba(99, 102, 241, 0.3);
+                color: #a5b4fc;
+                padding: 8px 14px;
+                border-radius: 10px;
+                font-size: 0.83rem;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.2s;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .redev-zone-btn:hover {
+                border-color: var(--neon-blue);
+                color: #fff;
+            }
+            .redev-zone-btn.active {
+                background: rgba(99, 102, 241, 0.28);
+                border-color: var(--neon-blue);
+                color: #fff;
+                box-shadow: 0 0 12px rgba(0, 238, 255, 0.25);
+            }
+            .redev-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+                gap: 16px;
+                margin-bottom: 24px;
+            }
+            .redev-card {
+                background: rgba(22, 28, 54, 0.78);
+                border: 1px solid rgba(99, 102, 241, 0.28);
+                border-radius: 14px;
+                padding: 18px;
+                display: flex;
+                flex-direction: column;
+                gap: 11px;
+                transition: all 0.22s;
+                position: relative;
+            }
+            .redev-card:hover {
+                border-color: var(--neon-blue);
+                transform: translateY(-3px);
+                box-shadow: 0 8px 24px rgba(0, 238, 255, 0.14);
+            }
+            .redev-new-badge {
+                background: linear-gradient(135deg, #ef4444, #f97316);
+                color: #fff;
+                font-size: 0.7rem;
+                font-weight: 800;
+                padding: 3px 9px;
+                border-radius: 999px;
+                letter-spacing: 0.3px;
+                animation: pulse 1.8s infinite;
+            }
+            .redev-stage-bar {
+                display: grid;
+                grid-template-columns: repeat(8, 1fr);
+                gap: 4px;
+                margin: 4px 0;
+            }
+            .redev-stage-seg {
+                height: 8px;
+                border-radius: 4px;
+                background: rgba(148, 163, 184, 0.18);
+                position: relative;
+            }
+            .redev-stage-seg.done {
+                background: linear-gradient(90deg, #6366f1, #00eeff);
+            }
+            .redev-stage-seg.current {
+                background: #10b981;
+                box-shadow: 0 0 8px #10b981;
+            }
+            .redev-stage-labels {
+                display: flex;
+                justify-content: space-between;
+                font-size: 0.72rem;
+                color: #94a3b8;
+            }
+            .redev-metrics {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+                background: rgba(15, 23, 42, 0.65);
+                padding: 10px 12px;
+                border-radius: 10px;
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                font-size: 0.78rem;
+            }
+            .redev-risk-tag {
+                background: rgba(239, 68, 68, 0.12);
+                border: 1px solid rgba(239, 68, 68, 0.38);
+                color: #fca5a5;
+                padding: 8px 11px;
+                border-radius: 8px;
+                font-size: 0.76rem;
+                line-height: 1.45;
+                font-weight: 600;
+            }
+            .redev-notice-list {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+                gap: 14px;
+            }
+            .redev-notice-card {
+                background: rgba(15, 23, 42, 0.9);
+                border: 1px solid rgba(16, 185, 129, 0.35);
+                border-radius: 12px;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .ai-4line-box {
+                background: rgba(30, 41, 59, 0.7);
+                border-left: 3px solid #00eeff;
+                border-radius: 8px;
+                padding: 10px 12px;
+                font-size: 0.79rem;
+                line-height: 1.55;
+                color: #e2e8f0;
+            }
+            @media (max-width: 768px) {
+                .redev-dashboard { padding: 16px 12px; }
+                .redev-grid, .redev-notice-list { grid-template-columns: 1fr; }
+                .redev-metrics { grid-template-columns: 1fr; }
+            }
+        </style>
+
+        <section class="redev-dashboard" id="redevDashboardSection">
+            <div class="redev-header">
+                <div>
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+                        <span style="background:rgba(0,238,255,0.14); border:1px solid rgba(0,238,255,0.4); color:var(--neon-blue); font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:999px;">
+                            <i class="fa-solid fa-bolt"></i> 언론 보도 1~4주 전 사전 인허가 시그널
+                        </span>
+                        <span style="background:rgba(16,185,129,0.14); border:1px solid rgba(16,185,129,0.4); color:#34d399; font-size:0.75rem; font-weight:700; padding:3px 10px; border-radius:999px;">
+                            <i class="fa-solid fa-clock"></i> 매일 08:00 / 16:00 지자체 새올 고시·공고 & OpenAPI 자동 수집
+                        </span>
+                    </div>
+                    <h2 style="font-size:1.35rem; font-weight:800; color:#fff; letter-spacing:-0.4px;">
+                        서울(목동·압구정·주요) · 경기(1기 신도시·과천·광명) · 인천 핵심 정비사업 단계 트래커
+                    </h2>
+                    <p style="font-size:0.84rem; color:var(--text-muted); margin-top:4px;">
+                        권역별 8단계 진행 현황, 지자체 고시·공고 원문 AI 4줄 요약, 경·공매 자동 매칭 및 투기과열지구(10년 소유·5년 거주 예외·현금청산) 리스크를 즉시 확인하세요.
+                    </p>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" onclick="openSelectedZoneRegionMap()" style="background:linear-gradient(135deg, #00eeff, #6366f1); border:none; color:#0f172a; font-weight:800; font-size:0.82rem; padding:9px 15px; border-radius:10px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-map-location-dot"></i> 선택 지역 지도 바로보기
+                    </button>
+                    <button type="button" onclick="triggerLiveRedevelopmentScan()" id="btnRedevLiveScan" style="background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.5); color:#34d399; font-weight:700; font-size:0.82rem; padding:9px 15px; border-radius:10px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-rotate"></i> 지자체 고시·공고 즉시 스캔
+                    </button>
+                </div>
+            </div>
+
+            <!-- 광역 권역 필터 (서울 / 경기 / 인천) -->
+            <div class="redev-scope-tabs" id="redevScopeTabs">
+                <button type="button" class="redev-scope-btn active" data-scope="all" onclick="selectRedevScope('all')">수도권 전체 (서울·경기·인천)</button>
+                <button type="button" class="redev-scope-btn" data-scope="서울" onclick="selectRedevScope('서울')">서울특별시 (목동·압구정·여의도·성수·한남·노원)</button>
+                <button type="button" class="redev-scope-btn" data-scope="경기" onclick="selectRedevScope('경기')">경기도 (분당·평촌·산본·일산·중동·과천·광명)</button>
+                <button type="button" class="redev-scope-btn" data-scope="인천" onclick="selectRedevScope('인천')">인천광역시 (연수·구월·계산·부평·미추홀)</button>
+            </div>
+
+            <!-- 세부 핵심 권역 탭 -->
+            <div class="redev-zone-tabs" id="redevZoneTabs">
+                <button type="button" class="redev-zone-btn active" data-zone="all" onclick="selectRedevZone('all')"><i class="fa-solid fa-layer-group"></i> 전체 권역</button>
+                <button type="button" class="redev-zone-btn" data-zone="목동" onclick="selectRedevZone('목동')">목동 (1~14단지)</button>
+                <button type="button" class="redev-zone-btn" data-zone="압구정" onclick="selectRedevZone('압구정')">압구정 (1~6구역)</button>
+                <button type="button" class="redev-zone-btn" data-zone="서울주요" onclick="selectRedevZone('서울주요')">서울주요 (여의도·성수·한남·상계·잠실)</button>
+                <button type="button" class="redev-zone-btn" data-zone="분당" onclick="selectRedevZone('분당')">분당 (선도4+2차5)</button>
+                <button type="button" class="redev-zone-btn" data-zone="평촌" onclick="selectRedevZone('평촌')">평촌 (선도3+후속6)</button>
+                <button type="button" class="redev-zone-btn" data-zone="산본" onclick="selectRedevZone('산본')">산본 (9-2·11구역)</button>
+                <button type="button" class="redev-zone-btn" data-zone="일산" onclick="selectRedevZone('일산')">일산 (선도4+후속1)</button>
+                <button type="button" class="redev-zone-btn" data-zone="중동·경기" onclick="selectRedevZone('중동·경기')">중동·경기 (부천·과천·광명·수원)</button>
+                <button type="button" class="redev-zone-btn" data-zone="인천" onclick="selectRedevZone('인천')">인천 (연수·구월·계산·부평·미추홀)</button>
+            </div>
+
+            <!-- 요약 카운터 바 -->
+            <div id="redevSummaryBar" style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:16px; padding:10px 14px; background:rgba(7,9,19,0.65); border-radius:10px; border:1px solid rgba(99,102,241,0.2); font-size:0.82rem; color:#cbd5e1;">
+                <span>📌 추적 정비구역: <strong id="redevCountProjects" style="color:#00eeff;">0</strong>개 구역</span>
+                <span>🔥 최근 14일 NEW 사전공고: <strong id="redevCountNew" style="color:#f97316;">0</strong>건</span>
+                <span>📜 지자체 고시·공고 원문 요약: <strong id="redevCountNotices" style="color:#34d399;">0</strong>건</span>
+                <span>⚖️ 구역 내 매칭 경·공매 물건: <strong id="redevCountAuctions" style="color:#fbbf24;">0</strong>건</span>
+            </div>
+
+            <!-- 8단계 파이프라인 카드 그리드 -->
+            <div class="redev-grid" id="redevProjectsGrid">
+                <div style="grid-column: 1 / -1; text-align:center; padding:24px; color:var(--text-muted);">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i> 서울·경기·인천 핵심 정비사업 단계 트래커 로딩 중...
+                </div>
+            </div>
+
+            <!-- 사전 시그널 타임라인 (고시·공고 원문 + Gemini AI 4줄 요약) -->
+            <div style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                    <h3 style="font-size:1.08rem; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-file-shield" style="color:#34d399;"></i>
+                        사전 시그널 타임라인 (지자체 새올 고시·공고 원문 + Gemini AI 4줄 요약 카드)
+                    </h3>
+                    <span style="font-size:0.78rem; color:var(--text-muted);">언론 기사화 1~4주 전 행정기관 고시번호·원문 직접 연결</span>
+                </div>
+                <div class="redev-notice-list" id="redevNoticesGrid"></div>
+            </div>
+        </section>
+
         <!-- Stat Counter Widgets (Clicking counts limits displayed list size!) -->
         <section class="stat-grid">
             <div class="stat-card" id="statCardTotal" onclick="handleStatCardClick('all')">
@@ -1633,7 +1886,7 @@
                 <!-- Si/Gun/Gu search box (Nationwide Expansion) -->
                 <div class="region-input-wrapper">
                     <i class="fa-solid fa-location-dot region-icon"></i>
-                    <input type="text" id="regionInput" class="region-input" placeholder="지역 검색 (예: 분당구, 해운대구)" autocomplete="off">
+                    <input type="text" id="regionInput" class="region-input" placeholder="지역 검색 (예: 목동, 압구정, 분당구, 평촌, 산본, 일산, 연수구)" autocomplete="off">
                 </div>
                 <!-- Unified keyword search box -->
                 <div class="search-wrapper">
@@ -1643,17 +1896,24 @@
                 <button type="button" class="scan-btn" onclick="triggerRadarScan()">
                     <i class="fa-solid fa-satellite-dish"></i> 실시간 스캔 시작
                 </button>
+                <button type="button" class="scan-btn" onclick="openRegionInputMap()" style="background: rgba(0, 238, 255, 0.16); border: 1px solid rgba(0, 238, 255, 0.45); color: var(--neon-blue);">
+                    <i class="fa-solid fa-map-location-dot"></i> 지정 지역 지도 보기
+                </button>
             </div>
 
             <!-- Popular Si/Gun/Gu hashtags selector -->
-            <div class="hashtag-row">
-                <span class="hashtag-label"><i class="fa-solid fa-compass"></i> 인기 지역 스캔:</span>
-                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('서대문구')">#서대문구</button>
-                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('마포구')">#마포구</button>
-                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('강남구')">#강남구</button>
-                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('경기도 성남시 분당구')">#분당구</button>
-                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('부산광역시 해운대구')">#해운대구</button>
-                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('대구광역시 수성구')">#수성구</button>
+            <div class="hashtag-row" style="flex-wrap: wrap;">
+                <span class="hashtag-label"><i class="fa-solid fa-compass"></i> 핵심 지역 빠른 선택:</span>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('서울특별시 양천구 목동')">#양천구 목동</button>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('서울특별시 강남구 압구정동')">#강남구 압구정</button>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('서울특별시 영등포구 여의도동')">#영등포 여의도</button>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('경기도 성남시 분당구')">#성남 분당</button>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('경기도 안양시 동안구 평촌동')">#안양 평촌</button>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('경기도 군포시 산본동')">#군포 산본</button>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('경기도 고양시 일산동구')">#고양 일산</button>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('경기도 부천시 원미구 중동')">#부천 중동</button>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('인천광역시 연수구')">#인천 연수구</button>
+                <button type="button" class="hashtag-btn" onclick="quickSelectRegion('인천광역시 부평구')">#인천 부평구</button>
             </div>
 
             <!-- Filter tabs and visible counts limit controller -->
@@ -1736,6 +1996,9 @@
 
         // Load data on document ready
         document.addEventListener('DOMContentLoaded', () => {
+            // Load Seoul / Gyeonggi / Incheon Redevelopment Pipeline Tracker
+            loadRedevelopmentTracker();
+
             // Check for region parameter in URL
             const urlParams = new URLSearchParams(window.location.search);
             const regionParam = urlParams.get('region');
@@ -2775,22 +3038,24 @@
             const modal = document.getElementById('issueDetailModal');
             modal.classList.add('show-map');
             
-            // Initialize detail map (Leaflet with Vworld Bright)
+            // Initialize detail map (Leaflet with Vworld Bright) - Always resolve designated region center!
             setTimeout(() => {
-                const lat = issue.latitude;
-                const lng = issue.longitude;
+                const resolved = resolveClientRegionCoords(issue);
+                const lat = resolved.lat;
+                const lng = resolved.lng;
+                const regionLabel = resolved.label;
                 if (!detailModalMapInstance) {
                     detailModalMapInstance = L.map('detailModalMap', {
                         zoomControl: true,
                         attributionControl: false
-                    }).setView([lat, lng], 15);
+                    }).setView([lat, lng], 13);
                     
                     L.tileLayer('https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png', {
                         minZoom: 6,
                         maxZoom: 19
                     }).addTo(detailModalMapInstance);
                 } else {
-                    detailModalMapInstance.setView([lat, lng], 15);
+                    detailModalMapInstance.setView([lat, lng], 13);
                 }
                 
                 detailModalMapInstance.invalidateSize();
@@ -2807,13 +3072,14 @@
                 });
                 
                 detailModalMarker = L.marker([lat, lng], { icon: pulsingIcon }).addTo(detailModalMapInstance);
+                detailModalMarker.bindPopup(`<div style="color:#0f172a;font-weight:800;font-size:0.82rem;padding:2px 4px;">📍 지정 지역: ${regionLabel}</div>`).openPopup();
                 
-                // Pulsing target circle overlay (200m buffer bounds)
+                // Regional boundary highlight circle (1,200m radius so the entire designated region is clearly visible)
                 detailModalCircle = L.circle([lat, lng], {
                     color: '#4f46e5',
                     fillColor: '#4f46e5',
                     fillOpacity: 0.12,
-                    radius: 200,
+                    radius: 1200,
                     weight: 2,
                     dashArray: '5, 8'
                 }).addTo(detailModalMapInstance);
@@ -2828,38 +3094,44 @@
             modal.classList.remove('show-map');
         }
 
-        // Open Leaflet Vworld Bright Map Modal focused on coordinate, plotting all active issues
-        function openMapZoomModal(lat, lng, title, source, status) {
-            console.log(`Zooming map into coordinates: ${lat}, ${lng} - Issue: ${title}`);
+        // Open Leaflet Vworld Bright Map Modal focused on designated region, plotting regional center
+        function openMapZoomModal(lat, lng, title, source, status, explicitRegion = '') {
+            const resolved = resolveClientRegionCoords({
+                region: explicitRegion || document.getElementById('regionInput')?.value || activeRegionQuery || '',
+                title: title || '',
+                keywords: source || '',
+                latitude: lat,
+                longitude: lng
+            });
+            const targetLat = resolved.lat;
+            const targetLng = resolved.lng;
+            const regionLabel = resolved.label;
+            console.log(`Zooming map into designated region: ${regionLabel} (${targetLat}, ${targetLng}) - Issue: ${title}`);
             
             // Set modal labels
-            document.getElementById('mapModalTitle').textContent = `[${status}] 국토교통부 Vworld 정밀 입지 분석`;
-            document.getElementById('mapModalLocation').innerHTML = `<i class="fa-solid fa-map-location-dot" style="color: var(--neon-indigo);"></i> ${source} 고시 위치: (위도 ${lat}, 경도 ${lng})`;
+            document.getElementById('mapModalTitle').textContent = `[${regionLabel}] 지정 지역 국토교통부 Vworld 입지 지도`;
+            document.getElementById('mapModalLocation').innerHTML = `<i class="fa-solid fa-map-location-dot" style="color: var(--neon-indigo);"></i> 지정 지역 중심: <strong>${regionLabel}</strong> (위도 ${targetLat.toFixed(4)}, 경도 ${targetLng.toFixed(4)}) | ${source || status}`;
 
             // Open Map Modal
             const modal = document.getElementById('mapModal');
             modal.classList.add('show-map');
 
-            // Initialize or update Leaflet Map
+            // Initialize or update Leaflet Map at regional zoom (13)
             setTimeout(() => {
                 if (!leafletMapInstance) {
-                    // Create Leaflet map centered at lat, lng with bright Vworld base maps
                     leafletMapInstance = L.map('modalMap', {
                         zoomControl: true,
                         attributionControl: false
-                    }).setView([lat, lng], 15);
+                    }).setView([targetLat, targetLng], 13);
 
-                    // Add Vworld high-resolution bright tiles! Highly visible, official, and detailed base maps
                     L.tileLayer('https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png', {
                         minZoom: 6,
                         maxZoom: 19
                     }).addTo(leafletMapInstance);
                 } else {
-                    // Update center and zoom
-                    leafletMapInstance.setView([lat, lng], 15);
+                    leafletMapInstance.setView([targetLat, targetLng], 13);
                 }
 
-                // Invalidate size immediately to resolve Leaflet gray boxes sizing bug
                 leafletMapInstance.invalidateSize();
 
                 // Clear previous markers list and target circle overlay
@@ -2867,59 +3139,34 @@
                 mapMarkersList = [];
                 if (mapCircleInstance) leafletMapInstance.removeLayer(mapCircleInstance);
 
-                // 1. PLOT ALL CURRENT DISPLAYED ISSUES AS MARKERS (전체 위치 시각화)
-                currentlyDisplayedIssuesList.forEach(issue => {
-                    if (issue.latitude && issue.longitude) {
-                        const isTarget = (issue.latitude === lat && issue.longitude === lng);
-                        
-                        if (isTarget) {
-                            // Pulsing red Division Icon for specifically clicked issue marker
-                            const pulsingIcon = L.divIcon({
-                                className: 'leaflet-pulsing-icon',
-                                iconSize: [22, 22],
-                                iconAnchor: [11, 11]
-                            });
-
-                            const clickedMarker = L.marker([issue.latitude, issue.longitude], { icon: pulsingIcon }).addTo(leafletMapInstance);
-                            mapMarkersList.push(clickedMarker);
-
-                            // Bind detailed custom HTML popup
-                            const popupContent = `
-                                <div style="font-family: 'Noto Sans KR', sans-serif; color: #0f172a; padding: 5px; min-width: 220px; line-height: 1.4;">
-                                    <span style="font-size: 0.72rem; font-weight: 700; color: var(--neon-indigo); display: block; margin-bottom: 4px;">★ 현재 분석중: ${issue.source}</span>
-                                    <h5 style="margin: 0 0 6px 0; font-size: 0.88rem; font-weight: 700; color: #1e293b;">${issue.title}</h5>
-                                    <span style="font-size: 0.7rem; font-weight: 700; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--danger); padding: 2px 8px; border-radius: 20px; display: inline-block;">${issue.status_label}</span>
-                                    <a href="${issue.url}" target="_blank" style="display:block; margin-top:8px; font-size:0.75rem; color:var(--neon-indigo); font-weight:bold; text-decoration:none;"><i class="fa-solid fa-file-invoice"></i> 공고 문서 열기 <i class="fa-solid fa-chevron-right"></i></a>
-                                </div>
-                            `;
-                            clickedMarker.bindPopup(popupContent).openPopup();
-
-                            // Pulsing target circle overlay (200m buffer bounds)
-                            mapCircleInstance = L.circle([lat, lng], {
-                                color: '#4f46e5',
-                                fillColor: '#4f46e5',
-                                fillOpacity: 0.1,
-                                radius: 200,
-                                weight: 2,
-                                dashArray: '5, 8'
-                            }).addTo(leafletMapInstance);
-                        } else {
-                            // Standard marker for other issues in the list
-                            const standardMarker = L.marker([issue.latitude, issue.longitude]).addTo(leafletMapInstance);
-                            mapMarkersList.push(standardMarker);
-
-                            const otherPopupContent = `
-                                <div style="font-family: 'Noto Sans KR', sans-serif; color: #0f172a; padding: 5px; min-width: 200px; line-height: 1.4;">
-                                    <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; display: block; margin-bottom: 4px;">${issue.source}</span>
-                                    <h5 style="margin: 0 0 6px 0; font-size: 0.82rem; font-weight: 700; color: #334155;">${issue.title}</h5>
-                                    <span style="font-size: 0.68rem; font-weight: 700; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--success); padding: 2px 6px; border-radius: 12px; display: inline-block;">${issue.status_label}</span>
-                                    <a href="${issue.url}" target="_blank" style="display:block; margin-top:6px; font-size:0.72rem; color:var(--neon-indigo); font-weight:bold; text-decoration:none;"><i class="fa-solid fa-file-invoice"></i> 공고 문서 열기 <i class="fa-solid fa-chevron-right"></i></a>
-                                </div>
-                            `;
-                            standardMarker.bindPopup(otherPopupContent);
-                        }
-                    }
+                // Plot the designated region marker & 1.2km regional highlight circle
+                const pulsingIcon = L.divIcon({
+                    className: 'leaflet-pulsing-icon',
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11]
                 });
+
+                const clickedMarker = L.marker([targetLat, targetLng], { icon: pulsingIcon }).addTo(leafletMapInstance);
+                mapMarkersList.push(clickedMarker);
+
+                const popupContent = `
+                    <div style="font-family: 'Noto Sans KR', sans-serif; color: #0f172a; padding: 5px; min-width: 230px; line-height: 1.45;">
+                        <span style="font-size: 0.74rem; font-weight: 800; color: #4f46e5; display: block; margin-bottom: 4px;">📍 지정 지역 중심: ${regionLabel}</span>
+                        <h5 style="margin: 0 0 6px 0; font-size: 0.88rem; font-weight: 700; color: #1e293b;">${title || regionLabel}</h5>
+                        <span style="font-size: 0.7rem; font-weight: 700; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--danger); padding: 2px 8px; border-radius: 20px; display: inline-block;">${status || '지정 권역'}</span>
+                        <a href="/map.html?q=${encodeURIComponent(regionLabel)}" style="display:block; margin-top:8px; font-size:0.75rem; color:#4f46e5; font-weight:bold; text-decoration:none;"><i class="fa-solid fa-gavel"></i> 해당 지역 경·공매 지도에서 보기 <i class="fa-solid fa-chevron-right"></i></a>
+                    </div>
+                `;
+                clickedMarker.bindPopup(popupContent).openPopup();
+
+                mapCircleInstance = L.circle([targetLat, targetLng], {
+                    color: '#4f46e5',
+                    fillColor: '#4f46e5',
+                    fillOpacity: 0.11,
+                    radius: 1200,
+                    weight: 2,
+                    dashArray: '5, 8'
+                }).addTo(leafletMapInstance);
 
             }, 150);
         }
@@ -2999,6 +3246,473 @@
             } catch (err) {
                 console.error(err);
                 alert(`PDF 분석 요청 실패: 서버와 통신할 수 없습니다.`);
+            }
+        }
+
+        // =========================================================================
+        // 1. 지정 지역 중심 좌표 매핑 테이블 (서울·경기·인천 및 전국 주요 지역)
+        //    "정확성보다는 지역을 지정했을 때 해당 지역이 나오는 지도가 표기되도록"
+        // =========================================================================
+        const CLIENT_REGION_COORDS = {
+            // 서울 핵심 정비구역/동
+            "목동": [37.5292, 126.8751, "서울특별시 양천구 목동"],
+            "신정동": [37.5180, 126.8560, "서울특별시 양천구 신정동"],
+            "양천구": [37.5169, 126.8664, "서울특별시 양천구"],
+            "압구정동": [37.5273, 127.0285, "서울특별시 강남구 압구정동"],
+            "압구정": [37.5273, 127.0285, "서울특별시 강남구 압구정"],
+            "대치동": [37.4945, 127.0635, "서울특별시 강남구 대치동"],
+            "개포동": [37.4815, 127.0660, "서울특별시 강남구 개포동"],
+            "강남구": [37.5172, 127.0473, "서울특별시 강남구"],
+            "여의도동": [37.5216, 126.9242, "서울특별시 영등포구 여의도동"],
+            "여의도": [37.5216, 126.9242, "서울특별시 영등포구 여의도"],
+            "영등포구": [37.5263, 126.8962, "서울특별시 영등포구"],
+            "성수동": [37.5446, 127.0560, "서울특별시 성동구 성수동"],
+            "성수": [37.5446, 127.0560, "서울특별시 성동구 성수지구"],
+            "성동구": [37.5635, 127.0365, "서울특별시 성동구"],
+            "한남동": [37.5345, 127.0046, "서울특별시 용산구 한남동"],
+            "한남": [37.5345, 127.0046, "서울특별시 용산구 한남뉴타운"],
+            "용산구": [37.5384, 126.9654, "서울특별시 용산구"],
+            "반포동": [37.5048, 127.0045, "서울특별시 서초구 반포동"],
+            "서초구": [37.4837, 127.0326, "서울특별시 서초구"],
+            "잠실동": [37.5133, 127.1001, "서울특별시 송파구 잠실동"],
+            "잠실": [37.5133, 127.1001, "서울특별시 송파구 잠실"],
+            "송파구": [37.5145, 127.1058, "서울특별시 송파구"],
+            "상계동": [37.6542, 127.0665, "서울특별시 노원구 상계동"],
+            "노원구": [37.6542, 127.0568, "서울특별시 노원구"],
+            "서대문구": [37.5791, 126.9368, "서울특별시 서대문구"],
+            "마포구": [37.5622, 126.9083, "서울특별시 마포구"],
+            "종로구": [37.5730, 126.9794, "서울특별시 종로구"],
+            "중구": [37.5641, 126.9979, "서울특별시 중구"],
+            "광진구": [37.5385, 127.0823, "서울특별시 광진구"],
+            "동대문구": [37.5744, 127.0396, "서울특별시 동대문구"],
+            "중랑구": [37.6066, 127.0927, "서울특별시 중랑구"],
+            "성북구": [37.5894, 127.0167, "서울특별시 성북구"],
+            "강북구": [37.6396, 127.0257, "서울특별시 강북구"],
+            "도봉구": [37.6688, 127.0471, "서울특별시 도봉구"],
+            "은평구": [37.6027, 126.9291, "서울특별시 은평구"],
+            "강서구": [37.5509, 126.8495, "서울특별시 강서구"],
+            "구로구": [37.4954, 126.8874, "서울특별시 구로구"],
+            "금천구": [37.4569, 126.8955, "서울특별시 금천구"],
+            "동작구": [37.5124, 126.9393, "서울특별시 동작구"],
+            "관악구": [37.4784, 126.9516, "서울특별시 관악구"],
+            "강동구": [37.5301, 127.1238, "서울특별시 강동구"],
+            // 경기도 1기 신도시 및 주요 시군구
+            "분당구": [37.3828, 127.1189, "경기도 성남시 분당구"],
+            "분당": [37.3828, 127.1189, "경기도 성남시 분당"],
+            "서현동": [37.3853, 127.1235, "경기도 성남시 분당구 서현동"],
+            "수내동": [37.3785, 127.1145, "경기도 성남시 분당구 수내동"],
+            "정자동": [37.3665, 127.1082, "경기도 성남시 분당구 정자동"],
+            "판교": [37.3948, 127.1112, "경기도 성남시 분당구 판교"],
+            "수정구": [37.4418, 127.1264, "경기도 성남시 수정구"],
+            "중원구": [37.4321, 127.1372, "경기도 성남시 중원구"],
+            "성남시": [37.4200, 127.1267, "경기도 성남시"],
+            "평촌동": [37.3905, 126.9635, "경기도 안양시 동안구 평촌동"],
+            "평촌": [37.3905, 126.9635, "경기도 안양시 동안구 평촌"],
+            "동안구": [37.3916, 126.9530, "경기도 안양시 동안구"],
+            "만안구": [37.3867, 126.9225, "경기도 안양시 만안구"],
+            "안양시": [37.3943, 126.9568, "경기도 안양시"],
+            "산본동": [37.3595, 126.9315, "경기도 군포시 산본동"],
+            "산본": [37.3595, 126.9315, "경기도 군포시 산본"],
+            "군포시": [37.3617, 126.9352, "경기도 군포시"],
+            "일산동구": [37.6625, 126.7906, "경기도 고양시 일산동구"],
+            "일산서구": [37.6752, 126.7508, "경기도 고양시 일산서구"],
+            "일산": [37.6625, 126.7750, "경기도 고양시 일산"],
+            "마두동": [37.6538, 126.7775, "경기도 고양시 일산동구 마두동"],
+            "주엽동": [37.6702, 126.7615, "경기도 고양시 일산서구 주엽동"],
+            "덕양구": [37.6375, 126.8320, "경기도 고양시 덕양구"],
+            "고양시": [37.6584, 126.8320, "경기도 고양시"],
+            "중동": [37.5015, 126.7658, "경기도 부천시 원미구 중동"],
+            "상동": [37.5042, 126.7532, "경기도 부천시 원미구 상동"],
+            "원미구": [37.4985, 126.7830, "경기도 부천시 원미구"],
+            "부천시": [37.5034, 126.7660, "경기도 부천시"],
+            "과천시": [37.4292, 126.9876, "경기도 과천시"],
+            "광명시": [37.4786, 126.8646, "경기도 광명시"],
+            "철산동": [37.4755, 126.8682, "경기도 광명시 철산동"],
+            "영통구": [37.2596, 127.0790, "경기도 수원시 영통구"],
+            "장안구": [37.3040, 127.0104, "경기도 수원시 장안구"],
+            "팔달구": [37.2825, 127.0190, "경기도 수원시 팔달구"],
+            "권선구": [37.2576, 126.9719, "경기도 수원시 권선구"],
+            "수원시": [37.2636, 127.0286, "경기도 수원시"],
+            "기흥구": [37.2804, 127.1147, "경기도 용인시 기흥구"],
+            "수지구": [37.3221, 127.0975, "경기도 용인시 수지구"],
+            "용인시": [37.2411, 127.1776, "경기도 용인시"],
+            "하남시": [37.5393, 127.2149, "경기도 하남시"],
+            "구리시": [37.5943, 127.1296, "경기도 구리시"],
+            "남양주시": [37.6360, 127.2165, "경기도 남양주시"],
+            "의정부시": [37.7381, 127.0337, "경기도 의정부시"],
+            "화성시": [37.1995, 126.8312, "경기도 화성시"],
+            "평택시": [36.9921, 127.1127, "경기도 평택시"],
+            "김포시": [37.6152, 126.7156, "경기도 김포시"],
+            "파주시": [37.7599, 126.7802, "경기도 파주시"],
+            "시흥시": [37.3800, 126.8029, "경기도 시흥시"],
+            "안산시": [37.3219, 126.8308, "경기도 안산시"],
+            "단원구": [37.3219, 126.8308, "경기도 안산시 단원구"],
+            "상록구": [37.3205, 126.8658, "경기도 안산시 상록구"],
+            "의왕시": [37.3448, 126.9683, "경기도 의왕시"],
+            // 인천광역시
+            "연수동": [37.4168, 126.6782, "인천광역시 연수구 연수동"],
+            "송도동": [37.3814, 126.6543, "인천광역시 연수구 송도동"],
+            "연수구": [37.4086, 126.6797, "인천광역시 연수구"],
+            "구월동": [37.4505, 126.7028, "인천광역시 남동구 구월동"],
+            "남동구": [37.4472, 126.7314, "인천광역시 남동구"],
+            "계산동": [37.5432, 126.7285, "인천광역시 계양구 계산동"],
+            "계양구": [37.5374, 126.7378, "인천광역시 계양구"],
+            "부평구": [37.5070, 126.7218, "인천광역시 부평구"],
+            "산곡동": [37.5020, 126.7080, "인천광역시 부평구 산곡동"],
+            "미추홀구": [37.4636, 126.6506, "인천광역시 미추홀구"],
+            "주안동": [37.4602, 126.6805, "인천광역시 미추홀구 주안동"],
+            "서구": [37.5454, 126.6760, "인천광역시 서구"],
+            "청라": [37.5340, 126.6345, "인천광역시 서구 청라"],
+            "동구": [37.4739, 126.6432, "인천광역시 동구"],
+            "인천": [37.4563, 126.7052, "인천광역시"],
+            // 기타 전국 주요 권역
+            "해운대구": [35.1631, 129.1636, "부산광역시 해운대구"],
+            "수성구": [35.8583, 128.6286, "대구광역시 수성구"],
+            "유성구": [36.3622, 127.3563, "대전광역시 유성구"],
+            "장성군": [35.3019, 126.7848, "전라남도 장성군"],
+            "나주시": [35.0157, 126.7107, "전라남도 나주시"],
+            "해남군": [34.5735, 126.5992, "전라남도 해남군"]
+        };
+
+        const SORTED_CLIENT_REGION_KEYS = Object.keys(CLIENT_REGION_COORDS).sort((a, b) => b.length - a.length);
+
+        function resolveClientRegionCoords(issueOrQuery) {
+            const userInput = (document.getElementById('regionInput')?.value || activeRegionQuery || '').trim();
+            let texts = [];
+            if (typeof issueOrQuery === 'string') {
+                texts = [issueOrQuery, userInput];
+            } else if (issueOrQuery && typeof issueOrQuery === 'object') {
+                // Prioritize user-designated region if present and non-empty, then issue.region, then issue.title
+                texts = [
+                    issueOrQuery.explicitRegion || '',
+                    userInput,
+                    issueOrQuery.region || '',
+                    issueOrQuery.district || '',
+                    issueOrQuery.legal_dong || '',
+                    issueOrQuery.zone_group || '',
+                    issueOrQuery.title || '',
+                    issueOrQuery.project_name || '',
+                    issueOrQuery.keywords || ''
+                ];
+            } else {
+                texts = [userInput];
+            }
+
+            for (const raw of texts) {
+                const t = String(raw || '').trim();
+                if (!t || t === '전국' || t === 'all') continue;
+                if (CLIENT_REGION_COORDS[t]) {
+                    const [lat, lng, label] = CLIENT_REGION_COORDS[t];
+                    return { lat, lng, label };
+                }
+                for (const key of SORTED_CLIENT_REGION_KEYS) {
+                    if (t.includes(key)) {
+                        const [lat, lng, label] = CLIENT_REGION_COORDS[key];
+                        return { lat, lng, label: t.length <= 20 ? t : label };
+                    }
+                }
+            }
+
+            if (issueOrQuery && typeof issueOrQuery === 'object' && issueOrQuery.latitude && issueOrQuery.longitude) {
+                const lat = Number(issueOrQuery.latitude);
+                const lng = Number(issueOrQuery.longitude);
+                if (lat > 33 && lat < 39 && lng > 124 && lng < 132) {
+                    return { lat, lng, label: issueOrQuery.region || issueOrQuery.resolved_region_label || '지정 권역' };
+                }
+            }
+            return { lat: 37.5665, lng: 126.9780, label: '서울·수도권 중심' };
+        }
+
+        async function openRegionInputMap() {
+            const val = (document.getElementById('regionInput')?.value || activeRegionQuery || '').trim();
+            if (!val) {
+                openSelectedZoneRegionMap();
+                return;
+            }
+            try {
+                const res = await fetch(`/api/issues/region_coords?q=${encodeURIComponent(val)}`);
+                const data = await res.json();
+                if (data.status === 'success') {
+                    openMapZoomModal(data.latitude, data.longitude, `${data.label} 지정 지역 현황 지도`, '지역 지정 지도 보기', '지정 지역 중심', data.label);
+                    return;
+                }
+            } catch (e) {}
+            const resolved = resolveClientRegionCoords(val);
+            openMapZoomModal(resolved.lat, resolved.lng, `${resolved.label} 지정 지역 현황 지도`, '지역 지정 지도 보기', '지정 지역 중심', resolved.label);
+        }
+
+        // =========================================================================
+        // 2. 서울·경기(1기 신도시)·인천 핵심 정비사업 파이프라인 트래커 & 사전 공람·고시
+        // =========================================================================
+        let currentRedevScope = 'all';
+        let currentRedevZone = 'all';
+        let redevTrackerData = { projects: [], notices: [] };
+
+        const ZONE_DEFAULT_REGION = {
+            'all': '서울특별시 양천구 목동',
+            '목동': '서울특별시 양천구 목동',
+            '압구정': '서울특별시 강남구 압구정동',
+            '서울주요': '서울특별시 영등포구 여의도동',
+            '분당': '경기도 성남시 분당구 서현동',
+            '평촌': '경기도 안양시 동안구 평촌동',
+            '산본': '경기도 군포시 산본동',
+            '일산': '경기도 고양시 일산동구 마두동',
+            '중동·경기': '경기도 부천시 원미구 중동',
+            '인천': '인천광역시 연수구 연수동'
+        };
+
+        function openSelectedZoneRegionMap() {
+            let targetRegion = document.getElementById('regionInput')?.value.trim();
+            if (!targetRegion) {
+                if (currentRedevZone !== 'all' && ZONE_DEFAULT_REGION[currentRedevZone]) {
+                    targetRegion = ZONE_DEFAULT_REGION[currentRedevZone];
+                } else if (currentRedevScope === '경기') {
+                    targetRegion = '경기도 성남시 분당구';
+                } else if (currentRedevScope === '인천') {
+                    targetRegion = '인천광역시 연수구';
+                } else {
+                    targetRegion = '서울특별시 양천구 목동';
+                }
+            }
+            const resolved = resolveClientRegionCoords(targetRegion);
+            openMapZoomModal(resolved.lat, resolved.lng, `[${targetRegion}] 핵심 정비사업 지정 권역 지도`, '정비사업 권역 지도', '권역 중심 표시', targetRegion);
+        }
+
+        function selectRedevScope(scope) {
+            currentRedevScope = scope;
+            document.querySelectorAll('#redevScopeTabs .redev-scope-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-scope') === scope);
+            });
+            // Reset zone to 'all' when switching broad scope
+            currentRedevZone = 'all';
+            document.querySelectorAll('#redevZoneTabs .redev-zone-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-zone') === 'all');
+            });
+            loadRedevelopmentTracker();
+        }
+
+        function selectRedevZone(zone) {
+            currentRedevZone = zone;
+            document.querySelectorAll('#redevZoneTabs .redev-zone-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-zone') === zone);
+            });
+            // Also sync regionInput so clicking any issue below shows that region on the map
+            if (zone !== 'all' && ZONE_DEFAULT_REGION[zone]) {
+                const rInput = document.getElementById('regionInput');
+                if (rInput) rInput.value = ZONE_DEFAULT_REGION[zone];
+            }
+            loadRedevelopmentTracker();
+        }
+
+        async function loadRedevelopmentTracker() {
+            try {
+                const url = `/api/redevelopment/tracker?zone_group=${encodeURIComponent(currentRedevZone)}&region_scope=${encodeURIComponent(currentRedevScope)}`;
+                const res = await fetch(url);
+                const json = await res.json();
+                if (json.status === 'success') {
+                    redevTrackerData = json;
+                    renderRedevelopmentTracker(json);
+                }
+            } catch (e) {
+                console.error("Redevelopment tracker load error:", e);
+            }
+        }
+
+        function openRedevelopmentProjectMap(projectName, district, legalDong, lat, lng, stageName) {
+            const regionStr = `${district} ${legalDong}`.trim();
+            const rInput = document.getElementById('regionInput');
+            if (rInput) rInput.value = regionStr;
+            openMapZoomModal(lat, lng, `${projectName} (${regionStr})`, `${district}청 정비사업 고시`, stageName, regionStr);
+        }
+
+        function renderRedevelopmentTracker(data) {
+            const projects = data.projects || [];
+            const notices = data.notices || [];
+            const summary = data.summary || {};
+
+            document.getElementById('redevCountProjects').textContent = summary.total_projects ?? projects.length;
+            document.getElementById('redevCountNew').textContent = summary.new_signal_projects ?? 0;
+            document.getElementById('redevCountNotices').textContent = summary.total_notices ?? notices.length;
+            document.getElementById('redevCountAuctions').textContent = summary.total_matched_auctions ?? 0;
+
+            const stageLabels = ['1.안전진단', '2.구역지정', '3.추진위', '4.조합/신탁', '5.통합심의', '6.사업시행', '7.시공사', '8.관리처분'];
+            const grid = document.getElementById('redevProjectsGrid');
+            if (!projects.length) {
+                grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--text-muted);">선택한 권역에 해당하는 정비사업 구역 데이터가 없습니다.</div>`;
+            } else {
+                grid.innerHTML = projects.map(p => {
+                    const step = Number(p.stage_step || 1);
+                    let segsHtml = '';
+                    for (let i = 1; i <= 8; i++) {
+                        const cls = i < step ? 'done' : (i === step ? 'current' : '');
+                        segsHtml += `<div class="redev-stage-seg ${cls}" title="${stageLabels[i-1]}"></div>`;
+                    }
+                    const newBadge = p.is_new_signal ? `<span class="redev-new-badge">🔥 NEW 사전공고</span>` : '';
+                    const specBadge = p.is_speculative_zone
+                        ? `<span style="background:rgba(239,68,68,0.18);border:1px solid rgba(239,68,68,0.45);color:#fca5a5;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:999px;">투기과열·토허구역</span>`
+                        : `<span style="background:rgba(59,130,246,0.16);border:1px solid rgba(59,130,246,0.4);color:#93c5fd;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:999px;">노후계획도시·정비구역</span>`;
+
+                    const matched = p.matched_auctions || [];
+                    let auctionHtml = '';
+                    if (matched.length > 0) {
+                        const itemsHtml = matched.slice(0, 2).map(a => `
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 8px;background:rgba(7,9,19,0.75);border-radius:6px;border:1px solid rgba(251,191,36,0.28);margin-top:5px;font-size:0.74rem;">
+                                <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                    <strong style="color:#fbbf24;">[${a.case_no || '경매'}]</strong>
+                                    <span style="color:#e2e8f0;">${a.address || ''}</span>
+                                </div>
+                                <a href="/map.html?q=${encodeURIComponent(p.legal_dong || p.district)}" onclick="event.stopPropagation();" style="color:#00eeff;font-weight:700;text-decoration:none;white-space:nowrap;">매물보기 →</a>
+                            </div>
+                        `).join('');
+                        auctionHtml = `
+                            <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.35);border-radius:9px;padding:8px 10px;font-size:0.76rem;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;">
+                                    <span style="color:#fbbf24;font-weight:800;"><i class="fa-solid fa-gavel"></i> 구역 내 경·공매 자동 매칭 (${matched.length}건)</span>
+                                    <a href="/map.html?q=${encodeURIComponent(p.legal_dong || p.district)}" onclick="event.stopPropagation();" style="color:#38bdf8;font-weight:700;font-size:0.73rem;text-decoration:underline;">지도에서 전체보기</a>
+                                </div>
+                                ${itemsHtml}
+                            </div>
+                        `;
+                    } else {
+                        auctionHtml = `
+                            <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(15,23,42,0.6);border:1px dashed rgba(148,163,184,0.25);border-radius:8px;padding:7px 10px;font-size:0.74rem;color:#94a3b8;">
+                                <span><i class="fa-solid fa-gavel"></i> 법정동(${p.legal_dong}) 경·공매 실시간 매칭 감시중</span>
+                                <a href="/map.html?q=${encodeURIComponent(p.legal_dong || p.district)}" onclick="event.stopPropagation();" style="color:#38bdf8;font-weight:700;text-decoration:none;">인근 경매물건 보기 →</a>
+                            </div>
+                        `;
+                    }
+
+                    const safeProjName = (p.project_name || '').replace(/'/g, "\\'");
+                    const safeDist = (p.district || '').replace(/'/g, "\\'");
+                    const safeDong = (p.legal_dong || '').replace(/'/g, "\\'");
+                    const safeStage = (p.stage_name || '').replace(/'/g, "\\'");
+
+                    return `
+                        <div class="redev-card" onclick="openRedevelopmentProjectMap('${safeProjName}', '${safeDist}', '${safeDong}', ${p.latitude}, ${p.longitude}, '${safeStage}')" style="cursor:pointer;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
+                                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                    <span style="background:rgba(99,102,241,0.22);border:1px solid rgba(99,102,241,0.5);color:#c7d2fe;font-size:0.72rem;font-weight:800;padding:2px 8px;border-radius:6px;">${p.region_scope} · ${p.zone_group}</span>
+                                    ${specBadge}
+                                    ${newBadge}
+                                </div>
+                                <span style="font-size:0.72rem;color:#94a3b8;">${p.source_portal || ''} (${p.last_notice_date || ''})</span>
+                            </div>
+
+                            <div>
+                                <h4 style="font-size:1.02rem;font-weight:800;color:#fff;margin-bottom:3px;">${p.project_name}</h4>
+                                <p style="font-size:0.77rem;color:#94a3b8;">대상: ${p.sub_zone || '-'} | 위치: ${p.district} ${p.legal_dong}</p>
+                            </div>
+
+                            <!-- 8단계 프로그레스 바 -->
+                            <div style="background:rgba(7,9,19,0.65);padding:9px 11px;border-radius:9px;border:1px solid rgba(0,238,255,0.18);">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:0.77rem;">
+                                    <span style="color:#94a3b8;font-weight:600;">현재 추진 단계 (${step}/8단계)</span>
+                                    <strong style="color:#10b981;">${p.stage_name}</strong>
+                                </div>
+                                <div class="redev-stage-bar">${segsHtml}</div>
+                                <div class="redev-stage-labels" style="margin-top:4px;">
+                                    <span>1.안전진단</span>
+                                    <span>4.조합/신탁</span>
+                                    <span>6.사업시행</span>
+                                    <span>8.관리처분</span>
+                                </div>
+                            </div>
+
+                            <p style="font-size:0.8rem;color:#e2e8f0;line-height:1.45;border-left:3px solid var(--neon-blue);padding-left:9px;">
+                                ${p.status_summary || ''}
+                            </p>
+
+                            <div class="redev-metrics">
+                                <div><span style="color:#94a3b8;">용적률 변화:</span> <strong style="color:#fff;">${p.base_far} → ${p.planned_far}</strong></div>
+                                <div><span style="color:#94a3b8;">세대수 변화:</span> <strong style="color:#fff;">${p.current_households} → ${p.planned_households}</strong></div>
+                                <div><span style="color:#94a3b8;">비례율/분담금:</span> <strong style="color:#38bdf8;">${p.estimated_proportion_rate || '-'}</strong></div>
+                                <div><span style="color:#94a3b8;">권리산정기준일:</span> <strong style="color:#fcd34d;">${p.rights_base_date || '-'}</strong></div>
+                            </div>
+
+                            <div style="font-size:0.76rem;color:#a5b4fc;background:rgba(99,102,241,0.1);padding:7px 10px;border-radius:8px;">
+                                <strong>📡 사전 시그널 포인트:</strong> ${p.monitoring_point || '-'}
+                            </div>
+
+                            <div class="redev-risk-tag">
+                                ${p.risk_warning_tag || ''}
+                            </div>
+
+                            ${auctionHtml}
+
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:2px;">
+                                <button type="button" onclick="event.stopPropagation(); openRedevelopmentProjectMap('${safeProjName}', '${safeDist}', '${safeDong}', ${p.latitude}, ${p.longitude}, '${safeStage}')" style="flex:1;background:rgba(0,238,255,0.14);border:1px solid rgba(0,238,255,0.4);color:#00eeff;padding:7px 10px;border-radius:8px;font-size:0.76rem;font-weight:700;cursor:pointer;">
+                                    <i class="fa-solid fa-location-dot"></i> 해당 지역 지도 표시 (${p.district} ${p.legal_dong})
+                                </button>
+                                <a href="${p.source_url || '#'}" target="_blank" onclick="event.stopPropagation();" style="background:rgba(16,185,129,0.14);border:1px solid rgba(16,185,129,0.4);color:#34d399;padding:7px 11px;border-radius:8px;font-size:0.76rem;font-weight:700;text-decoration:none;">
+                                    고시 원문 🔗
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Render Public Notices with Gemini AI 4-line summary
+            const noticesGrid = document.getElementById('redevNoticesGrid');
+            if (!notices.length) {
+                noticesGrid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:18px;color:var(--text-muted);">해당 권역의 사전 공람·고시 내역이 없습니다.</div>`;
+            } else {
+                noticesGrid.innerHTML = notices.map(n => {
+                    const safeTitle = (n.title || '').replace(/'/g, "\\'");
+                    const safeGov = (n.local_gov || '').replace(/'/g, "\\'");
+                    return `
+                        <div class="redev-notice-card">
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
+                                <span style="background:rgba(16,185,129,0.18);border:1px solid rgba(16,185,129,0.45);color:#34d399;font-size:0.72rem;font-weight:800;padding:2px 8px;border-radius:6px;">
+                                    ${n.notice_no}
+                                </span>
+                                <span style="font-size:0.74rem;color:#94a3b8;">${n.local_gov} | ${n.notice_date}</span>
+                            </div>
+                            <h4 style="font-size:0.93rem;font-weight:800;color:#fff;line-height:1.4;">${n.title}</h4>
+                            <div class="ai-4line-box">
+                                <div style="font-size:0.73rem;font-weight:800;color:#00eeff;margin-bottom:4px;">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> Gemini AI 고시 원문 4줄 핵심 요약
+                                </div>
+                                <div><strong>① 대상 단지:</strong> ${n.ai_line1_target || '-'}</div>
+                                <div><strong>② 용적률·세대수:</strong> ${n.ai_line2_metrics || '-'}</div>
+                                <div><strong>③ 공람·심의 일정:</strong> ${n.ai_line3_schedule || '-'}</div>
+                                <div style="color:#fca5a5;"><strong>④ 경매·투자 유의:</strong> ${n.ai_line4_auction_risk || '-'}</div>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px;">
+                                <button type="button" onclick="openMapZoomModal(${n.latitude}, ${n.longitude}, '${safeTitle}', '${safeGov}', '${n.notice_type || '사전공람'}', '${safeGov}')" style="background:rgba(99,102,241,0.18);border:1px solid rgba(99,102,241,0.45);color:#a5b4fc;padding:6px 10px;border-radius:7px;font-size:0.74rem;font-weight:700;cursor:pointer;">
+                                    <i class="fa-solid fa-map"></i> 지역 지도 보기
+                                </button>
+                                <a href="${n.origin_url || '#'}" target="_blank" style="color:#38bdf8;font-size:0.75rem;font-weight:700;text-decoration:underline;">
+                                    지자체 공고 원문 열람 →
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        async function triggerLiveRedevelopmentScan() {
+            const btn = document.getElementById('btnRedevLiveScan');
+            const origHtml = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 새올 고시·공고 & Gemini 요약 스캔 중...`;
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/redevelopment/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ zone_group: currentRedevZone })
+                });
+                const json = await res.json();
+                await loadRedevelopmentTracker();
+                if (json.status === 'success') {
+                    alert(`[사전 공람·고시 실시간 스캔 완료]\n${json.message}`);
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                btn.innerHTML = origHtml;
+                btn.disabled = false;
             }
         }
     </script>

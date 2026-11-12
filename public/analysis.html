@@ -527,6 +527,55 @@
                 color: #d0104c !important;
             }
         }
+        /* Mobile Responsive Optimization */
+        @media (max-width: 768px) {
+            body {
+                padding: 12px 10px;
+                font-size: 0.85rem;
+            }
+            .container {
+                gap: 14px;
+            }
+            header h1 {
+                font-size: 1.35rem;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+            .stat-card {
+                padding: 12px 12px;
+                gap: 10px;
+            }
+            .stat-card i {
+                font-size: 1.4rem;
+            }
+            .stat-content .value {
+                font-size: 1.2rem;
+            }
+            .section-title {
+                font-size: 1.05rem;
+            }
+            .best-grid {
+                grid-template-columns: 1fr;
+                gap: 14px;
+            }
+            .best-card {
+                padding: 15px;
+            }
+            .address {
+                white-space: normal;
+                line-height: 1.4;
+            }
+            .list-section {
+                padding: 12px;
+                -webkit-overflow-scrolling: touch;
+            }
+            .analysis-table {
+                min-width: 780px;
+                font-size: 0.78rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -729,12 +778,11 @@
     function calculateEstimatedTakeover(item) {
         const appraisal = parseFloat(item.appraisal_price || item.appraised_value || 0);
         const notes = String(item.special_notes || "").toLowerCase();
+        const isHugWaived = (notes.includes('hug') || notes.includes('주택도시보증공사')) &&
+            (notes.includes('포기') || notes.includes('인수조건') || notes.includes('말소동의') || notes.includes('확약'));
         let takeoverAmount = 0;
-        if (notes.includes('선순위') || notes.includes('대항력') || notes.includes('임차')) {
+        if (!isHugWaived && (notes.includes('선순위') || notes.includes('대항력') || notes.includes('임차'))) {
             takeoverAmount += appraisal * 0.7;
-        }
-        if (notes.includes('hug') || notes.includes('인수조건')) {
-            takeoverAmount += appraisal * 0.8;
         }
         if (notes.includes('유치권')) {
             takeoverAmount += appraisal * 0.2;
@@ -963,7 +1011,11 @@
                 // 2. Differentiated Claims/Takeover Risk analysis (선순위 인수금액 정밀 분석)
                 let claimsAnalysis = "";
                 const notes = (item.special_notes || "").toLowerCase();
-                if (notes.includes('선순위임차') || notes.includes('대항력') || notes.includes('임차')) {
+                const isHugWaived = (notes.includes('hug') || notes.includes('주택도시보증공사')) &&
+                    (notes.includes('포기') || notes.includes('인수조건') || notes.includes('말소동의') || notes.includes('확약'));
+                if (isHugWaived) {
+                    claimsAnalysis = `<strong>[안전: HUG 대항력포기 / 말소동의 확약 제출]</strong> 주택도시보증공사(HUG)가 법원에 잔존 임차보증금반환채권 포기 및 임차권등기 말소동의 확약서를 제출한 물건입니다. 배당 미달분이 발생하더라도 매수인이 추가로 인수할 보증금은 <strong>0원</strong>입니다.`;
+                } else if (notes.includes('선순위임차') || notes.includes('대항력') || notes.includes('임차')) {
                     claimsAnalysis = `<strong>[주의: 선순위 임차 리스크]</strong> 특별권리사항에 대항력 있는 선순위 임차인이 포착되었습니다. 대항력 보증금 중 미배당금은 낙찰자가 전액 부담해야 하므로, 보증금 액수 및 확정일자/배당요구를 면밀히 확인해야 하며 최종 인수예상금액의 차감이 필수적입니다.`;
                 } else if (notes.includes('유치권')) {
                     claimsAnalysis = `<strong>[주의: 유치권 접수 필지]</strong> 유치권 신고서가 제출되어 실질 점유 유무 및 피담보채권 성립 여부에 따른 사후 인도명령 거부, 소송 해결 비용 등의 추가 비용 리스크 인수가 발생할 우려가 높은 특수 물건입니다.`;

@@ -196,9 +196,10 @@ def generate_analysis_doc(data, output_dir=DEFAULT_DOWNLOADS_DIR):
             10: "IX. 최종 결론"
         }
         
-        # JSON 파싱
+        # JSON 파싱 (중첩 중괄호 안전 추출)
         chart_data = None
-        json_match = re.search(r'(\{[\s\S]*?"chart_data"[\s\S]*?\})', analysis_text, re.IGNORECASE)
+        fenced_m = re.search(r'```(?:json)?\s*(\{[\s\S]*?"chart_data"[\s\S]*?\})\s*```', analysis_text, re.IGNORECASE)
+        json_match = fenced_m or re.search(r'(\{\s*"chart_data"\s*:\s*\{[\s\S]*?\}\s*\})', analysis_text, re.IGNORECASE)
         if json_match:
             try:
                 import json
@@ -412,9 +413,10 @@ def generate_analysis_doc_from_markdown(case_number, markdown_text, output_dir=D
         match = re.search(pattern, text, re.IGNORECASE)
         return match.group(1).strip() if match else ""
 
-    # JSON 파싱
+    # JSON 파싱 (중첩 중괄호 안전 추출)
     chart_data = None
-    json_match = re.search(r'(\{[\s\S]*?"chart_data"[\s\S]*?\})', markdown_text, re.IGNORECASE)
+    fenced_m = re.search(r'```(?:json)?\s*(\{[\s\S]*?"chart_data"[\s\S]*?\})\s*```', markdown_text, re.IGNORECASE)
+    json_match = fenced_m or re.search(r'(\{\s*"chart_data"\s*:\s*\{[\s\S]*?\}\s*\})', markdown_text, re.IGNORECASE)
     if json_match:
         try:
             import json

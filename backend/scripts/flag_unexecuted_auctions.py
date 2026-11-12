@@ -9,7 +9,8 @@ DB_PATH = os.path.join(os.path.dirname(__file__), '../data/map_data.db')
 
 def flag_auctions():
     print("Connecting to DB...")
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30.0)
+    conn.execute("PRAGMA busy_timeout = 30000;")
     cursor = conn.cursor()
 
     cursor.execute("PRAGMA table_info(auctions)")

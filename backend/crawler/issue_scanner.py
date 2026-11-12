@@ -6,32 +6,10 @@ from datetime import datetime, timedelta
 
 DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'map_data.db'))
 
-# Nationwide Si/Gun/Gu Coordinate Mapping Table
-REGION_COORDS = {
-    "서대문구": (37.5791, 126.9368),
-    "마포구": (37.5622, 126.9083),
-    "강남구": (37.5172, 127.0473),
-    "종로구": (37.5730, 126.9794),
-    "용산구": (37.5384, 126.9654),
-    "송파구": (37.5145, 127.1058),
-    "서초구": (37.4837, 127.0326),
-    "영등포구": (37.5263, 126.8962),
-    "성동구": (37.5635, 127.0365),
-    "분당구": (37.3828, 127.1189),
-    "영통구": (37.2596, 127.0790),
-    "연수구": (37.4086, 126.6797),
-    "해운대구": (35.1631, 129.1636),
-    "수성구": (35.8427, 128.6258),
-    "유성구": (36.3622, 127.3563),
-    "일산동구": (37.6625, 126.7906),
-    "단원구": (37.3219, 126.8308),
-    "상록구": (37.3205, 126.8658),
-    "장성군": (35.3019, 126.7848),
-    "나주시": (35.0157, 126.7107),
-    "해남군": (34.5735, 126.5992),
-    "광주광역시": (35.1595, 126.8526),
-    "전라남도": (34.8161, 126.4629)
-}
+from crawler.redevelopment_pipeline import REGION_CENTER_COORDS, resolve_region_coords
+
+# Nationwide Si/Gun/Gu Coordinate Mapping Table (linked to comprehensive REGION_CENTER_COORDS)
+REGION_COORDS = dict(REGION_CENTER_COORDS)
 
 def init_db():
     print(f"Connecting to database at {DB_PATH}...")
@@ -423,12 +401,10 @@ def scan_region_issues(region_name):
         print(f"Live scanning early-stage alerts for region: {region_name}...")
         today = datetime.now()
         
-        base_lat, base_lng = REGION_COORDS.get(clean_region, (37.5665, 126.9780))
+        base_lat, base_lng, _ = resolve_region_coords(region_name, clean_region)
         
         def get_random_offset_coords():
-            offset_lat = base_lat + random.uniform(-0.012, 0.012)
-            offset_lng = base_lng + random.uniform(-0.012, 0.012)
-            return round(offset_lat, 6), round(offset_lng, 6)
+            return round(base_lat, 6), round(base_lng, 6)
 
         c1 = get_random_offset_coords()
         c2 = get_random_offset_coords()
@@ -757,9 +733,16 @@ def scan_region_issues(region_name):
     cursor.execute(sql_select, tuple(unique_patterns))
     rows = cursor.fetchall()
     
-    # Map to list of dicts
+    # Map to list of dicts and ensure region center coordinates
     columns = [col[0] for col in cursor.description]
-    result = [dict(zip(columns, row)) for row in rows]
+    result = []
+    for row in rows:
+        item = dict(zip(columns, row))
+        rlat, rlng, rlabel = resolve_region_coords(region_name, item.get("region"), item.get("title"), item.get("keywords"))
+        item["latitude"] = rlat
+        item["longitude"] = rlng
+        item["resolved_region_label"] = rlabel
+        result.append(item)
     
     conn.close()
     return result
@@ -781,7 +764,14 @@ def get_all_issues():
     rows = cursor.fetchall()
     
     columns = [col[0] for col in cursor.description]
-    result = [dict(zip(columns, row)) for row in rows]
+    result = []
+    for row in rows:
+        item = dict(zip(columns, row))
+        rlat, rlng, rlabel = resolve_region_coords(item.get("region"), item.get("title"), item.get("keywords"))
+        item["latitude"] = rlat
+        item["longitude"] = rlng
+        item["resolved_region_label"] = rlabel
+        result.append(item)
     
     conn.close()
     return result

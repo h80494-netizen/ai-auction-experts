@@ -770,6 +770,12 @@ import pandas as pd
 downloads_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "downloads"))
 visitors_file = os.path.join(os.path.dirname(__file__), "data", "visitors.json")
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(__file__), ".env"), override=True)
+except Exception:
+    pass
+
 import json
 def get_daily_visitors(ip: str = None) -> int:
     try:
@@ -846,9 +852,20 @@ app.add_middleware(
 
 from typing import Optional, List, Dict, Any
 
+def is_onbid_case_number(c_num: str) -> bool:
+    """온비드 공매 관리번호(예: 2026-0400-023211)와 법원 경매 사건번호(예: 2025-51673(1), 2025 타경 51673)를 구분합니다."""
+    s = (c_num or "").strip()
+    if "타경" in s or re.search(r"\(\d+\)\s*$", s):
+        return False
+    return bool(re.search(r"\d{4}-\d{3,5}-\d{4,8}", s))
+
+
 class AnalyzeRequest(BaseModel):
     case_number: str
     address_hint: Optional[str] = ""
+    myauction_idx: Optional[str] = ""
+    item_no: Optional[str] = ""
+    court: Optional[str] = ""
     property_type: Optional[str] = "주택"
     house_count: Optional[int] = 0
     investor_type: Optional[str] = "개인"
@@ -856,10 +873,15 @@ class AnalyzeRequest(BaseModel):
     target_return_rate: Optional[float] = 20.0
     repair_condition: Optional[str] = "수리불필요"
     is_regulated_area: Optional[bool] = False
+    calculated_aging: Optional[str] = ""
     madangs_url: Optional[str] = ""
+    admin_key: Optional[str] = ""
+    user_pin: Optional[str] = ""
 
 class SearchRequest(BaseModel):
     case_number: str
+    admin_key: Optional[str] = ""
+    user_pin: Optional[str] = ""
 
 class PdfRequest(BaseModel):
     pdf_url: str
@@ -874,42 +896,94 @@ class PasswordRequest(BaseModel):
 @app.post("/api/verify")
 async def verify_password(request: PasswordRequest):
     pw = request.password.strip()
-    kst = timezone(timedelta(hours=9))
-    current_pw = datetime.now(kst).strftime("%m%d")
-    
-    # 1. 관리자 고정 인증번호 (h80494)
-    if pw == "h80494":
+    if not pw:
+        return {"status": "error", "message": "비밀번호를 입력해주세요."}
+
+    # 1. 관리자 마스터 인증번호 확인 (월일 4자리 임시 비밀번호 접속은 전면 차단됨)
+    if verify_admin_key(pw):
         return {"status": "success", "user_type": "admin", "message": "관리자로 로그인되었습니다."}
-        
-    # 2. 당일 월/일 4자리 초기 비밀번호 (예: 9월 3일 -> "0903")
-    if pw == current_pw:
-        return {"status": "success", "user_type": "guest", "message": "초기 비밀번호로 로그인되었습니다."}
-        
-    # 3. 관리자 승인을 받은 회원의 본인 비밀번호 (PIN 해시 대조)
+
+    # 2. 관리자 정식 승인을 받은 회원(approved_users, status='active') 비밀번호 대조
     import hashlib
     pw_hash = hashlib.sha256(pw.encode('utf-8')).hexdigest()
+    kst = timezone(timedelta(hours=9))
+    now_str = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
     db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
     try:
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        
-        cursor.execute("SELECT * FROM approved_users WHERE pin_hash = ? AND status = 'active'", (pw_hash,))
+
+        cursor.execute(
+            "SELECT * FROM approved_users WHERE pin_hash = ? ORDER BY CASE WHEN status = 'active' THEN 0 ELSE 1 END, id DESC LIMIT 1",
+            (pw_hash,)
+        )
         user = cursor.fetchone()
-        
-        if not user:
-            cursor.execute("SELECT * FROM board_inquiries WHERE pin_hash = ? AND is_approved = 1", (pw_hash,))
-            user = cursor.fetchone()
-            
-        conn.close()
-        
+
         if user:
-            author_name = user["username"] if "username" in user.keys() else user["author"]
-            return {"status": "success", "user_type": "member", "user_name": author_name, "message": f"{author_name}님 본인 비밀번호로 인증되었습니다."}
+            user_status = (user["status"] or "active").strip().lower()
+            if user_status == "active":
+                try:
+                    cursor.execute(
+                        "UPDATE approved_users SET last_login_at = ?, login_count = COALESCE(login_count, 0) + 1 WHERE id = ?",
+                        (now_str, user["id"])
+                    )
+                    conn.commit()
+                except Exception as log_err:
+                    print(f"Login audit update warning: {log_err}")
+                author_name = user["username"]
+                user_keys = user.keys()
+                can_analyze = bool(user["can_use_rights_analysis"]) if "can_use_rights_analysis" in user_keys else False
+                user_id_val = user["id"]
+                conn.close()
+                access_state = get_rights_analysis_access_state(user_pin=pw)
+                return {
+                    "status": "success",
+                    "user_type": "member",
+                    "user_id": user_id_val,
+                    "user_name": author_name,
+                    "can_use_rights_analysis": can_analyze,
+                    "access_mode": access_state.get("access_mode", "all"),
+                    "message": f"{author_name}님 환영합니다. 승인된 회원 비밀번호로 인증되었습니다."
+                }
+            else:
+                conn.close()
+                return {
+                    "status": "error",
+                    "message": "이용이 일시 정지(차단)되었거나 승인이 취소된 계정입니다. 소통 및 문의란을 통해 관리자에게 문의해주세요."
+                }
+
+        # 승인 명부에 없는 경우 신청 상태만 안내 (절대 로그인 허용하지 않음)
+        cursor.execute(
+            "SELECT status, is_approved FROM board_inquiries WHERE pin_hash = ? ORDER BY id DESC LIMIT 1",
+            (pw_hash,)
+        )
+        inq = cursor.fetchone()
+        conn.close()
+
+        if inq:
+            inq_status = (inq["status"] or "pending").strip().lower()
+            if inq_status == "rejected":
+                return {
+                    "status": "error",
+                    "message": "가입 신청이 반려되었습니다. [소통 및 문의란]에서 관리자 안내 사유를 확인해주세요."
+                }
+            if inq_status in ("revoked", "blocked"):
+                return {
+                    "status": "error",
+                    "message": "회원 승인이 취소되었거나 이용이 제한된 비밀번호입니다. 관리자에게 문의해주세요."
+                }
+            return {
+                "status": "error",
+                "message": "가입 신청이 접수되어 현재 관리자 승인 대기 중입니다. 관리자 승인 완료 후 해당 비밀번호로 접속하실 수 있습니다."
+            }
     except Exception as e:
         print(f"Error checking user auth: {e}")
-        
-    return {"status": "error", "message": "비밀번호가 일치하지 않습니다. 초기 비밀번호(당일 월일 4자리)를 이용하시거나 소통게시판에서 가입 승인을 요청해주세요."}
+
+    return {
+        "status": "error",
+        "message": "승인된 회원 비밀번호가 일치하지 않습니다. 미가입 시 하단 [가입/비밀번호 신청] 후 관리자 승인을 받아 접속해주세요."
+    }
 
 
 @app.post("/api/search_cases")
@@ -917,6 +991,16 @@ async def search_cases(request: SearchRequest):
     """
     사건번호로 검색 가능한 주소(물건) 목록을 반환합니다.
     """
+    allowed, restrict_msg = check_rights_analysis_allowed(request.admin_key, request.user_pin)
+    if not allowed:
+        state = get_rights_analysis_access_state()
+        return {
+            "status": "restricted",
+            "admin_only": state.get("admin_only", False),
+            "access_mode": state.get("access_mode", "admin_only"),
+            "message": restrict_msg,
+        }
+
     case_number = request.case_number
     print(f"[{case_number}] 사건번호 검색 목록 요청")
     
@@ -924,7 +1008,7 @@ async def search_cases(request: SearchRequest):
     
     def _run_search(c_num):
         import asyncio
-        if "-" in c_num:
+        if is_onbid_case_number(c_num):
             # 1순위: 온비드 공매 공식 정밀 API (면적, 평수, 호수, 감정가 직접 수집)
             try:
                 from crawler.onbid_scraper import scrape_onbid_case
@@ -956,7 +1040,12 @@ async def search_cases(request: SearchRequest):
         
     result = await run_in_threadpool(_run_search, case_number)
     if result.get("success"):
-        return {"status": "success", "data": result.get("items", [])}
+        return {
+            "status": "success",
+            "data": result.get("items", []),
+            "has_sub_number": bool(result.get("has_sub_number", False)),
+            "requested_item_no": result.get("requested_item_no", ""),
+        }
     else:
         return {"status": "error", "message": result.get("message", result.get("error", "검색 실패"))}
 
@@ -985,7 +1074,7 @@ async def get_naver_realestate(
         if parts[1] in ("서울", "경기", "인천"):
             target_region = parts[1]
             
-    query = "SELECT * FROM naver_real_estate WHERE estate_type = ?"
+    query = "SELECT * FROM naver_real_estate WHERE estate_type = ? AND estate_id NOT LIKE 'MOLIT_%'"
     params = [target_type]
     
     if target_region:
@@ -1129,13 +1218,14 @@ async def get_naver_realestate_details(
     if "_" in estate_type:
         parts = estate_type.split("_", 1)
         target_type = parts[0]
-        if parts[1] in ("서울", "경기"):
+        if parts[1] in ("서울", "경기", "인천"):
             target_region = parts[1]
 
     epsilon = 0.000001
     query = """
         SELECT * FROM naver_real_estate
-        WHERE estate_type = ? 
+        WHERE estate_type = ?
+        AND estate_id NOT LIKE 'MOLIT_%'
         AND lat BETWEEN ? AND ?
         AND lng BETWEEN ? AND ?
     """
@@ -1195,24 +1285,25 @@ analysis_tasks = {}
 
 async def _background_analyze(task_id: str, request: AnalyzeRequest):
     case_number = request.case_number
-    address_hint = request.address_hint
-    print(f"[{case_number}] 백그라운드 분석 시작 (task_id: {task_id})")
+    address_hint = request.address_hint or ""
+    myauction_idx = (request.myauction_idx or "").strip()
+    print(f"[{case_number}] 백그라운드 분석 시작 (task_id: {task_id}, idx: {myauction_idx}, hint: {address_hint})")
     
     from fastapi.concurrency import run_in_threadpool
     
-    def _run_scraper(c_num, a_hint):
+    def _run_scraper(c_num, a_hint, m_idx):
         import asyncio
-        if "-" in c_num:
+        if is_onbid_case_number(c_num):
             from crawler.onbid_scraper import scrape_onbid_case
             return scrape_onbid_case(c_num, a_hint)
         else:
             from crawler.myauction_scraper import scrape_myauction_case
-            return asyncio.run(scrape_myauction_case(c_num, a_hint))
+            return asyncio.run(scrape_myauction_case(c_num, a_hint, m_idx))
         
     try:
-        result = await run_in_threadpool(_run_scraper, case_number, address_hint)
+        result = await run_in_threadpool(_run_scraper, case_number, address_hint, myauction_idx)
         
-        if request.madangs_url and "-" not in case_number:
+        if request.madangs_url and not is_onbid_case_number(case_number):
             def _run_madangs(c_num, m_url):
                 import asyncio
                 from crawler.madangs_scraper import scrape_madangs_images
@@ -1224,7 +1315,12 @@ async def _background_analyze(task_id: str, request: AnalyzeRequest):
                 print(f"마당스 사진 교체 실패: {e}")
                 
         if result["success"]:
-            result["data"]["case_number"] = case_number
+            if not result["data"].get("case_number"):
+                result["data"]["case_number"] = case_number
+            if request.court and not result["data"].get("court"):
+                result["data"]["court"] = request.court
+            if request.item_no and not result["data"].get("item_no"):
+                result["data"]["item_no"] = request.item_no
             result["data"]["property_type"] = request.property_type
             result["data"]["house_count"] = request.house_count
             result["data"]["investor_type"] = request.investor_type
@@ -1233,8 +1329,10 @@ async def _background_analyze(task_id: str, request: AnalyzeRequest):
             result["data"]["target_return"] = request.target_return_rate
             result["data"]["repair_condition"] = request.repair_condition
             result["data"]["is_regulated_area"] = request.is_regulated_area
+            if request.calculated_aging:
+                result["data"]["calculated_aging"] = request.calculated_aging
             
-            if "-" in case_number and not result["data"].get("appraised_value"):
+            if is_onbid_case_number(case_number) and not result["data"].get("appraised_value"):
                 try:
                     def _run_madangs_fallback(c_num):
                         import asyncio
@@ -1281,7 +1379,7 @@ async def _background_analyze(task_id: str, request: AnalyzeRequest):
 
             try:
                 from doc_generator import generate_analysis_doc
-                doc_path = generate_analysis_doc(result["data"])
+                doc_path = await run_in_threadpool(generate_analysis_doc, result["data"])
                 doc_msg = f"보고서 생성 완료: {doc_path} (구글독스 업로드 가능)"
             except Exception as e:
                 doc_msg = f"보고서 생성 실패: {str(e)}"
@@ -1317,6 +1415,16 @@ async def analyze_case(request: AnalyzeRequest, background_tasks: BackgroundTask
     """
     프론트엔드에서 사건번호를 받아 백엔드 분석 파이프라인을 비동기로 시작합니다.
     """
+    allowed, restrict_msg = check_rights_analysis_allowed(request.admin_key, request.user_pin)
+    if not allowed:
+        state = get_rights_analysis_access_state()
+        return {
+            "status": "restricted",
+            "admin_only": state.get("admin_only", False),
+            "access_mode": state.get("access_mode", "admin_only"),
+            "message": restrict_msg,
+        }
+
     task_id = str(uuid.uuid4())
     analysis_tasks[task_id] = {"status": "processing"}
     background_tasks.add_task(_background_analyze, task_id, request)
@@ -1331,15 +1439,89 @@ async def analyze_case(request: AnalyzeRequest, background_tasks: BackgroundTask
 def get_property_issues(region: Optional[str] = None):
     try:
         from crawler.issue_scanner import scan_region_issues, get_all_issues
+        from crawler.redevelopment_pipeline import resolve_region_coords
         if region:
             issues = scan_region_issues(region)
         else:
             issues = get_all_issues()
+        for item in issues:
+            rlat, rlng, rlabel = resolve_region_coords(region, item.get("region"), item.get("title"), item.get("keywords"))
+            item["latitude"] = rlat
+            item["longitude"] = rlng
+            item["resolved_region_label"] = rlabel
         return {"status": "success", "data": issues}
     except Exception as e:
         import traceback
         logging.error(f"Error in get_property_issues: {str(e)}\n{traceback.format_exc()}")
         return {"status": "error", "message": str(e)}
+
+@app.get("/api/issues/region_coords")
+def api_resolve_region_coords(q: Optional[str] = None, title: Optional[str] = None):
+    try:
+        from crawler.redevelopment_pipeline import resolve_region_coords
+        lat, lng, label = resolve_region_coords(q, title)
+        return {"status": "success", "latitude": lat, "longitude": lng, "label": label}
+    except Exception as e:
+        return {"status": "error", "latitude": 37.5665, "longitude": 126.9780, "label": "서울특별시", "message": str(e)}
+
+@app.get("/api/redevelopment/tracker")
+def api_get_redevelopment_tracker(zone_group: Optional[str] = "all", region_scope: Optional[str] = "all"):
+    try:
+        from crawler.redevelopment_pipeline import get_redevelopment_tracker_data
+        return get_redevelopment_tracker_data(zone_group=zone_group or "all", region_scope=region_scope or "all")
+    except Exception as e:
+        import traceback
+        logging.error(f"Error in api_get_redevelopment_tracker: {str(e)}\n{traceback.format_exc()}")
+        return {"status": "error", "message": str(e)}
+
+class RedevelopmentScanRequest(BaseModel):
+    zone_group: str = "all"
+
+@app.post("/api/redevelopment/scan")
+def api_trigger_redevelopment_scan(req: RedevelopmentScanRequest):
+    try:
+        from crawler.redevelopment_pipeline import trigger_live_gosi_scan
+        return trigger_live_gosi_scan(req.zone_group)
+    except Exception as e:
+        import traceback
+        logging.error(f"Error in api_trigger_redevelopment_scan: {str(e)}\n{traceback.format_exc()}")
+        return {"status": "error", "message": str(e)}
+
+def _start_redevelopment_scheduler():
+    import threading
+    import time
+    from datetime import datetime as _dt
+
+    def _worker():
+        try:
+            from crawler.redevelopment_pipeline import ensure_redevelopment_tables, trigger_live_gosi_scan
+            ensure_redevelopment_tables()
+        except Exception as e:
+            logging.error(f"Redevelopment table init error: {e}")
+
+        last_run_slot = None
+        while True:
+            try:
+                now = _dt.now()
+                # Daily twice at 08:00 and 16:00
+                if now.hour in (8, 16) and now.minute < 5:
+                    slot_key = f"{now.strftime('%Y-%m-%d')}-{now.hour}"
+                    if last_run_slot != slot_key:
+                        last_run_slot = slot_key
+                        from crawler.redevelopment_pipeline import trigger_live_gosi_scan
+                        trigger_live_gosi_scan("all")
+                        logging.info(f"[Redevelopment Scheduler] Completed scheduled scan at {slot_key}")
+            except Exception as e:
+                logging.error(f"[Redevelopment Scheduler] Error: {e}")
+            time.sleep(60)
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+
+try:
+    _start_redevelopment_scheduler()
+except Exception:
+    pass
 
 class AnalyzePdfRequest(BaseModel):
     pdf_url: str
@@ -1452,6 +1634,18 @@ async def download_pdf(case_number: str):
     encoded_filename = urllib.parse.quote(f"{safe_case}_브리핑자료.pdf")
     headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
     return FileResponse(path=file_path, media_type="application/pdf", headers=headers)
+
+
+@app.get("/api/download_court_doc/{case_number:path}/{filename}")
+async def download_court_doc(case_number: str, filename: str):
+    safe_case = re.sub(r'[\\/*?:"<>|\s]+', "_", case_number.strip())
+    alt_case = case_number.replace(" ", "_").replace("/", "_")
+    safe_fn = os.path.basename(filename)
+    for folder in (safe_case, alt_case, case_number):
+        candidate = os.path.join(downloads_dir, folder, safe_fn)
+        if os.path.exists(candidate):
+            return FileResponse(path=candidate, media_type="application/pdf")
+    raise HTTPException(status_code=404, detail=f"{safe_fn} 원본 문서를 찾을 수 없습니다.")
 
 
 
@@ -1803,6 +1997,21 @@ def get_map_zoning(
     data = [dict(row) for row in cursor.fetchall()]
     
     conn.close()
+
+    # 로컬 DB에 해당 지역 상업지역 폴리곤이 없는 경우(지방 도시 등) V-World LT_C_UQ111 실시간 보완
+    if not any("상업" in str(d.get("name", "")) for d in data) and (zoom is None or zoom >= 12.5):
+        try:
+            vw_polys = fetch_vworld_commercial_polygons_in_bbox(min_lat, min_lng, max_lat, max_lng)
+            for vp in vw_polys:
+                data.append({
+                    "id": vp.get("id"),
+                    "name": vp.get("name") or "상업지역",
+                    "propel_cd": "",
+                    "geojson": json.dumps(vp.get("geojson"), ensure_ascii=False),
+                })
+        except Exception:
+            pass
+
     return {"status": "success", "data": data}
 
 
@@ -3009,16 +3218,27 @@ def get_map_demographics(
     case_no: Optional[str] = None,
     property_type: Optional[str] = None,
     floor: Optional[str] = None,
-    parking_count: Optional[str] = None
+    parking_count: Optional[str] = None,
+    radius: Optional[int] = 500
 ):
     """
-    물건지 클릭 시 반경 1km 내 배후수요 분석 데이터를 반환합니다.
+    물건지 클릭 시 선택 반경(500m / 1km / 2km) 내 배후수요 및 연령별 가구소득 분석 데이터를 반환합니다.
     SGIS OpenAPI를 연동하며, 실패 시 로컬 공간 추정 엔진(Fallback)이 작동합니다.
     지하철역과의 거리 및 역세권 판정도 함께 제공합니다.
     """
     import math
     import random
     from sgis_service import sgis_service
+
+    try:
+        req_r = int(radius) if radius is not None else 500
+    except Exception:
+        req_r = 500
+    if req_r in (500, 1000, 2000):
+        target_radius = req_r
+    else:
+        target_radius = max(250, min(5000, req_r))
+    area_scale = (target_radius / 500.0) ** 2
     
     # 1. 지하철역 정보 수색 (1km 이내 전체 및 가장 가까운 역)
     db_path = os.path.join(os.path.dirname(__file__), 'data', 'map_data.db')
@@ -3088,22 +3308,25 @@ def get_map_demographics(
         else:
             station_grade = "역세권"
             
-    # 2. SGIS OpenAPI 연동 시도
+    # 2. SGIS OpenAPI 연동 시도 (선택 반경 500m / 1000m / 2000m)
+    demo_lat_delta = (target_radius / 111000.0) * 1.05
+    demo_lng_delta = (target_radius / 88800.0) * 1.05
+
     demographics = None
     try:
-        demographics = sgis_service.fetch_demographics_500(lat, lng)
+        demographics = sgis_service.fetch_demographics(lat, lng, radius=target_radius)
     except Exception as e:
-        logging.error(f"SGIS Real-time fetch error: {e}")
+        logging.error(f"SGIS Real-time fetch error (r={target_radius}m): {e}")
         
     # 3. 로컬 공간 엔진을 이용한 Fallback 연산 (SGIS 실패 또는 키 미등록 시)
     if not demographics:
-        logging.info("SGIS API unavailable. Running Local Spatial Estimation Engine...")
+        logging.info(f"SGIS API unavailable. Running Local Spatial Estimation Engine (r={target_radius}m)...")
         
-        # 3.1. 주거/유동인구 추정 (500m 이내 격자 생활인구의 합산)
+        # 3.1. 주거/유동인구 추정 (선택 반경 이내 격자 생활인구의 합산)
         cursor.execute('''
             SELECT avg_population, lat, lng FROM population_grids
             WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-        ''', (lat - lat_delta, lat + lat_delta, lng - lng_delta, lng + lng_delta))
+        ''', (lat - demo_lat_delta, lat + demo_lat_delta, lng - demo_lng_delta, lng + demo_lng_delta))
         grid_rows = cursor.fetchall()
         
         total_pop = 0
@@ -3111,23 +3334,24 @@ def get_map_demographics(
         for row in grid_rows:
             g = dict(row)
             dist = haversine_distance(lat, lng, g['lat'], g['lng'])
-            if dist <= 500:
+            if dist <= target_radius:
                 total_pop += g['avg_population']
                 grid_count += 1
                 
-        # 서울 외 지역이거나 그리드가 없는 경우 기본 추정치 보정
+        # 서울 외 지역이거나 그리드가 없는 경우 기본 추정치 보정 (면적비 완만 스케일링)
         if total_pop == 0:
-            # 경기도/인천 등 외곽 지역의 기본값 제공
-            total_pop = 22000 + int(random.Random(int(lat*1000)).random() * 10000)
+            base_500_pop = 14000 + int(random.Random(int(lat*1000)).random() * 6000)
+            eff_scale = 1.0 if target_radius == 500 else (area_scale ** 0.85)
+            total_pop = int(base_500_pop * eff_scale)
             
-        # 세대수 계산 (평균 가구원 수 2.2명 기준 + 변동)
+        # 세대수 계산 (평균 가구원 수 2.25명 기준)
         total_households = int(total_pop / 2.25)
         
         # 3.2. 일자리 및 업체수 추정 (상권 데이터를 활용)
         cursor.execute('''
             SELECT name, population, category, lat, lng FROM commercial_areas
             WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-        ''', (lat - lat_delta, lat + lat_delta, lng - lng_delta, lng + lng_delta))
+        ''', (lat - demo_lat_delta, lat + demo_lat_delta, lng - demo_lng_delta, lng + demo_lng_delta))
         comm_rows = cursor.fetchall()
         
         total_comm_pop = 0
@@ -3135,31 +3359,32 @@ def get_map_demographics(
         for row in comm_rows:
             c = dict(row)
             dist = haversine_distance(lat, lng, c['lat'], c['lng'])
-            if dist <= 500:
+            if dist <= target_radius:
                 total_comm_pop += c['population']
                 comm_count += 1
                 
-        # 업체수 및 직장인구(종사자수) 스케일링 계산 (500m 반경에 맞게 현실적으로 보정)
+        # 업체수 및 직장인구(종사자수) 스케일링 계산
         if total_comm_pop > 0:
-            companies = comm_count * 4 + int(total_comm_pop * 0.0002) + 15
-            workplace_pop = int(total_comm_pop * 0.004) + comm_count * 8 + 120
+            companies = comm_count * 4 + int(total_comm_pop * 0.0002) + int(15 * (area_scale ** 0.7))
+            workplace_pop = int(total_comm_pop * 0.004) + comm_count * 8 + int(120 * (area_scale ** 0.7))
         else:
-            # 오피스가 부재한 순수 주거지 기본값
             seed_val = int(lat*1000 + lng*1000)
             rng = random.Random(seed_val)
-            companies = 10 + rng.randint(5, 20)
-            workplace_pop = 60 + rng.randint(20, 100)
+            eff_w_scale = 1.0 if target_radius == 500 else (area_scale ** 0.78)
+            companies = int((18 + rng.randint(6, 24)) * eff_w_scale)
+            workplace_pop = int((110 + rng.randint(30, 140)) * eff_w_scale)
             
-        # 3.3. 연령층 분포 생성 (위도/경도 기반 결정론적 난수로 현실적인 배분)
+        # 3.3. 연령층 분포 생성 (위도/경도 기반 결정론적 난수로 현실적인 6개 연령군 배분)
         seed_val = int(lat*10000 + lng*10000)
         rng = random.Random(seed_val)
         
-        w_under20 = rng.uniform(0.12, 0.16)
+        w_under20 = rng.uniform(0.11, 0.15)
         w_20s = rng.uniform(0.13, 0.17)
         w_30s = rng.uniform(0.16, 0.20)
-        w_40s = rng.uniform(0.19, 0.23)
-        w_55s = rng.uniform(0.15, 0.18)
-        w_sum = w_under20 + w_20s + w_30s + w_40s + w_55s
+        w_40s = rng.uniform(0.18, 0.22)
+        w_55s = rng.uniform(0.15, 0.19)
+        w_60s = rng.uniform(0.16, 0.22)
+        w_sum = w_under20 + w_20s + w_30s + w_40s + w_55s + w_60s
         
         # 정규화
         w_under20 /= w_sum
@@ -3167,7 +3392,7 @@ def get_map_demographics(
         w_30s /= w_sum
         w_40s /= w_sum
         w_55s /= w_sum
-        w_60s = 1.0 - (w_under20 + w_20s + w_30s + w_40s + w_55s)
+        w_60s = max(0.05, 1.0 - (w_under20 + w_20s + w_30s + w_40s + w_55s))
         
         age_groups = {
             "under_20s": int(total_pop * w_under20),
@@ -3188,21 +3413,27 @@ def get_map_demographics(
         }
 
     # 3.4. 거주인구 하한선 스마트 보정 (SGIS API 구역 누락 또는 격자 부재 시 과소 추정 방지)
+    demographics["radius_m"] = target_radius
     res_pop_raw = demographics.get("residential_population", 0)
     
-    # 500m 반경 내 네이버 부동산 매물 밀집도 파악
+    # 선택 원형 반경 내 네이버 부동산 매물 밀집도 파악
     cursor.execute('''
-        SELECT count(*) FROM naver_real_estate
+        SELECT lat, lng FROM naver_real_estate
         WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-    ''', (lat - lat_delta, lat + lat_delta, lng - lng_delta, lng + lng_delta))
-    naver_cnt = cursor.fetchone()[0]
+    ''', (lat - demo_lat_delta, lat + demo_lat_delta, lng - demo_lng_delta, lng + demo_lng_delta))
+    naver_rows_in_box = cursor.fetchall()
+    naver_cnt = 0
+    for nr in naver_rows_in_box:
+        if nr[0] and nr[1] and haversine_distance(lat, lng, nr[0], nr[1]) <= target_radius:
+            naver_cnt += 1
     
-    # 매물이 10개 이상 존재하는 아파트/다세대 주거 밀집지역임에도 거주인구가 3000명 미만인 경우 자동 보정
-    min_estimated_households = max(int(naver_cnt * 18), 2800) if naver_cnt >= 10 else 1800
+    floor_scale = 1.0 if target_radius == 500 else (area_scale ** 0.78)
+    capped_listing_hh = min(int(naver_cnt * 6), int(16500 * (area_scale ** 0.85)))
+    min_estimated_households = max(capped_listing_hh, int(2800 * floor_scale)) if naver_cnt >= 5 else int(1800 * floor_scale)
     min_estimated_pop = int(min_estimated_households * 2.25)
     
     if res_pop_raw < min_estimated_pop and naver_cnt >= 5:
-        logging.info(f"Adjusting unrealistically low population ({res_pop_raw}) based on 500m Naver estate density ({naver_cnt} listings) -> New Pop: {min_estimated_pop}")
+        logging.info(f"Adjusting low population ({res_pop_raw}) at r={target_radius}m ({naver_cnt} listings) -> New Pop: {min_estimated_pop}")
         demographics["residential_population"] = min_estimated_pop
         demographics["households"] = min_estimated_households
         demographics["source"] = f"{demographics.get('source', 'API')} + Density Floor Corrector"
@@ -3328,6 +3559,7 @@ def get_map_demographics(
     lng_idx = int(lng / base_lng_step)
     
     matched_grid = None
+    radius_grid_avg_price = 0.0
     try:
         cursor.execute('''
             SELECT avg_price_per_pyeong, age_premium_ratio, floor_sensitivity
@@ -3343,8 +3575,98 @@ def get_map_demographics(
                 "age_premium": g["age_premium_ratio"] or 0.0,
                 "floor_sensitivity": g["floor_sensitivity"] or 0.0
             }
+
+        # 선택 반경(500m / 1km / 2km) 내 주거 실거래 격자 평균 평당가 조회 (가구소득 산출 지표 연동)
+        idx_lat_span = max(2, int(round(demo_lat_delta / base_lat_step)))
+        idx_lng_span = max(2, int(round(demo_lng_delta / base_lng_step)))
+        cursor.execute('''
+            SELECT AVG(avg_price_per_pyeong) as avg_pp
+            FROM realprice_grids
+            WHERE lat_idx BETWEEN ? AND ?
+              AND lng_idx BETWEEN ? AND ?
+              AND avg_price_per_pyeong > 0
+              AND property_type IN ('아파트', '오피스텔', '다세대')
+        ''', (lat_idx - idx_lat_span, lat_idx + idx_lat_span, lng_idx - idx_lng_span, lng_idx + idx_lng_span))
+        r_row = cursor.fetchone()
+        if r_row and r_row["avg_pp"]:
+            radius_grid_avg_price = float(r_row["avg_pp"])
     except Exception as e:
         print(f"Error querying realprice_grids in demographics: {e}")
+
+    # 5.0 선택 반경 내 가구당 소득수준 및 연령별 가구소득 산출 (통계청 가계금융복지조사 연령 프로파일 + 지역 주거시세 구매력 연동)
+    try:
+        ref_pp = radius_grid_avg_price if radius_grid_avg_price > 0 else (matched_grid["avg_price"] if (matched_grid and matched_grid.get("avg_price", 0) > 0) else 2400.0)
+        ref_pp_clamped = max(800.0, min(12000.0, float(ref_pp)))
+        # 지역 기준 가구 월소득(만원): 수도권/전국 실거래 평당가 탄력도 반영
+        regional_base_monthly_man = 345.0 + (ref_pp_clamped * 0.068)
+        high_asset_bonus = 0.06 if ref_pp_clamped >= 4500 else (0.03 if ref_pp_clamped >= 3000 else 0.0)
+
+        age_dist_cur = demographics.get("age_distribution", {}) or {}
+        pop_u20 = int(age_dist_cur.get("under_20s", 0) or 0)
+        pop_20s = int(age_dist_cur.get("twenties", 0) or 0)
+        pop_30s = int(age_dist_cur.get("thirties", 0) or 0)
+        pop_40s = int(age_dist_cur.get("forties", 0) or 0)
+        pop_50s = int(age_dist_cur.get("fifties", 0) or 0)
+        pop_60p = int(age_dist_cur.get("sixties_plus", 0) or 0)
+        tot_age_pop = max(1, pop_u20 + pop_20s + pop_30s + pop_40s + pop_50s + pop_60p)
+        tot_hh = max(1, int(demographics.get("households", 0) or int(tot_age_pop / 2.25)))
+
+        def _classify_income_bracket(monthly_man: int) -> str:
+            if monthly_man >= 780:
+                return "9~10분위 (고소득층)"
+            elif monthly_man >= 560:
+                return "7~8분위 (중상위층)"
+            elif monthly_man >= 410:
+                return "5~6분위 (중위소득층)"
+            elif monthly_man >= 280:
+                return "3~4분위 (실속소득층)"
+            return "1~2분위 (소형·청년/고령가구)"
+
+        # 연령대별 가구주 소득 배율 (통계청 가계금융복지조사 기준: 40·50대 피크, 20대·60대+ 조정)
+        age_specs = [
+            ("20대이하", "20대 이하", pop_u20 + pop_20s, 0.66, 0.14),
+            ("30대", "30대", pop_30s, 1.04, 0.21),
+            ("40대", "40대", pop_40s, 1.24, 0.25),
+            ("50대", "50대", pop_50s, 1.20, 0.22),
+            ("60대이상", "60대 이상", pop_60p, 0.68 + high_asset_bonus, 0.18),
+        ]
+
+        by_age_income = []
+        weighted_inc_sum = 0.0
+        weight_total = 0.0
+        for code_k, lbl_k, pop_k, mult_k, default_hh_share in age_specs:
+            ratio_pct = round((pop_k / tot_age_pop) * 100.0, 1)
+            # 20세 미만 미성년 인구는 단독 가구주 비중이 낮으므로 성인 가구주 비중 보정
+            hh_weight = (pop_20s if code_k == "20대이하" else pop_k)
+            if hh_weight <= 0:
+                hh_weight = tot_age_pop * default_hh_share
+            m_inc = int(round(regional_base_monthly_man * mult_k))
+            y_inc = m_inc * 12
+            weighted_inc_sum += m_inc * hh_weight
+            weight_total += hh_weight
+            by_age_income.append({
+                "key": code_k,
+                "label": lbl_k,
+                "population": int(pop_k),
+                "ratio_pct": ratio_pct,
+                "monthly_income_man": m_inc,
+                "annual_income_man": y_inc,
+                "income_bracket": _classify_income_bracket(m_inc),
+            })
+
+        avg_monthly_man = int(round(weighted_inc_sum / weight_total)) if weight_total > 0 else int(round(regional_base_monthly_man))
+        avg_annual_man = avg_monthly_man * 12
+        demographics["household_income"] = {
+            "radius_m": target_radius,
+            "avg_monthly_man": avg_monthly_man,
+            "avg_annual_man": avg_annual_man,
+            "income_display": f"월 약 {avg_monthly_man:,}만원 (연 {avg_annual_man:,}만원)",
+            "income_bracket": _classify_income_bracket(avg_monthly_man),
+            "ref_pyeong_price_man": round(ref_pp, 0),
+            "by_age": by_age_income,
+        }
+    except Exception as inc_e:
+        logging.error(f"Household income estimation error: {inc_e}")
 
     # 층수 정규화 처리 ("지1" -> 지하 1층)
     normalized_floor = floor
@@ -4621,6 +4943,11 @@ if os.path.exists(test_images_dir):
 
 
 from naver_price_analyzer import analyze_price
+from commercial_zone_analyzer import (
+    analyze_commercial_zone,
+    find_commercial_zone_at_point,
+    fetch_vworld_commercial_polygons_in_bbox,
+)
 
 class NaverPriceRequest(BaseModel):
     lat: float
@@ -4634,6 +4961,19 @@ class NaverPriceRequest(BaseModel):
     min_price: float
     senior_debt: float
     radius: Optional[int] = 1000
+    commercial_zone_only: Optional[bool] = False
+    single_zone_geojson: Optional[Dict[str, Any]] = None
+    area_group: Optional[str] = None
+
+class CommercialZoneAnalysisRequest(BaseModel):
+    polygon_id: Optional[int] = None
+    geojson: Optional[Dict[str, Any]] = None
+    zone_name: Optional[str] = "상업지역"
+    property_type: Optional[str] = "상가"
+    age_group: Optional[str] = "전체"
+    floor_group: Optional[str] = "전체"
+    area_group: Optional[str] = "전체"
+    target_pyeong: Optional[float] = 25.0
 
 @app.post("/api/naver_price_analysis")
 async def naver_price_analysis(req: NaverPriceRequest):
@@ -4650,9 +4990,39 @@ async def naver_price_analysis(req: NaverPriceRequest):
             target_appraised_price=req.appraised_price,
             target_min_price=req.min_price,
             target_senior_debt=req.senior_debt,
-            radius_meters=radius_val
+            radius_meters=radius_val,
+            commercial_zone_only=bool(req.commercial_zone_only),
+            single_zone_geojson=req.single_zone_geojson,
+            area_group_override=req.area_group,
         )
         return {"status": "success", "data": result}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/commercial_zone_analysis")
+async def api_commercial_zone_analysis(req: CommercialZoneAnalysisRequest):
+    try:
+        res = analyze_commercial_zone(
+            polygon_id=req.polygon_id,
+            geojson_input=req.geojson,
+            zone_name=req.zone_name or "상업지역",
+            property_type=req.property_type or "상가",
+            age_group=req.age_group or "전체",
+            floor_group=req.floor_group or "전체",
+            area_group=req.area_group or "전체",
+            target_pyeong=req.target_pyeong or 25.0,
+        )
+        if "error" in res:
+            return {"status": "error", "message": res["error"]}
+        return {"status": "success", "data": res}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/commercial_zone_at_point")
+async def api_commercial_zone_at_point(lat: float, lng: float):
+    try:
+        found = find_commercial_zone_at_point(lat, lng)
+        return {"status": "success", "data": found}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -4717,6 +5087,14 @@ def init_board_db():
         cursor.execute("ALTER TABLE board_inquiries ADD COLUMN is_approved INTEGER DEFAULT 0")
     if "approved_at" not in b_cols:
         cursor.execute("ALTER TABLE board_inquiries ADD COLUMN approved_at TEXT")
+    if "email" not in b_cols:
+        cursor.execute("ALTER TABLE board_inquiries ADD COLUMN email TEXT DEFAULT ''")
+    if "phone" not in b_cols:
+        cursor.execute("ALTER TABLE board_inquiries ADD COLUMN phone TEXT DEFAULT ''")
+    if "admin_memo" not in b_cols:
+        cursor.execute("ALTER TABLE board_inquiries ADD COLUMN admin_memo TEXT DEFAULT ''")
+    if "rejected_at" not in b_cols:
+        cursor.execute("ALTER TABLE board_inquiries ADD COLUMN rejected_at TEXT")
         
     # Table for approved custom members
     cursor.execute("""
@@ -4730,6 +5108,64 @@ def init_board_db():
             approved_at TEXT NOT NULL
         )
     """)
+
+    # Migration checks for approved_users (기존 운영 회원 데이터 100% 보존)
+    cursor.execute("PRAGMA table_info(approved_users)")
+    u_cols = [col[1] for col in cursor.fetchall()]
+    if "email" not in u_cols:
+        cursor.execute("ALTER TABLE approved_users ADD COLUMN email TEXT DEFAULT ''")
+    if "phone" not in u_cols:
+        cursor.execute("ALTER TABLE approved_users ADD COLUMN phone TEXT DEFAULT ''")
+    if "memo" not in u_cols:
+        cursor.execute("ALTER TABLE approved_users ADD COLUMN memo TEXT DEFAULT ''")
+    if "last_login_at" not in u_cols:
+        cursor.execute("ALTER TABLE approved_users ADD COLUMN last_login_at TEXT")
+    if "login_count" not in u_cols:
+        cursor.execute("ALTER TABLE approved_users ADD COLUMN login_count INTEGER DEFAULT 0")
+    if "can_use_rights_analysis" not in u_cols:
+        cursor.execute("ALTER TABLE approved_users ADD COLUMN can_use_rights_analysis INTEGER DEFAULT 0")
+
+    def _split_contact_fields(raw_contact: str) -> tuple[str, str]:
+        txt = (raw_contact or "").strip()
+        if not txt or txt == "-":
+            return "", ""
+        em_m = re.search(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}', txt)
+        ph_m = re.search(r'01[016789][-\s]?\d{3,4}[-\s]?\d{4}', txt)
+        em = em_m.group(0).lower() if em_m else ""
+        ph = ph_m.group(0) if ph_m else ""
+        if not ph and not em and re.search(r'\d{7,}', txt):
+            ph = txt
+        return em, ph
+
+    # 기존 신청글 중 승인(is_approved=1)되었으나 approved_users에 누락된 레코드 안전 동기화
+    cursor.execute("""
+        SELECT id, author, contact, pin_hash, approved_at, created_at
+        FROM board_inquiries
+        WHERE is_approved = 1
+          AND COALESCE(status, '') NOT IN ('revoked', 'blocked', 'rejected')
+          AND id NOT IN (SELECT inquiry_id FROM approved_users WHERE inquiry_id IS NOT NULL)
+    """)
+    for m_row in cursor.fetchall():
+        em_val, ph_val = _split_contact_fields(m_row[2])
+        cursor.execute("""
+            INSERT INTO approved_users (username, contact, email, phone, pin_hash, inquiry_id, status, approved_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'active', ?)
+        """, (m_row[1], m_row[2] or "", em_val, ph_val, m_row[3], m_row[0], m_row[4] or m_row[5]))
+
+    # 기존 email/phone 빈 컬럼 자동 보정 (contact 문자열 기반)
+    cursor.execute("SELECT id, contact, email, phone FROM approved_users")
+    for u_row in cursor.fetchall():
+        if not u_row[2] and not u_row[3] and u_row[1]:
+            em_val, ph_val = _split_contact_fields(u_row[1])
+            if em_val or ph_val:
+                cursor.execute("UPDATE approved_users SET email = ?, phone = ? WHERE id = ?", (em_val, ph_val, u_row[0]))
+
+    cursor.execute("SELECT id, contact, email, phone FROM board_inquiries")
+    for i_row in cursor.fetchall():
+        if not i_row[2] and not i_row[3] and i_row[1]:
+            em_val, ph_val = _split_contact_fields(i_row[1])
+            if em_val or ph_val:
+                cursor.execute("UPDATE board_inquiries SET email = ?, phone = ? WHERE id = ?", (em_val, ph_val, i_row[0]))
 
     # Table for email verifications
     cursor.execute("""
@@ -4770,13 +5206,294 @@ def init_board_db():
             now_str,
             now_str
         ))
+    # Table for global system settings (권리분석 관리자 전용 이용제한 설정 등)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS system_settings (
+            setting_key TEXT PRIMARY KEY,
+            setting_value TEXT NOT NULL,
+            updated_at TEXT
+        )
+    """)
+    now_setting_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute(
+        "INSERT OR IGNORE INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)",
+        ("rights_analysis_admin_only", "0", now_setting_str)
+    )
+    cursor.execute(
+        "SELECT setting_value FROM system_settings WHERE setting_key = 'rights_analysis_admin_only'"
+    )
+    ao_row = cursor.fetchone()
+    default_mode = "admin_only" if (ao_row and str(ao_row[0]).strip().lower() in ("1", "true", "yes", "on")) else "all"
+    cursor.execute(
+        "INSERT OR IGNORE INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)",
+        ("rights_analysis_access_mode", default_mode, now_setting_str)
+    )
+    cursor.execute(
+        "INSERT OR IGNORE INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)",
+        (
+            "rights_analysis_restriction_message",
+            "현재 권리분석 기능은 시스템 운영 정책에 따라 [관리자 및 지정 허용 회원 전용 모드]로 이용이 제한되어 있습니다. 일반 회원분들은 지도·상권·실거래 시세 분석 기능을 이용해 주시기 바랍니다.",
+            now_setting_str,
+        )
+    )
+
     conn.commit()
     conn.close()
+
+
+def get_rights_analysis_access_state(user_pin: Optional[str] = "") -> Dict[str, Any]:
+    default_msg = "현재 권리분석 기능은 시스템 운영 정책에 따라 [관리자 및 지정 허용 회원 전용 모드]로 이용이 제한되어 있습니다. 일반 회원분들은 지도·상권·실거래 시세 분석 기능을 이용해 주시기 바랍니다."
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(approved_users)")
+        u_cols = [col[1] for col in cursor.fetchall()]
+        if "can_use_rights_analysis" not in u_cols:
+            cursor.execute("ALTER TABLE approved_users ADD COLUMN can_use_rights_analysis INTEGER DEFAULT 0")
+            conn.commit()
+
+        cursor.execute(
+            "SELECT setting_key, setting_value, updated_at FROM system_settings WHERE setting_key IN ('rights_analysis_access_mode', 'rights_analysis_admin_only', 'rights_analysis_restriction_message')"
+        )
+        rows = cursor.fetchall()
+        kv = {r["setting_key"]: (r["setting_value"], r["updated_at"]) for r in rows}
+
+        admin_only_val = str(kv.get("rights_analysis_admin_only", ("0", None))[0]).strip().lower() in ("1", "true", "yes", "on")
+        raw_mode = str(kv.get("rights_analysis_access_mode", ("", None))[0]).strip().lower()
+        if raw_mode in ("all", "selected", "admin_only"):
+            access_mode = raw_mode
+        else:
+            access_mode = "admin_only" if admin_only_val else "all"
+
+        msg_val = kv.get("rights_analysis_restriction_message", (default_msg, None))[0] or default_msg
+        updated_at = (
+            kv.get("rights_analysis_access_mode", ("", None))[1]
+            or kv.get("rights_analysis_admin_only", ("0", None))[1]
+            or ""
+        )
+
+        cursor.execute(
+            "SELECT id, username, contact, email, phone, COALESCE(can_use_rights_analysis, 0) as can_use_rights_analysis, pin_hash FROM approved_users WHERE COALESCE(status, 'active') = 'active' ORDER BY id DESC"
+        )
+        u_rows = cursor.fetchall()
+        conn.close()
+
+        allowed_users = []
+        allowed_user_ids = []
+        allowed_user_names = []
+        pin_clean = (user_pin or "").strip()
+        pin_h = hashlib.sha256(pin_clean.encode("utf-8")).hexdigest() if pin_clean else ""
+        is_admin_pin = verify_admin_key(pin_clean) if pin_clean else False
+        member_allowed = False
+
+        for u in u_rows:
+            can_use = bool(u["can_use_rights_analysis"])
+            if can_use:
+                allowed_user_ids.append(u["id"])
+                allowed_user_names.append(u["username"])
+                allowed_users.append({
+                    "id": u["id"],
+                    "username": u["username"],
+                    "contact": u["contact"] or "",
+                })
+            if pin_h and u["pin_hash"] == pin_h and can_use:
+                member_allowed = True
+
+        user_can_analyze = (
+            True
+            if (access_mode == "all" or is_admin_pin or (access_mode == "selected" and member_allowed))
+            else False
+        )
+
+        return {
+            "access_mode": access_mode,
+            "admin_only": access_mode == "admin_only",
+            "restricted": access_mode in ("selected", "admin_only"),
+            "allowed_user_ids": allowed_user_ids,
+            "allowed_user_names": allowed_user_names,
+            "allowed_users": allowed_users,
+            "allowed_count": len(allowed_user_ids),
+            "user_can_analyze": user_can_analyze,
+            "member_allowed": member_allowed,
+            "message": msg_val,
+            "updated_at": updated_at,
+        }
+    except Exception as e:
+        print(f"[AccessConfig] 조회 경고: {e}")
+        return {
+            "access_mode": "all",
+            "admin_only": False,
+            "restricted": False,
+            "allowed_user_ids": [],
+            "allowed_user_names": [],
+            "allowed_users": [],
+            "allowed_count": 0,
+            "user_can_analyze": True,
+            "member_allowed": False,
+            "message": default_msg,
+            "updated_at": "",
+        }
+
+
+def check_rights_analysis_allowed(admin_key: Optional[str] = "", user_pin: Optional[str] = "") -> tuple[bool, str]:
+    ak = (admin_key or "").strip()
+    up = (user_pin or "").strip()
+    if (ak and verify_admin_key(ak)) or (up and verify_admin_key(up)):
+        return True, ""
+
+    state = get_rights_analysis_access_state(user_pin=up or ak)
+    mode = state.get("access_mode", "all")
+    if mode == "all":
+        return True, ""
+    if mode == "selected":
+        if state.get("member_allowed"):
+            return True, ""
+        return False, state.get("message") or "현재 권리분석 기능은 관리자가 지정한 허용 회원만 이용할 수 있습니다."
+    return False, state.get("message") or "현재 권리분석은 관리자만 이용할 수 있습니다."
+
+
+class AnalysisAccessUpdateRequest(BaseModel):
+    admin_key: str
+    access_mode: Optional[str] = None
+    admin_only: Optional[bool] = None
+    allowed_user_ids: Optional[List[int]] = None
+    message: Optional[str] = None
+
+
+class UserRightsAccessToggleRequest(BaseModel):
+    admin_key: str
+    can_use_rights_analysis: bool
+
+
+@app.get("/api/analysis_access_config")
+async def api_get_analysis_access_config(user_pin: Optional[str] = ""):
+    state = get_rights_analysis_access_state(user_pin=user_pin or "")
+    return {"status": "success", **state}
+
+
+@app.post("/api/admin/analysis_access_config")
+async def api_update_analysis_access_config(req: AnalysisAccessUpdateRequest):
+    if not verify_admin_key(req.admin_key):
+        return {"status": "error", "message": "관리자 인증키가 올바르지 않습니다."}
+    kst = timezone(timedelta(hours=9))
+    now_str = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS system_settings (
+            setting_key TEXT PRIMARY KEY,
+            setting_value TEXT NOT NULL,
+            updated_at TEXT
+        )
+    """)
+    cursor.execute("PRAGMA table_info(approved_users)")
+    u_cols = [col[1] for col in cursor.fetchall()]
+    if "can_use_rights_analysis" not in u_cols:
+        cursor.execute("ALTER TABLE approved_users ADD COLUMN can_use_rights_analysis INTEGER DEFAULT 0")
+
+    target_mode = (req.access_mode or "").strip().lower()
+    if target_mode not in ("all", "selected", "admin_only"):
+        if req.admin_only is not None:
+            target_mode = "admin_only" if req.admin_only else "all"
+        else:
+            target_mode = "all"
+
+    cursor.execute(
+        "INSERT OR REPLACE INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)",
+        ("rights_analysis_access_mode", target_mode, now_str),
+    )
+    cursor.execute(
+        "INSERT OR REPLACE INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)",
+        ("rights_analysis_admin_only", "1" if target_mode == "admin_only" else "0", now_str),
+    )
+    if req.message is not None and req.message.strip():
+        cursor.execute(
+            "INSERT OR REPLACE INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)",
+            ("rights_analysis_restriction_message", req.message.strip(), now_str),
+        )
+    if req.allowed_user_ids is not None:
+        clean_ids = [int(uid) for uid in req.allowed_user_ids if str(uid).isdigit()]
+        cursor.execute("UPDATE approved_users SET can_use_rights_analysis = 0")
+        if clean_ids:
+            placeholders = ",".join(["?"] * len(clean_ids))
+            cursor.execute(
+                f"UPDATE approved_users SET can_use_rights_analysis = 1 WHERE id IN ({placeholders})",
+                clean_ids,
+            )
+    conn.commit()
+    conn.close()
+    state = get_rights_analysis_access_state()
+    mode_labels = {
+        "all": "전체 승인 회원 허용 모드(ALL)",
+        "selected": f"지정 회원만 허용 모드(선택 {state['allowed_count']}명 + 관리자)",
+        "admin_only": "관리자 1인 전용 제한 모드(ADMIN ONLY)",
+    }
+    mode_txt = mode_labels.get(state["access_mode"], state["access_mode"])
+    return {"status": "success", "summary": f"권리분석 접근 권한이 [{mode_txt}]로 즉시 반영되었습니다.", **state}
+
+
+@app.post("/api/admin/users/{user_id}/rights_access")
+async def update_admin_user_rights_access(user_id: int, req: UserRightsAccessToggleRequest):
+    if not verify_admin_key(req.admin_key):
+        return {"status": "error", "message": "관리자 인증 실패"}
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(approved_users)")
+    u_cols = [col[1] for col in cursor.fetchall()]
+    if "can_use_rights_analysis" not in u_cols:
+        cursor.execute("ALTER TABLE approved_users ADD COLUMN can_use_rights_analysis INTEGER DEFAULT 0")
+    cursor.execute("SELECT username FROM approved_users WHERE id = ?", (user_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return {"status": "error", "message": "회원을 찾을 수 없습니다."}
+    new_val = 1 if req.can_use_rights_analysis else 0
+    cursor.execute("UPDATE approved_users SET can_use_rights_analysis = ? WHERE id = ?", (new_val, user_id))
+    conn.commit()
+    conn.close()
+    state = get_rights_analysis_access_state()
+    label = "권리분석 지정 허용(ON)" if new_val else "권리분석 지정 해제(OFF)"
+    return {
+        "status": "success",
+        "message": f"'{row['username']}' 회원이 [{label}] 상태로 변경되었습니다.",
+        "can_use_rights_analysis": bool(new_val),
+        **state,
+    }
+
 
 try:
     init_board_db()
 except Exception as e:
     print(f"Board DB init warning: {e}")
+
+def parse_contact_email_phone(raw_contact: str, raw_email: str = "", raw_phone: str = "") -> tuple[str, str, str]:
+    email_val = (raw_email or "").strip().lower()
+    phone_val = (raw_phone or "").strip()
+    contact_txt = (raw_contact or "").strip()
+    if not email_val and contact_txt:
+        em_m = re.search(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}', contact_txt)
+        if em_m:
+            email_val = em_m.group(0).lower()
+    if not phone_val and contact_txt:
+        ph_m = re.search(r'01[016789][-\s]?\d{3,4}[-\s]?\d{4}', contact_txt)
+        if ph_m:
+            phone_val = ph_m.group(0)
+        elif not email_val and contact_txt != "-":
+            phone_val = contact_txt
+    if email_val and phone_val:
+        combined = f"{email_val} / {phone_val}"
+    elif email_val:
+        combined = email_val
+    elif phone_val:
+        combined = phone_val
+    else:
+        combined = contact_txt
+    return email_val, phone_val, combined
 
 def validate_user_password(pw: str) -> tuple[bool, str]:
     if not pw or len(pw.strip()) < 6:
@@ -4792,10 +5509,135 @@ def validate_user_password(pw: str) -> tuple[bool, str]:
 def hash_pin(pin: str) -> str:
     return hashlib.sha256(pin.strip().encode('utf-8')).hexdigest()
 
+def _get_admin_master_key() -> str:
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(os.path.join(os.path.dirname(__file__), ".env"), override=False)
+    except Exception:
+        pass
+    return (os.environ.get("ADMIN_MASTER_KEY") or "").strip()
+
 def verify_admin_key(key: str) -> bool:
-    if not key:
+    master = _get_admin_master_key()
+    if not key or not master:
         return False
-    return key.strip() == "h80494"
+    return key.strip() == master
+
+
+class AdminGeminiKeysUpdateRequest(BaseModel):
+    admin_key: str
+    api_keys_raw: str
+    replace_existing: Optional[bool] = False
+
+
+@app.get("/api/admin/gemini_keys_status")
+async def api_admin_gemini_keys_status(admin_key: str):
+    if not verify_admin_key(admin_key):
+        return {"status": "error", "message": "관리자 인증키가 올바르지 않습니다."}
+    from fastapi.concurrency import run_in_threadpool
+    import ai_analyzer
+    health = await run_in_threadpool(ai_analyzer.check_gemini_keys_health)
+    active_cnt = sum(1 for h in health if h.get("status") == "active")
+    depleted_cnt = sum(1 for h in health if h.get("status") == "credits_depleted")
+    return {
+        "status": "success",
+        "total_keys": len(health),
+        "active_keys": active_cnt,
+        "depleted_keys": depleted_cnt,
+        "keys": health,
+    }
+
+
+@app.post("/api/admin/gemini_keys_update")
+async def api_admin_gemini_keys_update(req: AdminGeminiKeysUpdateRequest):
+    if not verify_admin_key(req.admin_key):
+        return {"status": "error", "message": "관리자 인증키가 올바르지 않습니다."}
+
+    import ai_analyzer
+    from fastapi.concurrency import run_in_threadpool
+
+    raw_tokens = [
+        t.strip()
+        for t in re.split(r"[\n,\s]+", req.api_keys_raw or "")
+        if t.strip()
+    ]
+    valid_new = []
+    blocked_leaked = 0
+    blocked_prefixes = getattr(ai_analyzer, "_BLOCKED_LEAKED_KEY_PREFIXES", ("AIzaSyBW5qP7",))
+    for tok in raw_tokens:
+        if any(tok.startswith(lp) for lp in blocked_prefixes):
+            blocked_leaked += 1
+            continue
+        if len(tok) >= 20 and tok not in valid_new:
+            valid_new.append(tok)
+
+    if not valid_new:
+        msg = "유효한 API 키가 입력되지 않았습니다."
+        if blocked_leaked:
+            msg += " (공개 저장소 유출 경고가 발생한 키는 보안 정책상 등록이 자동 차단됩니다.)"
+        return {"status": "error", "message": msg}
+
+    if not req.replace_existing:
+        existing = ai_analyzer._load_gemini_keys()
+        for ek in existing:
+            if ek not in valid_new:
+                valid_new.append(ek)
+
+    kst = timezone(timedelta(hours=9))
+    now_str = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
+    db_dir = os.path.join(os.path.dirname(__file__), "data")
+    os.makedirs(db_dir, exist_ok=True)
+    db_path = os.path.join(db_dir, "map_data.db")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS system_settings (
+            setting_key TEXT PRIMARY KEY,
+            setting_value TEXT NOT NULL,
+            updated_at TEXT
+        )
+    """)
+    cursor.execute(
+        "INSERT OR REPLACE INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)",
+        ("gemini_api_keys", ",".join(valid_new), now_str),
+    )
+    conn.commit()
+    conn.close()
+
+    backend_dir_path = os.path.dirname(os.path.abspath(__file__))
+    root_dir_path = os.path.dirname(backend_dir_path)
+    for env_path in [os.path.join(backend_dir_path, ".env"), os.path.join(root_dir_path, ".env")]:
+        if os.path.exists(env_path):
+            try:
+                with open(env_path, "r", encoding="utf-8") as ef:
+                    env_lines = ef.read().splitlines()
+                updated_lines = []
+                replaced_flag = False
+                for el in env_lines:
+                    if el.strip().startswith("OPENAI_API_KEY="):
+                        updated_lines.append(f"OPENAI_API_KEY={','.join(valid_new)}")
+                        replaced_flag = True
+                    else:
+                        updated_lines.append(el)
+                if not replaced_flag:
+                    updated_lines.append(f"OPENAI_API_KEY={','.join(valid_new)}")
+                with open(env_path, "w", encoding="utf-8") as ef:
+                    ef.write("\n".join(updated_lines) + "\n")
+            except Exception as env_err:
+                print(f"[Security] .env sync warning ({env_path}): {env_err}")
+
+    health = await run_in_threadpool(ai_analyzer.check_gemini_keys_health)
+    active_cnt = sum(1 for h in health if h.get("status") == "active")
+    summary_msg = f"총 {len(valid_new)}개 API 키가 보안 저장소에 반영되었습니다. (즉시 사용 가능 키: {active_cnt}개)"
+    if blocked_leaked:
+        summary_msg += f" / 유출 경고 키 {blocked_leaked}개 자동 차단됨"
+    return {
+        "status": "success",
+        "summary": summary_msg,
+        "total_keys": len(health),
+        "active_keys": active_cnt,
+        "keys": health,
+    }
 
 class SendEmailCodeRequest(BaseModel):
     email: str
@@ -4811,6 +5653,8 @@ class InquiryCreateRequest(BaseModel):
     pin: str
     is_secret: Optional[bool] = True
     contact: Optional[str] = ""
+    email: Optional[str] = ""
+    phone: Optional[str] = ""
 
 class InquiryViewRequest(BaseModel):
     pin: Optional[str] = ""
@@ -4830,6 +5674,14 @@ class ApproveUserRequest(BaseModel):
     admin_key: str
     reply_message: Optional[str] = ""
 
+class RejectInquiryRequest(BaseModel):
+    admin_key: str
+    reason: Optional[str] = ""
+
+class AdminInquiryMemoRequest(BaseModel):
+    admin_key: str
+    admin_memo: Optional[str] = ""
+
 class AdminUserActionRequest(BaseModel):
     admin_key: str
     status: Optional[str] = "active"
@@ -4837,13 +5689,19 @@ class AdminUserActionRequest(BaseModel):
 class AdminUserCreateRequest(BaseModel):
     admin_key: str
     username: str
-    contact: str
+    contact: Optional[str] = ""
+    email: Optional[str] = ""
+    phone: Optional[str] = ""
+    memo: Optional[str] = ""
     pin: str
 
 class AdminUserUpdateRequest(BaseModel):
     admin_key: str
     username: str
-    contact: str
+    contact: Optional[str] = ""
+    email: Optional[str] = ""
+    phone: Optional[str] = ""
+    memo: Optional[str] = ""
 
 class AdminUserResetPwRequest(BaseModel):
     admin_key: str
@@ -5013,13 +5871,13 @@ async def create_inquiry(req: InquiryCreateRequest):
     if not req.title.strip() or not req.content.strip() or not req.author.strip():
         return {"status": "error", "message": "작성자(이름), 제목, 내용을 모두 입력해주세요."}
 
-    # 2. 이메일 인증 여부 검증 (contact가 이메일인 경우)
-    contact_str = (req.contact or "").strip().lower()
-    if "@" in contact_str:
+    # 2. 이메일 및 연락처 분리 파싱 후 이메일 실명 인증 여부 검증
+    email_val, phone_val, combined_contact = parse_contact_email_phone(req.contact, req.email, req.phone)
+    if email_val:
         db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute("SELECT is_verified FROM email_verifications WHERE email = ? AND is_verified = 1", (contact_str,))
+        cursor.execute("SELECT is_verified FROM email_verifications WHERE email = ? AND is_verified = 1", (email_val,))
         ver_row = cursor.fetchone()
         conn.close()
         if not ver_row:
@@ -5033,9 +5891,19 @@ async def create_inquiry(req: InquiryCreateRequest):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO board_inquiries (title, content, author, pin_hash, is_secret, contact, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (req.title.strip(), req.content.strip(), req.author.strip(), pin_h, 1 if req.is_secret else 0, req.contact or "", now_str))
+        INSERT INTO board_inquiries (title, content, author, pin_hash, is_secret, contact, email, phone, status, is_approved, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?)
+    """, (
+        req.title.strip(),
+        req.content.strip(),
+        req.author.strip(),
+        pin_h,
+        1 if req.is_secret else 0,
+        combined_contact,
+        email_val,
+        phone_val,
+        now_str
+    ))
     new_id = cursor.lastrowid
     conn.commit()
     conn.close()
@@ -5060,7 +5928,7 @@ async def view_inquiry(inquiry_id: int, req: InquiryViewRequest):
     
     if row["is_secret"] and not (is_admin or pin_matched):
         conn.close()
-        return {"status": "error", "message": "비밀글입니다. 작성 시 입력한 비밀번호(PIN)를 입력해주세요.", "is_secret": True}
+        return {"status": "error", "message": "비밀글입니다. 작성 시 입력한 비밀번호를 입력해주세요.", "is_secret": True}
         
     cursor.execute("SELECT * FROM board_comments WHERE inquiry_id = ? ORDER BY id ASC", (inquiry_id,))
     c_rows = cursor.fetchall()
@@ -5077,6 +5945,7 @@ async def view_inquiry(inquiry_id: int, req: InquiryViewRequest):
             "created_at": c["created_at"]
         })
         
+    row_keys = row.keys()
     return {
         "status": "success",
         "data": {
@@ -5085,10 +5954,14 @@ async def view_inquiry(inquiry_id: int, req: InquiryViewRequest):
             "content": row["content"],
             "author": row["author"],
             "contact": row["contact"] if (is_admin or pin_matched) else "",
+            "email": (row["email"] if "email" in row_keys else "") if (is_admin or pin_matched) else "",
+            "phone": (row["phone"] if "phone" in row_keys else "") if (is_admin or pin_matched) else "",
+            "admin_memo": (row["admin_memo"] if "admin_memo" in row_keys else "") if is_admin else "",
             "is_secret": bool(row["is_secret"]),
             "status": row["status"],
             "is_approved": bool(row["is_approved"]),
             "approved_at": row["approved_at"],
+            "rejected_at": row["rejected_at"] if "rejected_at" in row_keys else None,
             "created_at": row["created_at"],
             "comments": comments,
             "is_admin_viewer": is_admin
@@ -5127,7 +6000,7 @@ async def add_comment(inquiry_id: int, req: CommentCreateRequest):
         VALUES (?, ?, ?, ?, ?, ?)
     """, (inquiry_id, author_name, req.content.strip(), 1 if is_admin else 0, 1 if req.is_secret else 0, now_str))
     
-    if is_admin:
+    if is_admin and not row["is_approved"] and (row["status"] or "pending") not in ("approved", "rejected", "revoked"):
         cursor.execute("UPDATE board_inquiries SET status = 'replied' WHERE id = ?", (inquiry_id,))
         
     conn.commit()
@@ -5153,19 +6026,34 @@ async def approve_inquiry_user(inquiry_id: int, req: ApproveUserRequest):
         
     kst = timezone(timedelta(hours=9))
     now_str = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
+    row_keys = row.keys()
+    em_val, ph_val, combined_contact = parse_contact_email_phone(
+        row["contact"] or "",
+        row["email"] if "email" in row_keys else "",
+        row["phone"] if "phone" in row_keys else ""
+    )
     
     # 1. Update board_inquiries status & approval
     cursor.execute("""
         UPDATE board_inquiries 
-        SET is_approved = 1, approved_at = ?, status = 'approved'
+        SET is_approved = 1, approved_at = ?, rejected_at = NULL, status = 'approved'
         WHERE id = ?
     """, (now_str, inquiry_id))
     
-    # 2. Insert into approved_users
-    cursor.execute("""
-        INSERT INTO approved_users (username, contact, pin_hash, inquiry_id, approved_at)
-        VALUES (?, ?, ?, ?, ?)
-    """, (row["author"], row["contact"] or "", row["pin_hash"], inquiry_id, now_str))
+    # 2. Upsert into approved_users (중복 승인 행 생성 방지)
+    cursor.execute("SELECT id FROM approved_users WHERE inquiry_id = ? ORDER BY id DESC LIMIT 1", (inquiry_id,))
+    existing_u = cursor.fetchone()
+    if existing_u:
+        cursor.execute("""
+            UPDATE approved_users
+            SET username = ?, contact = ?, email = ?, phone = ?, pin_hash = ?, status = 'active', approved_at = ?
+            WHERE id = ?
+        """, (row["author"], combined_contact, em_val, ph_val, row["pin_hash"], now_str, existing_u["id"]))
+    else:
+        cursor.execute("""
+            INSERT INTO approved_users (username, contact, email, phone, pin_hash, inquiry_id, status, approved_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'active', ?)
+        """, (row["author"], combined_contact, em_val, ph_val, row["pin_hash"], inquiry_id, now_str))
     
     # 3. Add auto reply comment
     msg = req.reply_message.strip() if req.reply_message else "🎉 회원 가입 및 비밀번호 인증이 승인되었습니다! 설정하신 본인의 비밀번호로 언제든 사이트에 로그인하여 모든 기능을 이용하실 수 있습니다."
@@ -5178,6 +6066,62 @@ async def approve_inquiry_user(inquiry_id: int, req: ApproveUserRequest):
     conn.close()
     
     return {"status": "success", "message": f"'{row['author']}'님의 가입이 정상 승인되었습니다. 이제 본인 비밀번호로 로그인이 가능합니다."}
+
+@app.post("/api/admin/inquiries/{inquiry_id}/reject")
+async def reject_or_revoke_inquiry(inquiry_id: int, req: RejectInquiryRequest):
+    if not verify_admin_key(req.admin_key):
+        return {"status": "error", "message": "관리자 인증번호가 일치하지 않습니다."}
+
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM board_inquiries WHERE id = ?", (inquiry_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return {"status": "error", "message": "신청글을 찾을 수 없습니다."}
+
+    kst = timezone(timedelta(hours=9))
+    now_str = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
+    was_approved = bool(row["is_approved"])
+    new_status = "revoked" if was_approved else "rejected"
+
+    cursor.execute("""
+        UPDATE board_inquiries
+        SET is_approved = 0, status = ?, rejected_at = ?
+        WHERE id = ?
+    """, (new_status, now_str, inquiry_id))
+
+    # 정회원 명부(approved_users)에 연동된 계정이 있으면 즉시 차단 처리하여 로그인 불가화
+    cursor.execute("UPDATE approved_users SET status = 'blocked' WHERE inquiry_id = ?", (inquiry_id,))
+
+    reason_txt = (req.reason or "").strip()
+    if reason_txt:
+        prefix = "⚠️ [회원 승인 취소 안내]" if was_approved else "⚠️ [가입 신청 반려 안내]"
+        cursor.execute("""
+            INSERT INTO board_comments (inquiry_id, author, content, is_admin, is_secret, created_at)
+            VALUES (?, '👑 관리자', ?, 1, 1, ?)
+        """, (inquiry_id, f"{prefix} {reason_txt}", now_str))
+
+    conn.commit()
+    conn.close()
+    action_label = "승인 취소(이용정지)" if was_approved else "반려"
+    return {"status": "success", "message": f"'{row['author']}'님의 신청 건이 {action_label} 처리되었습니다."}
+
+@app.post("/api/admin/inquiries/{inquiry_id}/memo")
+async def update_admin_inquiry_memo(inquiry_id: int, req: AdminInquiryMemoRequest):
+    if not verify_admin_key(req.admin_key):
+        return {"status": "error", "message": "관리자 인증 실패"}
+
+    db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE board_inquiries SET admin_memo = ? WHERE id = ?", ((req.admin_memo or "").strip(), inquiry_id))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "관리자 메모가 저장되었습니다."}
 
 @app.post("/api/board/admin/verify")
 async def check_admin_login(req: AdminLoginRequest):
@@ -5197,8 +6141,8 @@ async def get_admin_inquiries(req: AdminLoginRequest):
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT i.id, i.title, i.content, i.author, i.contact, i.is_secret, i.status, 
-               i.is_approved, i.approved_at, i.created_at,
+        SELECT i.id, i.title, i.content, i.author, i.contact, i.email, i.phone, i.admin_memo,
+               i.is_secret, i.status, i.is_approved, i.approved_at, i.rejected_at, i.created_at,
                COUNT(c.id) as comment_count,
                MAX(c.is_admin) as has_admin_reply
         FROM board_inquiries i
@@ -5217,10 +6161,14 @@ async def get_admin_inquiries(req: AdminLoginRequest):
             "content": r["content"] or "",
             "author": r["author"],
             "contact": r["contact"] or "-",
+            "email": r["email"] or "",
+            "phone": r["phone"] or "",
+            "admin_memo": r["admin_memo"] or "",
             "is_secret": bool(r["is_secret"]),
-            "status": r["status"],
+            "status": r["status"] or "pending",
             "is_approved": bool(r["is_approved"]),
             "approved_at": r["approved_at"],
+            "rejected_at": r["rejected_at"],
             "created_at": r["created_at"],
             "comment_count": r["comment_count"] or 0,
             "has_admin_reply": bool(r["has_admin_reply"])
@@ -5237,7 +6185,9 @@ async def get_admin_users(req: AdminLoginRequest):
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT u.id, u.username, u.contact, u.status, u.approved_at, u.inquiry_id,
+        SELECT u.id, u.username, u.contact, u.email, u.phone, u.memo, u.status,
+               u.approved_at, u.last_login_at, u.login_count, u.inquiry_id,
+               COALESCE(u.can_use_rights_analysis, 0) as can_use_rights_analysis,
                i.title as inquiry_title, i.content as inquiry_content, i.created_at as request_at
         FROM approved_users u
         LEFT JOIN board_inquiries i ON u.inquiry_id = i.id
@@ -5252,10 +6202,17 @@ async def get_admin_users(req: AdminLoginRequest):
             "id": r["id"],
             "username": r["username"],
             "contact": r["contact"] or "-",
+            "email": r["email"] or "",
+            "phone": r["phone"] or "",
+            "memo": r["memo"] or "",
             "status": r["status"] or "active",
+            "can_use_rights_analysis": bool(r["can_use_rights_analysis"]),
             "approved_at": r["approved_at"],
+            "last_login_at": r["last_login_at"],
+            "login_count": r["login_count"] or 0,
             "inquiry_id": r["inquiry_id"],
             "inquiry_title": r["inquiry_title"],
+            "inquiry_content": r["inquiry_content"] or "",
             "request_at": r["request_at"]
         })
     return {"status": "success", "data": users}
@@ -5268,11 +6225,20 @@ async def update_admin_user_status(user_id: int, req: AdminUserActionRequest):
     new_status = req.status if req.status in ["active", "blocked"] else "active"
     db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
     conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
+    cursor.execute("SELECT inquiry_id FROM approved_users WHERE id = ?", (user_id,))
+    u_row = cursor.fetchone()
     cursor.execute("UPDATE approved_users SET status = ? WHERE id = ?", (new_status, user_id))
+    if u_row and u_row["inquiry_id"]:
+        if new_status == "active":
+            cursor.execute("UPDATE board_inquiries SET is_approved = 1, status = 'approved' WHERE id = ?", (u_row["inquiry_id"],))
+        else:
+            cursor.execute("UPDATE board_inquiries SET is_approved = 0, status = 'blocked' WHERE id = ?", (u_row["inquiry_id"],))
     conn.commit()
     conn.close()
-    return {"status": "success", "message": f"회원 상태가 '{new_status}'(으)로 변경되었습니다."}
+    status_kor = "정상(승인)" if new_status == "active" else "차단(접속제한)"
+    return {"status": "success", "message": f"회원 상태가 '{status_kor}'(으)로 변경되었습니다."}
 
 @app.delete("/api/admin/users/{user_id}")
 async def delete_admin_user(user_id: int, admin_key: str):
@@ -5281,11 +6247,16 @@ async def delete_admin_user(user_id: int, admin_key: str):
 
     db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
     conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
+    cursor.execute("SELECT inquiry_id FROM approved_users WHERE id = ?", (user_id,))
+    u_row = cursor.fetchone()
+    if u_row and u_row["inquiry_id"]:
+        cursor.execute("UPDATE board_inquiries SET is_approved = 0, status = 'revoked' WHERE id = ?", (u_row["inquiry_id"],))
     cursor.execute("DELETE FROM approved_users WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
-    return {"status": "success", "message": "회원이 정상적으로 삭제되었습니다."}
+    return {"status": "success", "message": "회원이 명부에서 삭제되었으며 해당 비밀번호 접속이 차단되었습니다."}
 
 @app.post("/api/admin/users/add")
 async def add_admin_user_direct(req: AdminUserCreateRequest):
@@ -5299,17 +6270,18 @@ async def add_admin_user_direct(req: AdminUserCreateRequest):
     kst = timezone(timedelta(hours=9))
     now_str = datetime.now(kst).strftime("%Y-%m-%d %H:%M:%S")
     pin_h = hash_pin(req.pin)
+    em_val, ph_val, combined_contact = parse_contact_email_phone(req.contact or "", req.email or "", req.phone or "")
 
     db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO approved_users (username, contact, pin_hash, inquiry_id, status, approved_at)
-        VALUES (?, ?, ?, NULL, 'active', ?)
-    """, (req.username.strip(), req.contact.strip(), pin_h, now_str))
+        INSERT INTO approved_users (username, contact, email, phone, memo, pin_hash, inquiry_id, status, approved_at)
+        VALUES (?, ?, ?, ?, ?, ?, NULL, 'active', ?)
+    """, (req.username.strip(), combined_contact, em_val, ph_val, (req.memo or "").strip(), pin_h, now_str))
     conn.commit()
     conn.close()
-    return {"status": "success", "message": f"회원 '{req.username}'님이 직권 등록되었습니다."}
+    return {"status": "success", "message": f"회원 '{req.username}'님이 정회원으로 직권 등록되었습니다."}
 
 @app.post("/api/admin/users/{user_id}/update")
 async def update_admin_user_info(user_id: int, req: AdminUserUpdateRequest):
@@ -5317,9 +6289,11 @@ async def update_admin_user_info(user_id: int, req: AdminUserUpdateRequest):
         return {"status": "error", "message": "관리자 인증 실패"}
 
     new_name = req.username.strip()
-    new_contact = req.contact.strip()
     if not new_name:
         return {"status": "error", "message": "회원명을 입력해주세요."}
+
+    em_val, ph_val, combined_contact = parse_contact_email_phone(req.contact or "", req.email or "", req.phone or "")
+    memo_val = (req.memo or "").strip()
 
     db_path = os.path.join(os.path.dirname(__file__), "data", "map_data.db")
     conn = sqlite3.connect(db_path)
@@ -5331,13 +6305,21 @@ async def update_admin_user_info(user_id: int, req: AdminUserUpdateRequest):
         conn.close()
         return {"status": "error", "message": "회원을 찾을 수 없습니다."}
 
-    cursor.execute("UPDATE approved_users SET username = ?, contact = ? WHERE id = ?", (new_name, new_contact, user_id))
+    cursor.execute("""
+        UPDATE approved_users
+        SET username = ?, contact = ?, email = ?, phone = ?, memo = ?
+        WHERE id = ?
+    """, (new_name, combined_contact, em_val, ph_val, memo_val, user_id))
     if row["inquiry_id"]:
-        cursor.execute("UPDATE board_inquiries SET author = ?, contact = ? WHERE id = ?", (new_name, new_contact, row["inquiry_id"]))
+        cursor.execute("""
+            UPDATE board_inquiries
+            SET author = ?, contact = ?, email = ?, phone = ?
+            WHERE id = ?
+        """, (new_name, combined_contact, em_val, ph_val, row["inquiry_id"]))
 
     conn.commit()
     conn.close()
-    return {"status": "success", "message": f"회원 정보가 '{new_name}'(으)로 수정되었습니다."}
+    return {"status": "success", "message": f"회원 '{new_name}'님의 DB 정보가 수정되었습니다."}
 
 @app.post("/api/admin/users/{user_id}/reset_pw")
 async def reset_admin_user_pw(user_id: int, req: AdminUserResetPwRequest):
@@ -5379,7 +6361,8 @@ async def get_all_users_combined(req: AdminLoginRequest):
     
     # 1. Approved users
     cursor.execute("""
-        SELECT u.id as user_id, u.username, u.contact, u.status, u.approved_at, u.inquiry_id,
+        SELECT u.id as user_id, u.username, u.contact, u.email, u.phone, u.memo, u.status,
+               u.approved_at, u.last_login_at, u.login_count, u.inquiry_id,
                i.title as inquiry_title, i.content as inquiry_content, i.created_at as request_at
         FROM approved_users u
         LEFT JOIN board_inquiries i ON u.inquiry_id = i.id
@@ -5387,9 +6370,9 @@ async def get_all_users_combined(req: AdminLoginRequest):
     """)
     app_rows = cursor.fetchall()
     
-    # 2. Pending inquiries
+    # 2. Pending / non-approved inquiries
     cursor.execute("""
-        SELECT i.id, i.title, i.content, i.author, i.contact, i.status, i.created_at
+        SELECT i.id, i.title, i.content, i.author, i.contact, i.email, i.phone, i.admin_memo, i.status, i.created_at
         FROM board_inquiries i
         WHERE i.is_approved = 0
         ORDER BY i.id DESC
@@ -5398,7 +6381,6 @@ async def get_all_users_combined(req: AdminLoginRequest):
     conn.close()
 
     combined = []
-    # Add approved users
     for r in app_rows:
         combined.append({
             "type": "approved",
@@ -5406,15 +6388,19 @@ async def get_all_users_combined(req: AdminLoginRequest):
             "inquiry_id": r["inquiry_id"],
             "username": r["username"],
             "contact": r["contact"] or "-",
+            "email": r["email"] or "",
+            "phone": r["phone"] or "",
+            "memo": r["memo"] or "",
             "role": "정회원",
             "status": r["status"] or "active",
             "approved_at": r["approved_at"],
+            "last_login_at": r["last_login_at"],
+            "login_count": r["login_count"] or 0,
             "request_at": r["request_at"] or r["approved_at"],
             "title": r["inquiry_title"] or "직권등록",
             "content": r["inquiry_content"] or ""
         })
 
-    # Add pending users
     for r in pen_rows:
         combined.append({
             "type": "pending",
@@ -5422,9 +6408,14 @@ async def get_all_users_combined(req: AdminLoginRequest):
             "inquiry_id": r["id"],
             "username": r["author"],
             "contact": r["contact"] or "-",
-            "role": "승인대기",
-            "status": "pending",
+            "email": r["email"] or "",
+            "phone": r["phone"] or "",
+            "memo": r["admin_memo"] or "",
+            "role": "승인대기" if (r["status"] or "pending") not in ("rejected", "revoked", "blocked") else "반려/정지",
+            "status": r["status"] or "pending",
             "approved_at": None,
+            "last_login_at": None,
+            "login_count": 0,
             "request_at": r["created_at"],
             "title": r["title"],
             "content": r["content"] or ""
@@ -5451,6 +6442,7 @@ async def delete_inquiry(inquiry_id: int, pin: Optional[str] = None, admin_key: 
         conn.close()
         return {"status": "error", "message": "삭제 권한이 없습니다."}
         
+    cursor.execute("UPDATE approved_users SET inquiry_id = NULL WHERE inquiry_id = ?", (inquiry_id,))
     cursor.execute("DELETE FROM board_comments WHERE inquiry_id = ?", (inquiry_id,))
     cursor.execute("DELETE FROM board_inquiries WHERE id = ?", (inquiry_id,))
     conn.commit()
@@ -5562,7 +6554,7 @@ async def toggle_notice(req: AdminNoticeToggleRequest):
         conn.close()
 
 
-# ----------------- 소상공인 200m 반경 상권 분석 API -----------------
+# ----------------- 소상공인 반경 상권 분석 API (200m / 1km 전수 계층 집계 + 업소당 일방문자 수) -----------------
 @app.get("/api/map/commercial_stores")
 async def get_commercial_stores_within_radius(
     lat: float,
@@ -5571,29 +6563,34 @@ async def get_commercial_stores_within_radius(
     limit: int = 300
 ):
     import math
-    
+    try:
+        from .commercial_sector_registry import build_radius_sector_analytics, resolve_subcategory
+    except ImportError:
+        from commercial_sector_registry import build_radius_sector_analytics, resolve_subcategory
+
     db_path = os.path.join(os.path.dirname(__file__), "data", "small_business.db")
     if not os.path.exists(db_path):
         return {"status": "error", "message": "소상공인 데이터베이스(small_business.db)가 아직 준비되지 않았습니다."}
-        
-    lat_diff = (radius + 150) / 111000.0
-    lng_diff = (radius + 150) / 88000.0
-    
+
+    query_radius = max(float(radius), 200.0)
+    lat_diff = (query_radius + 150) / 111000.0
+    lng_diff = (query_radius + 150) / 88000.0
+
     min_lat, max_lat = lat - lat_diff, lat + lat_diff
     min_lng, max_lng = lng - lng_diff, lng + lng_diff
-    
+
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    
+
     cursor.execute("""
         SELECT * FROM small_business
         WHERE lat >= ? AND lat <= ? AND lng >= ? AND lng <= ?
     """, (min_lat, max_lat, min_lng, max_lng))
-    
+
     rows = cursor.fetchall()
     conn.close()
-    
+
     def calc_dist(lat1, lon1, lat2, lon2):
         R = 6371000.0
         p1 = math.radians(lat1)
@@ -5602,35 +6599,30 @@ async def get_commercial_stores_within_radius(
         dl = math.radians(lon2 - lon1)
         a = math.sin(dp/2.0)**2 + math.cos(p1)*math.cos(p2)*math.sin(dl/2.0)**2
         return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        
+
     matched_stores = []
-    cat_large_counts = {}
-    cat_medium_counts = {}
-    cat_small_counts = {}
-    
     for r in rows:
         d = calc_dist(lat, lng, r["lat"], r["lng"])
         if d <= radius:
-            c_large = r["cat_large_name"] or "기타"
-            c_med = r["cat_medium_name"] or "기타"
-            c_sml = r["cat_small_name"] or "기타"
-            
-            cat_large_counts[c_large] = cat_large_counts.get(c_large, 0) + 1
-            cat_medium_counts[c_med] = cat_medium_counts.get(c_med, 0) + 1
-            cat_small_counts[c_sml] = cat_small_counts.get(c_sml, 0) + 1
-            
+            c_large = (r["cat_large_name"] or "전문서비스").strip()
+            c_med = (r["cat_medium_name"] or "").strip()
+            c_sml = (r["cat_small_name"] or "").strip()
+            s_name = (r["name"] or "").strip()
+            sub_cat = resolve_subcategory(c_large, c_med, c_sml, s_name)
+
             floor_display = r["floor_info"] if r["floor_info"] else ""
             if r["ho_info"]:
                 floor_display = f"{floor_display} {r['ho_info']}".strip()
-                
+
             matched_stores.append({
                 "id": r["id"],
                 "bizes_id": r["bizes_id"],
                 "name": r["name"],
                 "branch": r["branch"],
                 "cat_large": c_large,
-                "cat_medium": c_med,
-                "cat_small": c_sml,
+                "cat_medium": c_med or sub_cat,
+                "cat_small": c_sml or sub_cat,
+                "sub_category": sub_cat,
                 "inds_name": r["inds_name"],
                 "road_addr": r["road_addr"],
                 "lot_addr": r["lot_addr"],
@@ -5640,27 +6632,45 @@ async def get_commercial_stores_within_radius(
                 "lng": r["lng"],
                 "distance": round(d, 1)
             })
-            
+
     matched_stores.sort(key=lambda x: x["distance"])
-    total_count = len(matched_stores)
-    
-    large_stats = []
-    for cat, cnt in sorted(cat_large_counts.items(), key=lambda x: x[1], reverse=True):
-        ratio = round((cnt / total_count * 100), 1) if total_count > 0 else 0
-        large_stats.append({"category": cat, "count": cnt, "ratio": ratio})
-        
-    medium_stats = []
-    for cat, cnt in sorted(cat_medium_counts.items(), key=lambda x: x[1], reverse=True)[:15]:
-        ratio = round((cnt / total_count * 100), 1) if total_count > 0 else 0
-        medium_stats.append({"category": cat, "count": cnt, "ratio": ratio})
-        
+    stores_200 = [s for s in matched_stores if s["distance"] <= 200.0]
+
+    # 상권 밀집도에 따른 동적 입지 계수 산정
+    cnt_200 = len(stores_200)
+    if cnt_200 >= 150:
+        loc_factor = 1.15
+    elif cnt_200 >= 60:
+        loc_factor = 1.06
+    elif cnt_200 >= 20:
+        loc_factor = 1.00
+    else:
+        loc_factor = 0.90
+
+    analytics_target = build_radius_sector_analytics(matched_stores, location_factor=loc_factor)
+    analytics_200 = build_radius_sector_analytics(stores_200, location_factor=loc_factor)
+
+    radius_analytics = {
+        "200": analytics_200,
+        str(int(round(radius))): analytics_target,
+    }
+    if int(round(radius)) >= 1000:
+        radius_analytics["1000"] = analytics_target
+
     return {
         "status": "success",
         "data": {
             "radius": radius,
-            "total_count": total_count,
-            "category_large_distribution": large_stats,
-            "category_medium_top": medium_stats,
+            "total_count": analytics_target["total_count"],
+            "count_200m": analytics_200["total_count"],
+            "count_1km": analytics_target["total_count"] if radius >= 1000 else analytics_200["total_count"],
+            "category_large_distribution": analytics_target["category_large_distribution"],
+            "category_medium_top": analytics_target["category_medium_top"],
+            "card_sales_sectors": analytics_target["card_sales_sectors"],
+            "monthly_total_sales_man": analytics_target["monthly_total_sales_man"],
+            "monthly_total_count": analytics_target["monthly_total_count"],
+            "avg_daily_visitors_per_store": analytics_target["avg_daily_visitors_per_store"],
+            "radius_analytics": radius_analytics,
             "stores": matched_stores[:limit]
         }
     }
@@ -5895,25 +6905,52 @@ async def api_address_summary(req: AddressSummaryRequest):
     }
 
     try:
+        try:
+            from .commercial_sector_registry import build_radius_sector_analytics
+        except ImportError:
+            from commercial_sector_registry import build_radius_sector_analytics
+
         sb_db_path = os.path.join(os.path.dirname(__file__), "data", "small_business.db")
         if os.path.exists(sb_db_path):
+            import math
             conn = sqlite3.connect(sb_db_path)
+            conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            lat_diff = 0.005 # ~500m
-            lng_diff = 0.005
+            lat_diff = (500.0 + 100.0) / 111000.0
+            lng_diff = (500.0 + 100.0) / 88000.0
             cursor.execute("""
-                SELECT cat_large_name, COUNT(*) as cnt
+                SELECT name, cat_large_name, cat_medium_name, cat_small_name, lat, lng
                 FROM small_business
                 WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-                GROUP BY cat_large_name
-                ORDER BY cnt DESC
             """, (target_lat - lat_diff, target_lat + lat_diff, target_lng - lng_diff, target_lng + lng_diff))
-            rows = cursor.fetchall()
+            raw_rows = cursor.fetchall()
             conn.close()
 
-            if rows:
-                total_s = sum(r[1] for r in rows)
-                top_cats = [{"category": r[0], "count": r[1], "ratio": round(r[1]/total_s * 100, 1)} for r in rows[:5]]
+            def _haversine_m(lat1, lon1, lat2, lon2):
+                R = 6371000.0
+                p1, p2 = math.radians(lat1), math.radians(lat2)
+                dp, dl = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+                a = math.sin(dp / 2.0) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2.0) ** 2
+                return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+            stores_500m = []
+            for r in raw_rows:
+                d = _haversine_m(target_lat, target_lng, r["lat"], r["lng"])
+                if d <= 500.0:
+                    stores_500m.append({
+                        "name": r["name"],
+                        "cat_large": (r["cat_large_name"] or "전문서비스").strip(),
+                        "cat_medium": (r["cat_medium_name"] or "").strip(),
+                        "cat_small": (r["cat_small_name"] or "").strip(),
+                        "distance": round(d, 1),
+                    })
+
+            if stores_500m:
+                total_s = len(stores_500m)
+                loc_factor = 1.12 if total_s > 300 else (1.03 if total_s > 100 else 0.92)
+                analytics_500 = build_radius_sector_analytics(stores_500m, location_factor=loc_factor)
+
+                top_cats = analytics_500["category_large_distribution"][:5]
                 comm_summary["store_count"] = total_s
                 comm_summary["top_categories"] = top_cats
                 if total_s > 300:
@@ -5926,139 +6963,27 @@ async def api_address_summary(req: AddressSummaryRequest):
                     comm_summary["district_type"] = "주택가 정주형 상권"
                     comm_summary["summary"] = f"반경 500m 내 점포 {total_s}개 위치. 주거 쾌적성이 높고 편의업종 위주의 상권입니다."
 
-                # 업종별 카드매출 추정 분석 데이터 구성
-                import random
-                rng = random.Random(int((target_lat + target_lng) * 10000))
-                
-                base_m_sales = total_s * rng.randint(1400, 2200) if total_s > 0 else rng.randint(20000, 40000)
-                base_m_cnt = total_s * rng.randint(350, 600) if total_s > 0 else rng.randint(5000, 12000)
-                
-                sector_data = []
-                for cat in top_cats:
-                    cat_name = cat["category"]
-                    ratio = cat["ratio"] / 100.0
-                    
-                    sales_per_store = 1500
-                    cnt_per_store = 450
-                    if "음식" in cat_name:
-                        sales_per_store, cnt_per_store = 1800, 650
-                    elif "소매" in cat_name:
-                        sales_per_store, cnt_per_store = 1600, 800
-                    elif "교육" in cat_name:
-                        sales_per_store, cnt_per_store = 2200, 80
-                    elif "보건" in cat_name or "의료" in cat_name:
-                        sales_per_store, cnt_per_store = 2500, 600
-                    elif "수리" in cat_name or "개인" in cat_name:
-                        sales_per_store, cnt_per_store = 1200, 280
-                    elif "과학" in cat_name or "기술" in cat_name:
-                        sales_per_store, cnt_per_store = 2800, 180
-                    elif "부동산" in cat_name or "임대" in cat_name or "시설" in cat_name:
-                        sales_per_store, cnt_per_store = 2000, 150
-                    elif "예술" in cat_name or "스포츠" in cat_name:
-                        sales_per_store, cnt_per_store = 1600, 320
-
-                    cat_sales = int(total_s * ratio * sales_per_store * (0.85 + rng.random() * 0.3)) if total_s > 0 else int(base_m_sales * ratio)
-                    cat_cnt = int(total_s * ratio * cnt_per_store * (0.85 + rng.random() * 0.3)) if total_s > 0 else int(base_m_cnt * ratio)
-                    avg_pay = round(cat_sales * 10000 / cat_cnt) if cat_cnt > 0 else 25000
-                    
-                    sector_data.append({
-                        "category": cat_name,
-                        "monthly_sales_man": max(10, cat_sales),
-                        "monthly_count": max(1, cat_cnt),
-                        "avg_payment": avg_pay
-                    })
-                
-                if not sector_data:
-                    sector_data = [
-                        {"category": "한식/요식업", "monthly_sales_man": 8450, "monthly_count": 3200, "avg_payment": 26400},
-                        {"category": "소매/편의점", "monthly_sales_man": 6200, "monthly_count": 7800, "avg_payment": 7900},
-                        {"category": "커피/음료", "monthly_sales_man": 3800, "monthly_count": 5100, "avg_payment": 7400},
-                        {"category": "이미용/서비스", "monthly_sales_man": 2900, "monthly_count": 850, "avg_payment": 34100}
-                    ]
-
-                # --- 음식 세부업종 (한식, 카페, 중식, 일식, 양식 등) 세부 카드매출 및 건당 매출액 산출 ---
-                cursor.execute("""
-                    SELECT cat_medium_name, COUNT(*) as cnt
-                    FROM small_business
-                    WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?
-                      AND (cat_large_name LIKE '%음식%' OR cat_medium_name IN ('한식', '비알콜 음료점', '중식', '일식', '서양식', '제과·제빵', '분식', '패스트푸드', '주점'))
-                    GROUP BY cat_medium_name
-                    ORDER BY cnt DESC
-                """, (target_lat - lat_diff, target_lat + lat_diff, target_lng - lng_diff, target_lng + lng_diff))
-                food_rows = cursor.fetchall()
-                
+                sector_data = analytics_500["card_sales_sectors"]
+                food_sector = next((sec for sec in sector_data if "음식" in sec["category"]), None)
                 food_detail_sales = []
-                food_defaults = [
-                    ("한식", 2100, 720, 29100),
-                    ("카페/음료", 1450, 1850, 7800),
-                    ("중식", 2300, 950, 24200),
-                    ("일식", 3200, 840, 38100),
-                    ("양식", 2900, 810, 35800),
-                    ("제과/디저트", 1600, 1100, 14500),
-                    ("치킨/패스트푸드", 1850, 1380, 13400)
-                ]
-                
-                if food_rows:
-                    for f_name, f_cnt in food_rows[:7]:
-                        disp_name = f_name
-                        if f_name == '비알콜 음료점':
-                            disp_name = '카페/음료'
-                        elif f_name == '서양식':
-                            disp_name = '양식'
-                        elif f_name == '제과·제빵':
-                            disp_name = '제과/디저트'
-                        
-                        sales_per = 1900
-                        cnt_per = 750
-                        avg_p = 25000
-                        if '한식' in disp_name:
-                            sales_per, cnt_per, avg_p = 2100, 720, 29100
-                        elif '카페' in disp_name:
-                            sales_per, cnt_per, avg_p = 1450, 1850, 7800
-                        elif '일식' in disp_name:
-                            sales_per, cnt_per, avg_p = 3200, 840, 38100
-                        elif '양식' in disp_name:
-                            sales_per, cnt_per, avg_p = 2900, 810, 35800
-                        elif '중식' in disp_name:
-                            sales_per, cnt_per, avg_p = 2300, 950, 24200
-                        elif '제과' in disp_name:
-                            sales_per, cnt_per, avg_p = 1600, 1100, 14500
-                        elif '패스트' in disp_name:
-                            sales_per, cnt_per, avg_p = 1750, 1400, 12500
-                        
-                        m_sales = int(f_cnt * sales_per * (0.85 + rng.random() * 0.3))
-                        m_cnt = int(f_cnt * cnt_per * (0.85 + rng.random() * 0.3))
-                        calculated_avg_pay = round(m_sales * 10000 / m_cnt) if m_cnt > 0 else avg_p
-                        
+                if food_sector and food_sector.get("sub_categories"):
+                    for sub in food_sector["sub_categories"][:8]:
                         food_detail_sales.append({
-                            "category": disp_name,
-                            "store_count": f_cnt,
-                            "monthly_sales_man": max(10, m_sales),
-                            "monthly_count": max(1, m_cnt),
-                            "avg_payment": calculated_avg_pay
-                        })
-                
-                if not food_detail_sales:
-                    base_stores = max(3, int(total_s * 0.35))
-                    for fname, s_per, c_per, avg_p in food_defaults:
-                        sub_cnt = max(1, int(base_stores * (0.1 + rng.random() * 0.3)))
-                        m_sales = int(sub_cnt * s_per * (0.9 + rng.random() * 0.2))
-                        m_cnt = int(sub_cnt * c_per * (0.9 + rng.random() * 0.2))
-                        calc_avg = round(m_sales * 10000 / m_cnt) if m_cnt > 0 else avg_p
-                        food_detail_sales.append({
-                            "category": fname,
-                            "store_count": sub_cnt,
-                            "monthly_sales_man": m_sales,
-                            "monthly_count": m_cnt,
-                            "avg_payment": calc_avg
+                            "category": sub["name"],
+                            "store_count": sub["store_count"],
+                            "monthly_sales_man": sub["monthly_sales_man"],
+                            "monthly_count": sub["monthly_count"],
+                            "avg_payment": sub["avg_payment"],
+                            "daily_visitors_per_store": sub["daily_visitors_per_store"],
                         })
 
                 comm_summary["card_sales_summary"] = {
-                    "monthly_total_sales_man": base_m_sales,
-                    "monthly_total_count": base_m_cnt,
+                    "monthly_total_sales_man": analytics_500["monthly_total_sales_man"],
+                    "monthly_total_count": analytics_500["monthly_total_count"],
+                    "avg_daily_visitors_per_store": analytics_500["avg_daily_visitors_per_store"],
                     "weekday_ratio": 67.5,
                     "weekend_ratio": 32.5,
-                    "card_ratio": 86.2,
+                    "card_ratio": 88.5,
                     "male_ratio": 52.4,
                     "female_ratio": 47.6,
                     "age_distribution": {
@@ -6071,25 +6996,6 @@ async def api_address_summary(req: AddressSummaryRequest):
                     "sector_sales": sector_data,
                     "food_detail_sales": food_detail_sales
                 }
-
-                # --- 소상공인365 (bigdata.sbiz.or.kr) 실데이터 연동 시도 (200m 및 1km) ---
-                try:
-                    from .sbiz_api import sbiz_client
-                except Exception:
-                    try:
-                        from sbiz_api import sbiz_client
-                    except Exception:
-                        sbiz_client = None
-
-                if sbiz_client:
-                    sbiz_real_data_200m = sbiz_client.get_200m_sector_sales(target_lat, target_lng, radius=200.0)
-                    if sbiz_real_data_200m and sbiz_real_data_200m.get("sector_sales"):
-                        comm_summary["card_sales_summary"].update(sbiz_real_data_200m)
-                    
-                    sbiz_real_data_1km = sbiz_client.get_200m_sector_sales(target_lat, target_lng, radius=1000.0)
-                    if sbiz_real_data_1km:
-                        comm_summary["card_sales_summary_1km"] = sbiz_real_data_1km
-                        logging.info("Successfully loaded real sector sales data (200m & 1km) from SBiz 365")
     except Exception as c_err:
         logging.error(f"Commercial analysis DB lookup error: {c_err}")
 
@@ -6188,10 +7094,24 @@ public_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "public")
 @app.get("/")
 @app.get("/index.html")
 async def serve_root_domain(request: Request):
+    no_cache_headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    }
     index_path = os.path.join(public_dir, "index.html")
     if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return FileResponse(os.path.join(public_dir, "map.html"))
+        return FileResponse(index_path, headers=no_cache_headers)
+    return FileResponse(os.path.join(public_dir, "map.html"), headers=no_cache_headers)
+
+@app.get("/admin.html")
+async def serve_admin_domain(request: Request):
+    no_cache_headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    }
+    return FileResponse(os.path.join(public_dir, "admin.html"), headers=no_cache_headers)
 
 @app.get("/map.html")
 async def serve_map_domain(request: Request):
