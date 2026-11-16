@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>온비드 공매물건 자동 추출기</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+</head>
+<body>
+    <div class="background-elements">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <div class="glass-container">
+        <header>
+            <div class="logo-box">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="url(#paint0_linear)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M2 17L12 22L22 17" stroke="url(#paint1_linear)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M2 12L12 17L22 12" stroke="url(#paint2_linear)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <defs>
+                        <linearGradient id="paint0_linear" x1="2" y1="7" x2="22" y2="7" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#4facfe"/>
+                            <stop offset="1" stop-color="#00f2fe"/>
+                        </linearGradient>
+                        <linearGradient id="paint1_linear" x1="2" y1="19.5" x2="22" y2="19.5" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#4facfe"/>
+                            <stop offset="1" stop-color="#00f2fe"/>
+                        </linearGradient>
+                        <linearGradient id="paint2_linear" x1="2" y1="14.5" x2="22" y2="14.5" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#4facfe"/>
+                            <stop offset="1" stop-color="#00f2fe"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <h1>온비드 추출기</h1>
+            </div>
+            <p class="subtitle">온비드 공매 및 두인경매 데이터 자동 수집 시스템</p>
+        </header>
+
+        <main>
+            <div class="info-card">
+                <div class="info-row">
+                    <span class="icon">📍</span>
+                    <span><strong>대상 지역:</strong> 서울, 경기, 인천, 강원, 충남, 전남(광주 포함)</span>
+                </div>
+                <div class="info-row">
+                    <span class="icon">📄</span>
+                    <span><strong>수집 항목:</strong> 일반(진행/예정) & 수의계약 & 과거 취소·회수 물건 통합</span>
+                </div>
+                <div class="info-row">
+                    <span class="icon">⏱</span>
+                    <span><strong>예상 시간:</strong> 데이터 양에 따라 1~3분 소요</span>
+                </div>
+            </div>
+
+            <div class="action-section" style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px;">
+                <button id="btn-weekly-all" class="primary-btn" style="flex: 1 1 100%; max-width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 8px 24px rgba(118, 75, 162, 0.45); font-weight: 700;">
+                    <span class="btn-text">🚀 주간 전체 자동화 (공매+경매 크롤링 → 지오코딩 → 엑셀통합 → AWS 배포)</span>
+                    <span class="btn-icon">⚡</span>
+                </button>
+            </div>
+
+            <div class="action-section" style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px;">
+                <button id="btn-crawl" class="primary-btn" style="flex: 1 1 200px; max-width: 250px;">
+                    <span class="btn-text">온비드 공매 통합</span>
+                    <span class="btn-icon">→</span>
+                </button>
+                <button id="btn-crawl-dooin" class="primary-btn" style="flex: 1 1 200px; max-width: 250px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); box-shadow: 0 8px 20px rgba(245, 87, 108, 0.3);">
+                    <span class="btn-text">수도권 경매 통합</span>
+                    <span class="btn-icon">→</span>
+                </button>
+                <button id="btn-crawl-dooin-regional" class="primary-btn" style="flex: 1 1 200px; max-width: 250px; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: #0f382c; box-shadow: 0 8px 20px rgba(56, 249, 215, 0.3);">
+                    <span class="btn-text">강원/충남/전남 통합</span>
+                    <span class="btn-icon">→</span>
+                </button>
+            </div>
+            
+            <div class="action-section secondary-actions" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button id="btn-crawl-seoul" class="primary-btn" style="padding: 10px 15px; font-size: 0.9em; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <span class="btn-text">서울 경매 크롤링</span>
+                </button>
+                <button id="btn-crawl-incheon" class="primary-btn" style="padding: 10px 15px; font-size: 0.9em; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <span class="btn-text">인천 경매 크롤링</span>
+                </button>
+                <button id="btn-crawl-kyunggi" class="primary-btn" style="padding: 10px 15px; font-size: 0.9em; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <span class="btn-text">경기 경매 크롤링</span>
+                </button>
+                <button id="btn-crawl-kangwon" class="primary-btn" style="padding: 10px 15px; font-size: 0.9em; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <span class="btn-text">강원 경매 크롤링</span>
+                </button>
+                <button id="btn-crawl-chungnam" class="primary-btn" style="padding: 10px 15px; font-size: 0.9em; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <span class="btn-text">충남 경매 크롤링</span>
+                </button>
+                <button id="btn-crawl-jeonnam" class="primary-btn" style="padding: 10px 15px; font-size: 0.9em; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <span class="btn-text">전남(광주) 경매 크롤링</span>
+                </button>
+            </div>
+
+            <div id="status-container" class="status-container hidden">
+                <div class="loader">
+                    <div class="spinner"></div>
+                </div>
+                <p id="status-message">온비드 API에서 데이터를 가져오는 중입니다...<br><span class="sub-message">창을 닫지 말고 잠시만 기다려주세요.</span></p>
+                <div class="progress-bar-container">
+                    <div id="progress-bar" class="progress-bar"></div>
+                </div>
+                <div style="margin-top: 20px; text-align: center;">
+                    <button id="btn-cancel" class="secondary-btn" style="background: #ff4757; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(255, 71, 87, 0.3);">크롤링 취소</button>
+                </div>
+            </div>
+            
+            <div id="success-container" class="success-container hidden">
+                <div class="success-icon">✓</div>
+                <p class="success-title">추출 완료!</p>
+                <p class="success-desc">엑셀 파일 다운로드가 시작되었습니다.</p>
+            </div>
+            
+            <div id="error-container" class="error-container hidden">
+                <div class="error-icon">!</div>
+                <p class="error-title">오류 발생</p>
+                <p id="error-desc" class="error-desc">데이터 추출 중 문제가 발생했습니다.</p>
+                <button id="btn-retry" class="secondary-btn">다시 시도</button>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

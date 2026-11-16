@@ -2037,17 +2037,166 @@ def get_map_planning_roads(
         conn.close()
         return {"status": "success", "data": []}
         
+    band_min_lat = min_lat - 0.06
+    band_min_lng = min_lng - 0.06
     query = '''
-        SELECT id, present_sn, name, road_class, geojson FROM planning_roads
-        WHERE max_lat >= ? AND min_lat <= ? 
-          AND max_lng >= ? AND min_lng <= ?
-        LIMIT 2000
+        SELECT id, present_sn, name, road_class, min_lat, max_lat, min_lng, max_lng, geojson
+        FROM planning_roads
+        WHERE min_lat >= ? AND min_lat <= ?
+          AND min_lng >= ? AND min_lng <= ?
+          AND max_lat >= ? AND max_lng >= ?
+        LIMIT 600
     '''
-    cursor.execute(query, (min_lat, max_lat, min_lng, max_lng))
+    cursor.execute(query, (band_min_lat, max_lat, band_min_lng, max_lng, min_lat, min_lng))
     data = [dict(row) for row in cursor.fetchall()]
     
     conn.close()
     return {"status": "success", "data": data}
+
+
+@app.get("/api/map/road_widths")
+def get_map_road_widths(
+    min_lat: Optional[float] = None,
+    max_lat: Optional[float] = None,
+    min_lng: Optional[float] = None,
+    max_lng: Optional[float] = None,
+    width_classes: Optional[str] = None
+):
+    """전국 현황 도로폭원 정보(LT_L_SPRD + LT_C_UPISUQ151) 조회 API"""
+    if not (min_lat and max_lat and min_lng and max_lng):
+        return {"status": "success", "data": []}
+    try:
+        from crawler.vworld_layer_sync import query_road_widths_in_bbox
+        classes_list = [c.strip() for c in width_classes.split(",") if c.strip()] if width_classes else None
+        rows = query_road_widths_in_bbox(min_lat, max_lat, min_lng, max_lng, classes_list)
+        return {"status": "success", "data": rows}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "data": []}
+
+
+@app.get("/api/map/layers/status")
+def get_map_layers_sync_status():
+    """지도 레이어별 V-World API 동기화 및 SHP 업로드 현황 조회 API"""
+    try:
+        from crawler.vworld_layer_sync import get_all_layers_sync_status
+        return get_all_layers_sync_status()
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+class VWorldLayerSyncRequest(BaseModel):
+    layer_key: str = "all"
+    scope: str = "capital"  # 'capital' (서울/인천/경기), 'national' (전국 17개 시도), 'bbox' (현재 지도 화면)
+    min_lat: Optional[float] = None
+    max_lat: Optional[float] = None
+    min_lng: Optional[float] = None
+    max_lng: Optional[float] = None
+    export_shp: bool = True
+
+
+@app.post("/api/map/layers/sync_vworld")
+def api_sync_vworld_layer(req: VWorldLayerSyncRequest):
+    """V-World 2D Data API를 통해 택지지구, 규제완화지구(개발행위허가제한 등), 재개발/재건축, 산업단지, 예정도로, 도로폭원 레이어 자동 업데이트 및 SHP/GPKG 생성"""
+    try:
+        from crawler.vworld_layer_sync import sync_layer_from_vworld, LAYER_DEFINITIONS
+        bbox_override = None
+        if req.scope == "bbox" and req.min_lat and req.max_lat and req.min_lng and req.max_lng:
+            bbox_override = (req.min_lng, req.min_lat, req.max_lng, req.max_lat)
+
+        if req.layer_key == "all":
+            results = {}
+            for k in LAYER_DEFINITIONS.keys():
+                results[k] = sync_layer_from_vworld(
+                    layer_key=k,
+                    scope=req.scope if req.scope != "bbox" else "capital",
+                    bbox_override=bbox_override,
+                    export_shp=req.export_shp
+                )
+            return {"status": "success", "results": results}
+        else:
+            res = sync_layer_from_vworld(
+                layer_key=req.layer_key,
+                scope=req.scope,
+                bbox_override=bbox_override,
+                export_shp=req.export_shp
+            )
+            return res
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+from fastapi import Form, File, UploadFile
+
+@app.post("/api/map/layers/upload_shp")
+async def api_upload_layer_shp(
+    layer_key: str = Form(...),
+    sub_category: Optional[str] = Form(None),
+    replace_existing: bool = Form(False),
+    file: UploadFile = File(...)
+):
+    """사용자가 SHP(.zip 묶음 또는 단일 .shp/.gpkg/.geojson) 파일을 업로드하면 레이어 양식에 맞춰 자동 변환·적재"""
+    try:
+        from crawler.vworld_layer_sync import process_uploaded_gis_file
+        file_bytes = await file.read()
+        res = process_uploaded_gis_file(
+            layer_key=layer_key,
+            filename=file.filename or "uploaded.geojson",
+            file_bytes=file_bytes,
+            sub_category=sub_category if sub_category else None,
+            replace_existing=replace_existing
+        )
+        return res
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/map/layers/download_shp/{layer_key}")
+def api_download_layer_shp(layer_key: str, fmt: str = "zip"):
+    """수집·동기화된 레이어의 SHP(.zip) 또는 GeoPackage(.gpkg) 다운로드 API"""
+    from fastapi.responses import FileResponse
+    from crawler.vworld_layer_sync import NATIONAL_ROAD_DIR, sync_layer_from_vworld
+    ext = "gpkg" if fmt.lower() == "gpkg" else "zip"
+    fname = f"{layer_key}_vworld.{ext}" if ext == "gpkg" else f"{layer_key}_vworld_shp.zip"
+    fpath = os.path.join(NATIONAL_ROAD_DIR, fname)
+    if not os.path.exists(fpath):
+        # 파일이 아직 없으면 즉시 수도권 기준으로 생성
+        sync_layer_from_vworld(layer_key=layer_key, scope="capital", export_shp=True)
+    if os.path.exists(fpath):
+        return FileResponse(fpath, filename=fname, media_type="application/octet-stream")
+    return {"status": "error", "message": f"{fname} 파일이 아직 생성되지 않았습니다. 먼저 V-World 동기화를 실행해 주세요."}
+
+
+def _start_vworld_layer_scheduler():
+    """매일 새벽 04:00 V-World 레이어 정기 자동 업데이트 백그라운드 데몬"""
+    import threading
+    import time as _time
+
+    def _worker():
+        _time.sleep(15)
+        try:
+            from crawler.vworld_layer_sync import ensure_layer_sync_tables
+            ensure_layer_sync_tables()
+        except Exception:
+            pass
+        while True:
+            now = datetime.now()
+            # 매일 04:00 실행 대기
+            next_run = now.replace(hour=4, minute=0, second=0, microsecond=0)
+            if next_run <= now:
+                next_run += timedelta(days=1)
+            wait_sec = max(60.0, (next_run - now).total_seconds())
+            _time.sleep(wait_sec)
+            try:
+                from crawler.vworld_layer_sync import sync_layer_from_vworld, LAYER_DEFINITIONS
+                for k in LAYER_DEFINITIONS.keys():
+                    sync_layer_from_vworld(layer_key=k, scope="capital", export_shp=True)
+            except Exception as e:
+                print(f"[VWorldLayerScheduler] Error: {e}")
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+
+_start_vworld_layer_scheduler()
 
 
 @app.get("/api/map/crosswalks")
@@ -2375,8 +2524,11 @@ def get_map_auctions(
         params.extend([f"{r}%" for r in region_list])
         
     if sale_type and sale_type != '전체':
-        query += " AND sale_type = ?"
-        params.append(sale_type)
+        if sale_type == '공매':
+            query += " AND sale_type IN ('공매', '수의계약')"
+        else:
+            query += " AND sale_type = ?"
+            params.append(sale_type)
         
     if min_rate:
         query += " AND min_bid_rate <= ?"
@@ -2455,6 +2607,8 @@ def get_map_auctions(
             elif r == '지분경매':
                 rights_clauses.append("(special_notes LIKE ? OR special_notes LIKE ? OR special_notes LIKE ?)")
                 params.extend([f"%{r}%", "%지분%", "%공유%"])
+            elif r == '수의계약':
+                rights_clauses.append("(sale_type = '수의계약' OR special_notes LIKE '%수의계약%')")
             else:
                 rights_clauses.append("special_notes LIKE ?")
                 params.append(f"%{r}%")
@@ -2534,8 +2688,11 @@ def export_map_auctions(
         params.extend([f"{r}%" for r in region_list])
         
     if sale_type and sale_type != '전체':
-        query += " AND sale_type = ?"
-        params.append(sale_type)
+        if sale_type == '공매':
+            query += " AND sale_type IN ('공매', '수의계약')"
+        else:
+            query += " AND sale_type = ?"
+            params.append(sale_type)
         
     if min_rate:
         query += " AND min_bid_rate <= ?"
@@ -2614,6 +2771,8 @@ def export_map_auctions(
             elif r == '지분경매':
                 rights_clauses.append("(special_notes LIKE ? OR special_notes LIKE ? OR special_notes LIKE ?)")
                 params.extend([f"%{r}%", "%지분%", "%공유%"])
+            elif r == '수의계약':
+                rights_clauses.append("(sale_type = '수의계약' OR special_notes LIKE '%수의계약%')")
             else:
                 rights_clauses.append("special_notes LIKE ?")
                 params.append(f"%{r}%")
@@ -2993,7 +3152,15 @@ def generate_recommendation_based_on_specs(res_pop: int, wrk_pop: int, floating_
     return recom_biz, recom_desc
 
 
-def get_auction_property_specs(case_no: Optional[str], address: Optional[str], property_type: str, area_size: Optional[float]):
+def get_auction_property_specs(
+    case_no: Optional[str],
+    address: Optional[str],
+    property_type: str,
+    area_size: Optional[float],
+    bldg_prof: Optional[dict] = None,
+    land_prof: Optional[dict] = None,
+    floor_param: Optional[str] = None
+):
     import re
     import json
     import os
@@ -3004,7 +3171,7 @@ def get_auction_property_specs(case_no: Optional[str], address: Optional[str], p
     floor_str = "지상층"
     total_floors = None
     
-    addr_str = address or ""
+    addr_str = f"{address or ''} {floor_param or ''}".strip()
     
     # Check if address contains total floors (e.g. "15층 중 3층", "5층 건내 2층")
     m_total = re.search(r'(\d+)\s*층\s*(?:중|건내|건물\s*내)\s*(\d+)\s*층', addr_str)
@@ -3013,7 +3180,7 @@ def get_auction_property_specs(case_no: Optional[str], address: Optional[str], p
         floor_num = int(m_total.group(2))
         floor_str = f"{floor_num}층"
     else:
-        if "지하" in addr_str:
+        if "지하" in addr_str or "지층" in addr_str or (floor_param and "B" in str(floor_param).upper()):
             floor_str = "지하"
             floor_num = -1
         else:
@@ -3029,7 +3196,16 @@ def get_auction_property_specs(case_no: Optional[str], address: Optional[str], p
                         floor_num = unit // 100
                         floor_str = f"{floor_num}층"
     
-    # Estimate total floors if unknown
+    # Use building register ground floor count if available
+    if bldg_prof:
+        try:
+            b_grnd = int(float(bldg_prof.get("grnd_flr") or 0))
+            if b_grnd > 0:
+                total_floors = max(b_grnd, floor_num or 0)
+        except Exception:
+            pass
+
+    # Estimate total floors if still unknown
     if not total_floors:
         if floor_num and floor_num > 0:
             if "아파트" in property_type:
@@ -3039,7 +3215,7 @@ def get_auction_property_specs(case_no: Optional[str], address: Optional[str], p
             else:
                 total_floors = max(5, floor_num + 1)
         else:
-            total_floors = 5 # default fallback
+            total_floors = 5  # default fallback
             
     # Classify floor
     is_comm = any(k in property_type for k in ["상가", "상업", "업무", "근린"])
@@ -3058,8 +3234,13 @@ def get_auction_property_specs(case_no: Optional[str], address: Optional[str], p
     else:
         floor_class = "지상층 (층수 미확인)"
         
-    # 2. Pyeong classification
+    # 2. Pyeong classification (use building register exclusive_area_pyeong if area_size is missing)
     pyeong = area_size or 0.0
+    if pyeong <= 0 and bldg_prof and bldg_prof.get("exclusive_area_pyeong"):
+        try:
+            pyeong = float(bldg_prof["exclusive_area_pyeong"])
+        except Exception:
+            pass
     if pyeong >= 35:
         pyeong_class = "대(35평 이상)"
     elif pyeong >= 20:
@@ -3069,13 +3250,25 @@ def get_auction_property_specs(case_no: Optional[str], address: Optional[str], p
     else:
         pyeong_class = "초소형(10평 미만)"
         
-    # 3. Build year / Age lookup
+    # 3. Build year / Age lookup (1순위: 상단 건축물대장 use_apr_day, 2순위: 리포트 캐시 JSON)
     build_year = None
     age = None
-    age_class = "연식 정보 미크롤링 (리포트 실행 필요)"
+    approval_date_str = None
+    age_class = "건축물대장 연식 미기재 (토지 또는 미등기/미준공)"
     
-    # Try to load from saved JSON cache
-    if case_no:
+    if bldg_prof and bldg_prof.get("use_apr_day"):
+        raw_apr = str(bldg_prof.get("use_apr_day")).strip()
+        if raw_apr and raw_apr not in ("미상", "-", "None", "null"):
+            m_year = re.search(r'(\d{4})', raw_apr)
+            if m_year:
+                yr = int(m_year.group(1))
+                if 1900 <= yr <= datetime.now().year + 1:
+                    build_year = yr
+                    age = max(0, datetime.now().year - build_year)
+                    approval_date_str = raw_apr
+
+    # Fallback: Try to load from saved JSON cache
+    if age is None and case_no:
         safe_case = case_no.replace(" ", "_").replace("/", "_")
         cache_path = os.path.join(downloads_dir, f"{safe_case}_data.json")
         if os.path.exists(cache_path):
@@ -3084,22 +3277,23 @@ def get_auction_property_specs(case_no: Optional[str], address: Optional[str], p
                     cache_data = json.load(f)
                     app_date = cache_data.get("approval_date")
                     if app_date:
-                        # Extract 4 digit year
                         m_year = re.search(r'(\d{4})', str(app_date))
                         if m_year:
                             build_year = int(m_year.group(1))
                             current_year = datetime.now().year
-                            age = current_year - build_year
+                            age = max(0, current_year - build_year)
+                            approval_date_str = str(app_date)
             except Exception as e:
                 print(f"Error loading cache JSON: {e}")
                 
     if age is not None:
+        apr_suffix = f", 사용승인일: {approval_date_str}" if approval_date_str else ""
         if age <= 10:
-            age_class = f"신축 (10년 이하) - {build_year}년식 ({age}년 경과)"
+            age_class = f"신축 (10년 이하) - {build_year}년식 ({age}년 경과{apr_suffix})"
         elif age <= 25:
-            age_class = f"준신축 (25년 이하) - {build_year}년식 ({age}년 경과)"
+            age_class = f"준신축 (25년 이하) - {build_year}년식 ({age}년 경과{apr_suffix})"
         else:
-            age_class = f"노후 (25년 초과) - {build_year}년식 ({age}년 경과)"
+            age_class = f"노후 (25년 초과) - {build_year}년식 ({age}년 경과{apr_suffix})"
             
     return {
         "floor": floor_str,
@@ -3109,11 +3303,20 @@ def get_auction_property_specs(case_no: Optional[str], address: Optional[str], p
         "pyeong_class": pyeong_class,
         "build_year": build_year,
         "age": age,
+        "approval_date": approval_date_str,
         "age_class": age_class
     }
 
 
-def generate_specs_comparison_comments(specs: dict, property_type: str, matched_grid: Optional[dict]):
+def generate_specs_comparison_comments(
+    specs: dict,
+    property_type: str,
+    matched_grid: Optional[dict],
+    bldg_prof: Optional[dict] = None,
+    land_prof: Optional[dict] = None,
+    dev_plans_5km: Optional[dict] = None,
+    eum_context: Optional[dict] = None
+):
     pyeong = specs["pyeong"]
     pyeong_class = specs["pyeong_class"]
     floor = specs["floor"]
@@ -3136,8 +3339,16 @@ def generate_specs_comparison_comments(specs: dict, property_type: str, matched_
     else:
         comments.append("└ 평형대 정보를 확인할 수 없는 물건입니다.")
 
-    # 2. Floor (층수) 코멘트
-    comments.append(f"■ 물건 층수대: <strong>{floor}</strong> (총 {specs['total_floors']}층 중 {floor_class})")
+    # 2. Floor (층수) 코멘트 (건축물대장 지상/지하 층수 반영)
+    ugrnd_txt = ""
+    if bldg_prof and bldg_prof.get("ugrnd_flr"):
+        try:
+            ug = int(float(bldg_prof.get("ugrnd_flr") or 0))
+            if ug > 0:
+                ugrnd_txt = f" / 지하 {ug}층"
+        except Exception:
+            pass
+    comments.append(f"■ 물건 층수대: <strong>{floor}</strong> (건축물대장 지상 {specs['total_floors']}층{ugrnd_txt} 중 {floor_class})")
     is_comm = any(k in property_type for k in ["상가", "상업", "업무", "근린"])
     if is_comm:
         if "지하" in floor_class:
@@ -3158,17 +3369,54 @@ def generate_specs_comparison_comments(specs: dict, property_type: str, matched_
         else:
             comments.append("└ 주거 지상층으로서 세부 층비율을 파악하기 어렵습니다.")
 
-    # 3. Age (노후도/건축년도) 코멘트
+    # 3. Age (노후도/건축년도) & 건축물대장 실측 스펙 종합 분석
     comments.append(f"■ 물건 노후도: <strong>{age_class}</strong>")
     if age is not None:
         if age <= 10:
-            comments.append("└ 준공 10년 이하의 신축급 물건으로, 시설 노후화로 인한 추가 수리/유지 보수비가 거의 들지 않아 실입주 및 전세 임차인 모집 경쟁력에서 절대적으로 유리합니다.")
+            comments.append("└ 건축물대장 기준 준공 10년 이하의 신축급 물건으로, 설비·배관 노후화로 인한 추가 수리/유지보수비가 거의 들지 않아 실입주 및 전·월세 임차인 모집 경쟁력에서 절대적으로 유리합니다.")
         elif age <= 25:
-            comments.append("└ 준공 25년 이하의 중간 연식 물건으로, 관리 상태에 따라 전용 공간 리모델링(섀시, 욕실 등)을 통해 자산 가치를 리빌딩하여 주변 신축 격차를 좁힐 수 있는 가성비 물건입니다.")
+            comments.append("└ 건축물대장 기준 준공 11~25년차의 중견 연식 물건으로, 골조(내구성)는 양호하나 인테리어·창호·욕실 등 전용 공간 리모델링을 통해 주변 신축 대비 높은 가성비와 임대수익률을 확보할 수 있습니다.")
         else:
-            comments.append("└ 준공 25년을 초과한 노후 건물이므로 철저한 누수/노후 배관 등 현장 조사가 필수적입니다. 다만, 향후 재건축/재개발 등 정비사업 추진에 따른 미래 자산가치 상승 매리트가 큽니다.")
+            comments.append("└ 건축물대장 기준 준공 25년을 초과한 노후 건물로 누수·배관·단열 등 현장 점검이 필수적입니다. 반면 재건축 연한(30년) 도래 및 정비사업·신축 밸류업 추진에 따른 토지 지분 가치 상승 여력이 큽니다.")
     else:
-        comments.append("└ (연식 분석) 건축년도가 아직 수집되지 않았습니다. 우측 상단 '권리분석 리포트 보기'를 실행해 주시면 마이옥션 정밀 크롤링을 통해 건축년도가 실시간 동기화되어 정교한 노후도 비교 소견이 채워집니다.")
+        comments.append("└ 토지 물건이거나 건축물대장상 사용승인일자가 별도 등재되지 않은 물건입니다. 상단 대장 스펙 및 현장 건축물 현황을 함께 확인하시기 바랍니다.")
+
+    if bldg_prof:
+        import re as _re
+        def _safe_num(val, default=0.0):
+            if val is None:
+                return default
+            if isinstance(val, (int, float)):
+                return float(val)
+            m = _re.search(r'(\d+(?:\.\d+)?)', str(val).replace(',', ''))
+            return float(m.group(1)) if m else default
+
+        b_struct = bldg_prof.get("structure") or "철근콘크리트구조"
+        b_zoning = bldg_prof.get("zoning") or "용도지역 확인"
+        b_bc = _safe_num(bldg_prof.get("bc_rat"), 0.0)
+        b_vl = _safe_num(bldg_prof.get("vl_rat"), 0.0)
+        b_pk = int(_safe_num(bldg_prof.get("tot_pkng"), 0.0))
+        raw_el = bldg_prof.get("elevators")
+        b_el = int(_safe_num(raw_el, 0.0))
+        b_el_disp = str(raw_el) if (raw_el and not str(raw_el).isdigit()) else f"{b_el}대"
+        b_seis = bldg_prof.get("seismic") or "-"
+        comments.append(
+            f"■ 건축물대장 실측 스펙 연계: <strong>{b_zoning}</strong> | 구조: <strong>{b_struct}</strong> | "
+            f"건폐율 <strong>{b_bc:.1f}%</strong> · 용적률 <strong>{b_vl:.1f}%</strong> | "
+            f"주차 <strong>{b_pk}대</strong> · 승강기 <strong>{b_el_disp}</strong> (내진: {b_seis})"
+        )
+        spec_notes = []
+        if b_vl > 0:
+            if "주거" in b_zoning and b_vl < 180:
+                spec_notes.append(f"현재 용적률({b_vl:.1f}%)이 법정 상한 대비 여유가 있어 향후 재건축·증축 및 정비사업 시 사업성(일반분양분 확보)이 우수합니다.")
+            elif "상업" in b_zoning and b_vl < 400:
+                spec_notes.append(f"상업지역 대비 현 용적률({b_vl:.1f}%)이 낮아 향후 고밀 개발·신축 밸류업 잠재력이 높습니다.")
+            else:
+                spec_notes.append(f"현행 용적률({b_vl:.1f}%)로 건물이 충실히 건축되어 있어 현 상태 임대수익 및 내실 운영에 적합합니다.")
+        if b_pk > 0 or b_el > 0:
+            spec_notes.append(f"총 주차 {b_pk}대 및 승강기({b_el_disp})가 구비되어 있어 입주자·방문객 접근성과 임대 선호도를 뒷받침합니다.")
+        if spec_notes:
+            comments.append("└ " + " ".join(spec_notes))
 
     # 4. 실거래 격자 지표와의 융합 비교 코멘트
     if matched_grid:
@@ -3182,7 +3430,7 @@ def generate_specs_comparison_comments(specs: dict, property_type: str, matched_
             if age_prem > 0 and age is not None:
                 comments.append(f"- 주변 신축/구축 가격 격차 비율이 <strong>{age_prem:.2f}배</strong>로 나타납니다. " + 
                                 (f"본 물건은 {age_class.split(' - ')[0]}이므로 " + 
-                                 ("주변 노후 주택 대비 높은 가격 프리미엄 형성이 가능할 것입니다." if age <= 10 else "감가상각이 반영되어 저렴한 가격에 낙찰받아 부가가치를 올릴 타이밍입니다.") if age else ""))
+                                 ("주변 노후 주택 대비 높은 가격 프리미엄 형성이 가능할 것입니다." if age <= 10 else "감가상각이 반영되어 저렴한 가격에 낙찰받아 부가가치를 올릴 타이밍입니다.") if age is not None else ""))
             if floor_sens > 0 and floor_class != "지하" and "미확인" not in floor_class:
                 comments.append(f"- 이 격자의 층별 로얄층 가격 민감도는 <strong>{floor_sens:.2f}배</strong>입니다. " +
                                 (f"본 물건은 {floor_class}에 속하므로 " + 
@@ -3205,6 +3453,88 @@ def generate_specs_comparison_comments(specs: dict, property_type: str, matched_
         # 기본 주택 (아파트, 빌라, 원룸, 오피스텔, 다세대 등)
         comments.append("■ <strong>[주택] 임대수요 및 거주 주 수요층 집중 분석</strong>")
         comments.append("└ 본 주택 물건은 임차인 연령별 분포(2030 청년층 직주근접, 4050 가족층 학군/주거안정), 주 수요층 특성, 대중교통(역세권) 거리 및 인근 개발계획이 핵심 지표입니다. 배후 연령층 분포와 유동인구 연계 분석 결과, 전·월세 임차 수요가 꾸준하고 공실 위험이 적은 안정적인 주거 입지입니다.")
+
+    # 6. 토지이음(eum.go.kr) 규제·고시 기반 개발계획 및 토지보상 전략
+    eum_ctx = eum_context or {}
+    use_info = eum_ctx.get("use_info") or {}
+    all_zones = list(use_info.get("all_zones") or [])
+    if not all_zones:
+        for z in (use_info.get("mark1_zones") or []) + (use_info.get("mark2_zones") or []):
+            if z and z not in all_zones:
+                all_zones.append(z)
+    permit_restr = list(use_info.get("permit_restriction_zones") or [])
+    land_tx_zones = list(use_info.get("land_tx_permit_zones") or [])
+    mark3_notes = list(use_info.get("mark3_notes") or [])
+    recent_gosi = list(use_info.get("recent_gosi_list") or [])
+    db_dereg = list(eum_ctx.get("db_deregulation_zones") or [])
+    db_unexec = list(eum_ctx.get("db_unexecuted_facilities") or [])
+
+    for dz in db_dereg:
+        label = f"{dz.get('category', '규제완화/제한지구')}: {dz.get('name', '')}".strip(": ")
+        if label and label not in permit_restr:
+            permit_restr.append(label)
+
+    comments.append("\n🗺️ <strong>[토지이음(eum.go.kr) 규제·고시 기반 개발계획 및 토지보상 전략]</strong>")
+    if all_zones:
+        comments.append(f"■ <strong>토지이용계획 지정구역</strong>: {', '.join(all_zones[:10])}")
+    elif bldg_prof and bldg_prof.get("zoning"):
+        comments.append(f"■ <strong>토지이용계획 기본용도</strong>: {bldg_prof.get('zoning')} (지목: {bldg_prof.get('jimok', '대')})")
+
+    # (A) 개발행위허가제한지역 / 특별계획구역 / 지구단위계획 분석 및 토지보상 전략
+    has_permit_restr = bool(permit_restr) or any("개발행위허가제한" in z for z in all_zones)
+    has_district_or_redev = any(any(k in z for k in ["지구단위계획", "정비구역", "재개발", "재건축", "택지개발", "공공주택", "산업단지", "도시개발"]) for z in all_zones)
+    has_road_or_park_fac = bool(db_unexec) or any(any(k in z for k in ["도로", "공원", "녹지", "광장", "철도"]) for z in all_zones)
+
+    if has_permit_restr:
+        restr_str = ", ".join(permit_restr[:4]) if permit_restr else "개발행위허가제한지역"
+        comments.append(f"■ <strong>🚧 개발행위허가제한지역 감지 ({restr_str}) 및 보상·개발 전략</strong>")
+        comments.append(
+            "└ <strong>[제도 해석]</strong> 국토계획법 제63조에 따른 개발행위허가제한지역 지정은 통상 도시개발구역·공공주택지구·산업단지·정비구역 지정이나 기반시설(도로·공원) 편입을 앞두고 무분별한 난개발과 보상투기를 막기 위해 고시하는 <strong>공익사업 수용·대규모 개발의 강력한 선행 시그널</strong>입니다."
+        )
+        comments.append(
+            "└ <strong>[토지보상 & 투자 전략]</strong> ① 제한 고시일 및 지구지정 공람공고일(권리산정기준일) 이전 적법 건축물·토지 지분 요건을 충족하는지 확인하십시오. "
+            "② 향후 사업인정고시 및 수용재결 시 <strong>소유자 추천 감정평가사 선임권(토지보상법 제68조, 과반 동의)</strong>을 행사하여 표준지공시지가 현실화율 대비 5~15% 이상 정당보상 증액을 유도하고, "
+            "<strong>대토보상·협의양도인택지·이주자택지(딱지)</strong> 수급 자격을 선점하는 전략이 유효합니다."
+        )
+    else:
+        comments.append("■ <strong>🚧 개발행위허가제한지역 및 수용 리스크 진단</strong>")
+        comments.append(
+            "└ 현재 본 필지는 토지이음 조회 기준 직접적인 '개발행위허가제한지역'에 해당하지 않아 신축·증축·대수선·용도변경 등 개별 건축행위 허가 제한 리스크가 낮습니다. "
+            "다만 주변 광역 정비·개발사업 확대 시 편입 가능성에 대비해 지자체 도시관리계획 열람공고를 주기적으로 모니터링하십시오."
+        )
+
+    # (B) 도시계획시설(도로·공원 등) 저촉 및 장기미집행 토지보상 전략
+    if has_road_or_park_fac:
+        fac_names = [f"{u.get('type', '시설')}({u.get('name', '')})" for u in db_unexec[:3]]
+        fac_Zone_names = [z for z in all_zones if any(k in z for k in ["도로", "공원", "녹지", "광장", "철도"])][:4]
+        merged_fac = ", ".join(fac_names + fac_Zone_names)
+        comments.append(f"■ <strong>🛣️ 도시계획시설({merged_fac}) 저촉·접합 및 토지보상 전략</strong>")
+        comments.append(
+            "└ <strong>[수용·보상 전략]</strong> 필지가 도시계획시설(예정도로·공원 등)에 저촉된 경우 실시계획인가 고시 후 수용보상금(공익사업 토지보상) 수령이 가능하며, "
+            "일부 편입 후 남은 땅이 건축 불가능할 정도로 협소·부정형화되면 <strong>잔여지 매수청구권(토지보상법 제74조)</strong> 및 잔여지 가치하락 손실보상을 청구할 수 있습니다. "
+            "또한 도시계획시설 결정 후 10년 이상 미집행된 지목 '대' 토지는 <strong>매수청구권(국토계획법 제47조)</strong>, 20년 경과 시 <strong>장기미집행 일몰제 해제</strong>에 따른 가치 재평가를 노릴 수 있습니다."
+        )
+
+    # (C) 토지거래허가구역 경매 특례 전략
+    if land_tx_zones or any("토지거래" in n for n in (mark3_notes + all_zones)):
+        tx_desc = land_tx_zones[0] if land_tx_zones else "토지거래계약에관한허가구역"
+        comments.append(f"■ <strong>🔑 토지거래허가구역 경매 낙찰 특례 활용</strong>: {tx_desc}")
+        comments.append(
+            "└ <strong>[경매 핵심 무기]</strong> 토지거래허가구역 내 일반 매매는 구청장 허가 및 실거주·실경영(2~5년) 의무가 부과되나, "
+            "<strong>민사집행법에 따른 법원 경매(및 공매) 낙찰 취득은 토지거래허가 대상에서 면제(부동산거래신고법 제14조)</strong>됩니다. "
+            "따라서 전세를 끼고 매수(갭투자)하거나 즉시 임대·매각이 가능하여 일반 매수자 대비 압도적인 출구전략 우위를 확보할 수 있습니다."
+        )
+
+    # (D) 관할 지자체 최신 토지이음 고시 및 반경 5km 광역 개발호재 연계
+    if recent_gosi:
+        comments.append("■ <strong>📋 관할 시·군·구 최신 토지이음 도시계획·개발 고시 동향</strong>")
+        for g in recent_gosi[:3]:
+            comments.append(f"└ [{g.get('date', '-')}] {g.get('type', '고시')} ({g.get('no', '')}): <strong>{g.get('title', '')}</strong>")
+
+    if dev_plans_5km and dev_plans_5km.get("status") == "success":
+        dp_sum = dev_plans_5km.get("summary")
+        if dp_sum:
+            comments.append(f"■ <strong>🚄 반경 5km 광역 개발호재 요약</strong>: {dp_sum}")
 
     return "\n".join(comments)
 
@@ -3770,10 +4100,6 @@ def get_map_demographics(
 
     conn.close()
     
-    # Estimate specs & generate comparison comments
-    specs = get_auction_property_specs(case_no, address, norm_property_type, norm_area_size)
-    comparison_comments = generate_specs_comparison_comments(specs, norm_property_type, matched_grid)
-    
     # 6. 종합 및 배후수요 종합 분석 평가
     res_pop = demographics["residential_population"]
     wrk_pop = demographics["workplace_population"]
@@ -3822,6 +4148,11 @@ def get_map_demographics(
     is_land = is_land_property(property_type=property_type, address=address, area_size=norm_area_size)
     land_prof = None
     bldg_prof = None
+    eum_context = {
+        "use_info": {},
+        "db_deregulation_zones": [],
+        "db_unexecuted_facilities": []
+    }
 
     if is_land:
         try:
@@ -3834,14 +4165,18 @@ def get_map_demographics(
                 case_no=case_no,
                 db_path=db_path
             )
+            if land_prof and isinstance(land_prof.get("eum_direct_info"), dict):
+                eum_context["use_info"] = land_prof["eum_direct_info"]
         except Exception as e:
             logging.error(f"Error computing land profile data: {e}")
     else:
         bldg_prof = get_building_profile_data(address or "", lat, lng, property_type=property_type, area_size=norm_area_size)
-        if bldg_prof:
-            if get_comprehensive_land_info and address:
-                try:
-                    vw_lnd = get_comprehensive_land_info(address, lat, lng)
+        if get_comprehensive_land_info and address:
+            try:
+                vw_lnd = get_comprehensive_land_info(address, lat, lng)
+                if vw_lnd.get("use_info"):
+                    eum_context["use_info"] = vw_lnd.get("use_info")
+                if bldg_prof:
                     if vw_lnd.get("zoning"):
                         bldg_prof["zoning"] = vw_lnd.get("zoning")
                     if vw_lnd.get("jimok"):
@@ -3850,9 +4185,12 @@ def get_map_demographics(
                         bldg_prof["land_area_sqm"] = float(vw_lnd.get("area_sqm"))
                     if vw_lnd.get("official_price_sqm"):
                         bldg_prof["official_price_sqm"] = float(vw_lnd.get("official_price_sqm"))
-                except Exception as e:
-                    logging.warning(f"Failed to attach VWorld zoning to bldg_prof: {e}")
+                    if vw_lnd.get("use_info"):
+                        bldg_prof["eum_use_info"] = vw_lnd.get("use_info")
+            except Exception as e:
+                logging.warning(f"Failed to attach VWorld/Eum zoning to bldg_prof: {e}")
 
+        if bldg_prof:
             # 로컬 공간 DB(zoning_polygons) 기반 용도지역 실측 폴백
             if not bldg_prof.get("zoning") and lat and lng and os.path.exists(db_path):
                 try:
@@ -3887,6 +4225,32 @@ def get_map_demographics(
                     bldg_prof["jimok"] = "창고용지"
                 else:
                     bldg_prof["jimok"] = "대"
+
+    # 로컬 공간 DB에서 개발행위허가제한지역(deregulation_zones) 및 도시계획시설(unexecuted_facilities) 저촉/인접 조회
+    if lat and lng and os.path.exists(db_path):
+        try:
+            sp_conn = sqlite3.connect(db_path)
+            sp_cur = sp_conn.cursor()
+            d_deg = 0.002  # 약 200m 반경
+            sp_cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='deregulation_zones'")
+            if sp_cur.fetchone():
+                sp_cur.execute(
+                    "SELECT name, category, detail FROM deregulation_zones WHERE min_lat <= ? AND max_lat >= ? AND min_lng <= ? AND max_lng >= ? LIMIT 5",
+                    (lat + d_deg, lat - d_deg, lng + d_deg, lng - d_deg)
+                )
+                for r_nm, r_cat, r_dt in sp_cur.fetchall():
+                    eum_context["db_deregulation_zones"].append({"name": r_nm or "", "category": r_cat or "규제완화/제한지구", "detail": r_dt or ""})
+            sp_cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='unexecuted_facilities'")
+            if sp_cur.fetchone():
+                sp_cur.execute(
+                    "SELECT facility_name, facility_type, status FROM unexecuted_facilities WHERE min_lat <= ? AND max_lat >= ? AND min_lng <= ? AND max_lng >= ? LIMIT 5",
+                    (lat + d_deg, lat - d_deg, lng + d_deg, lng - d_deg)
+                )
+                for f_nm, f_tp, f_st in sp_cur.fetchall():
+                    eum_context["db_unexecuted_facilities"].append({"name": f_nm or "", "type": f_tp or "도시계획시설", "status": f_st or ""})
+            sp_conn.close()
+        except Exception as spe:
+            logging.warning(f"Spatial deregulation/facility lookup error: {spe}")
     
     # 7. 반경 5km 광역 개발계획(철도·지하철·도로·정비사업) 및 단독/다가구 용도변경 가이드 연동
     dev_plans_5km = None
@@ -3902,6 +4266,26 @@ def get_map_demographics(
             usage_change_guide = get_usage_change_guide_data(norm_property_type, norm_area_size, bldg_prof)
         except Exception as e:
             logging.error(f"Error computing usage change guide: {e}")
+
+    # 8. 건축물대장 실측 스펙(bldg_prof) 및 토지이음(eum_context)을 반영하여 물건 스펙 & 입지 적합도 분석 생성
+    specs = get_auction_property_specs(
+        case_no=case_no,
+        address=address,
+        property_type=norm_property_type,
+        area_size=norm_area_size,
+        bldg_prof=bldg_prof,
+        land_prof=land_prof,
+        floor_param=floor
+    )
+    comparison_comments = generate_specs_comparison_comments(
+        specs=specs,
+        property_type=norm_property_type,
+        matched_grid=matched_grid,
+        bldg_prof=bldg_prof,
+        land_prof=land_prof,
+        dev_plans_5km=dev_plans_5km,
+        eum_context=eum_context
+    )
 
     return {
         "status": "success",

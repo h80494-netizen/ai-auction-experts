@@ -64,7 +64,17 @@ def import_auctions():
                 skipped += 1
                 continue
 
-            sale_type = str(row.get('구분', '')).strip()
+            raw_sale_type = str(row.get('구분', '')).strip()
+            notes_for_sale_type = " ".join([
+                raw_sale_type,
+                str(row.get('특이사항', '')),
+                str(row.get('특이사항1', '')),
+                str(row.get('특이코드', ''))
+            ])
+            if '수의계약' in notes_for_sale_type:
+                sale_type = '수의계약'
+            else:
+                sale_type = raw_sale_type
 
             # Use Column W '형태' as the primary property type classification
             property_type = str(row.get('형태', '')).strip()

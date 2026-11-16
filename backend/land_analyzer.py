@@ -294,10 +294,14 @@ def get_land_profile_data(
     urban_facilities = vw_use.get("urban_facilities", [])
     all_use_zones = vw_use.get("all_zones", [])
     green_belts = vw_use.get("green_belts", [])
+    permit_restriction_zones = list(vw_use.get("permit_restriction_zones", []))
+    land_tx_permit_zones = list(vw_use.get("land_tx_permit_zones", []))
+    recent_gosi_list = list(vw_use.get("recent_gosi_list", []))
 
     district_unit_info = {"designated": False, "name": None}
     redevelopment_info = {"designated": False, "name": None, "stage": None}
     urban_facility_info = {"designated": False, "name": None}
+    deregulation_db_info = {"designated": False, "name": None, "zone_type": None}
 
     # DB 공간 쿼리 병행
     if os.path.exists(db_path):
@@ -344,6 +348,23 @@ def get_land_profile_data(
             if uf_row or pr_row:
                 facility_name = (uf_row['name'] if uf_row else "") or (pr_row['name'] if pr_row else "도시계획도로")
                 urban_facility_info = {"designated": True, "name": facility_name}
+
+            # 4) 개발행위허가제한지역 / 특별계획구역 / 규제완화지구 (deregulation_zones)
+            c.execute("""
+                SELECT name, zone_type, details FROM deregulation_zones
+                WHERE ? BETWEEN min_lat AND max_lat AND ? BETWEEN min_lng AND max_lng
+                LIMIT 1
+            """, (lat, lng))
+            dz_row = c.fetchone()
+            if dz_row:
+                dz_name = dz_row['name'] or dz_row['zone_type'] or '개발행위허가제한·특별계획구역'
+                deregulation_db_info = {
+                    "designated": True,
+                    "name": dz_name,
+                    "zone_type": dz_row['zone_type'] or '특별계획구역'
+                }
+                if dz_name not in permit_restriction_zones and "제한" in dz_name:
+                    permit_restriction_zones.append(dz_name)
 
             conn.close()
         except Exception as e:
@@ -582,10 +603,16 @@ def get_land_profile_data(
     has_urban_facility = urban_facility_info["designated"] or len(urban_facilities) > 0
     has_redev = redevelopment_info["designated"]
     has_greenbelt = len(green_belts) > 0
+    has_permit_restriction = len(permit_restriction_zones) > 0 or deregulation_db_info["designated"]
+    has_land_tx_permit = len(land_tx_permit_zones) > 0
 
-    is_public_project = has_industrial or has_public_housing or has_urban_facility or has_redev or district_unit_info["designated"]
+    is_public_project = has_industrial or has_public_housing or has_urban_facility or has_redev or district_unit_info["designated"] or has_permit_restriction
 
     project_names = []
+    if permit_restriction_zones:
+        project_names.append(f"개발행위허가제한({', '.join(permit_restriction_zones[:2])})")
+    elif deregulation_db_info["designated"]:
+        project_names.append(f"{deregulation_db_info['zone_type']}({deregulation_db_info['name']})")
     if industrial_zones:
         iz_names = [iz["name"] for iz in industrial_zones]
         project_names.append(f"산업단지({', '.join(iz_names)})")
@@ -669,6 +696,38 @@ def get_land_profile_data(
                 "1) 공익사업 수용 시 개발제한구역 지정 이전 지목 기준 보상 평가: 공익사업 편입 시 개발제한구역으로 인한 감가를 적용하지 않고 인근 정상 표준지 기준으로 정당 보상 산정.",
                 "2) 이축권(용마루) 확보: 개발제한구역 내 공익사업 시행으로 주택이 철거되는 경우 그린벨트 내 다른 입지에 단독주택이나 근생시설을 신축할 수 있는 공공이축권 권리 확보."
             ]
+        })
+
+    # 5) 개발행위허가제한지역 / 특별계획구역 보상 및 개발 선점 전략
+    if has_permit_restriction:
+        pr_title = permit_restriction_zones[0] if permit_restriction_zones else (deregulation_db_info["name"] or "개발행위허가제한지역")
+        specific_strategies.append({
+            "category": "🚧 개발행위허가제한지역 / 특별계획구역 수용·개발 전략",
+            "zone_name": pr_title,
+            "badge": "토지이음 행위제한",
+            "badge_color": "#dc2626",
+            "items": [
+                "1) 국토계획법 제63조 개발 확정 선행 시그널: 도시관리계획(신도시·택지·역세권·산단·정비사업) 수립을 앞두고 난개발 및 지분 쪼개기를 막기 위해 3년간(1회 2년 연장 가능) 건축·토지형질변경을 제한하는 구역으로, 향후 전면 수용 또는 종상향 지구단위계획 확정 가능성이 매우 높습니다.",
+                "2) 수용 보상 대비 지장물·현황 관리 및 소유자 추천 감정평가: 제한고시일 이전 적법하게 설치된 건축물·공작물·수목 및 영업시설만 보상 대상에 산입되므로 무단 증축·식재를 지양하고, 향후 보상계획 공고 시 토지소유자 1/2 이상 동의로 소유자 추천 감정평가사를 선임하여 보상금을 5~15% 증액하십시오.",
+                "3) 협의양도인택지 및 대토보상 기준면적 체크: 향후 공공주택지구·도시개발구역 본지정 전환 시 수도권 1,000㎡(지방 400㎡) 이상 협의양도 요건 및 대토보상(양도세 40% 감면) 권리 확보 가능성을 선제적으로 점검하십시오."
+            ]
+        })
+
+    # 6) 토지거래허가구역 경매 취득 특례 및 토지이음 최신 고시 연동 전략
+    if has_land_tx_permit or recent_gosi_list:
+        gosi_items_desc = [
+            "1) 민사집행법상 경매 낙찰 시 토지거래허가 면제 특례(부동산거래신고법 제14조): 토지이음상 토지거래계약에관한허가구역으로 지정된 필지라도 법원 경매(및 공매 일부)를 통한 취득 시 지자체 토지거래허가 및 실거주·자경·직접이용 의무가 면제되어 선점 투자가 가능합니다."
+        ]
+        for idx_g, g_item in enumerate(recent_gosi_list[:3], start=2):
+            gosi_items_desc.append(
+                f"{idx_g}) [토지이음 최신 고시 ({g_item.get('date', '')})] {g_item.get('title', '')} ({g_item.get('org', '')} / {g_item.get('gosi_no', '')})"
+            )
+        specific_strategies.append({
+            "category": "📋 토지이음(eum.go.kr) 실시간 규제·고시 & 경매 특례 전략",
+            "zone_name": land_tx_permit_zones[0][:40] if land_tx_permit_zones else "관할 지자체 도시관리계획 고시",
+            "badge": "토지이음 실시간",
+            "badge_color": "#7c3aed",
+            "items": gosi_items_desc
         })
 
     # 기본 협상 단계 로드맵 (주의: '오류' 단어를 일체 배제하여 인쇄 기능 정상 작동 보장)

@@ -658,6 +658,162 @@ def _query_spatial_and_local_context(address: str, lat: Optional[float], lng: Op
     return ctx
 
 
+def _extract_housing_physical_specs(
+    case_data: Dict[str, Any],
+    address: str,
+    property_type: str,
+    bldg_py: float,
+) -> Dict[str, str]:
+    """
+    건축물대장(get_building_profile_data), 감정평가서/현황조사서(scraped_doc_text, mulgun_pdf_text),
+    경매 DB 세대수 등을 종합하여 주택/건물의 물리적 현황 5대 핵심 스펙을 추출합니다:
+    - parking_info: 가구당 주차대수 (총 주차대수 / 총 세대수)
+    - rooms_baths_info: 방개수 및 화장실 수
+    - direction_info: 방향(향) 및 채광·통풍
+    - elevator_info: 엘리베이터(승강기) 수
+    - structure_heating_info: 주구조·층수·난방방식
+    """
+    doc_txt = f"{case_data.get('scraped_doc_text') or ''} {case_data.get('mulgun_pdf_text') or ''} {case_data.get('precautions') or ''}"
+    bldg_prof: Dict[str, Any] = {}
+    if isinstance(case_data.get("building_profile"), dict):
+        bldg_prof = case_data["building_profile"]
+    else:
+        try:
+            from app import get_building_profile_data
+            lat_v = float(case_data.get("lat") or case_data.get("latitude") or 0.0)
+            lng_v = float(case_data.get("lng") or case_data.get("longitude") or 0.0)
+            bldg_prof = get_building_profile_data(
+                address, lat_v, lng_v, property_type=property_type, area_size=bldg_py
+            ) or {}
+        except Exception:
+            bldg_prof = {}
+
+    def _to_int(val: Any) -> int:
+        if val is None:
+            return 0
+        m = re.search(r"(\d[\d,]*)", str(val))
+        return int(m.group(1).replace(",", "")) if m else 0
+
+    tot_pkng = _to_int(bldg_prof.get("tot_pkng"))
+    hhld_cnt = _to_int(bldg_prof.get("hhld_cnt")) or _to_int(case_data.get("households"))
+
+    if tot_pkng <= 0:
+        m_pk = re.search(r"(?:총\s*)?주차(?:대수)?\s*[:：]?\s*(\d[\d,]*)\s*대", doc_txt)
+        if m_pk:
+            tot_pkng = int(m_pk.group(1).replace(",", ""))
+    if hhld_cnt <= 0:
+        m_hh = re.search(r"(?:총\s*)?(\d[\d,]*)\s*(?:세대|가구)", doc_txt)
+        if m_hh:
+            cand_hh = int(m_hh.group(1).replace(",", ""))
+            if 2 <= cand_hh <= 15000:
+                hhld_cnt = cand_hh
+
+    m_ratio_direct = re.search(r"(?:세대당|가구당)\s*주차(?:대수)?\s*[:：]?\s*(\d+(?:\.\d+)?)\s*대", doc_txt)
+    if tot_pkng > 0 and hhld_cnt > 0:
+        pk_ratio = tot_pkng / hhld_cnt
+        if pk_ratio >= 1.2:
+            pk_eval = "세대당 1.2대 이상으로 야간 주차 여건이 매우 쾌적함"
+        elif pk_ratio >= 1.0:
+            pk_eval = "세대당 1.0대 이상 확보되어 일상 주차 여건 양호"
+        elif pk_ratio >= 0.7:
+            pk_eval = "세대당 0.7~1.0대 수준으로 심야 시간대 일부 혼잡 가능"
+        else:
+            pk_eval = "세대당 0.7대 미만으로 주차 공간 부족 및 인근 공영주차장 활용 여부 확인 필요"
+        parking_info = f"**세대당 {pk_ratio:.2f}대** (총 주차대수 {tot_pkng:,}대 ÷ 총 {hhld_cnt:,}세대) — {pk_eval}"
+    elif m_ratio_direct:
+        pk_r = float(m_ratio_direct.group(1))
+        parking_info = f"**세대당 {pk_r:.2f}대** (감정평가서/문건 기재 기준)"
+    elif tot_pkng > 0:
+        parking_info = f"**총 주차대수 {tot_pkng:,}대** (건축물대장 기준, 세대당 주차비율은 동별/단지별 세대수 대조 권장)"
+    else:
+        if any(k in property_type for k in ["아파트", "주상복합", "오피스텔"]):
+            parking_info = "**세대당 약 1.0~1.2대 수준 추정** (공동주택 표준 법정주차대수 충족 추정, 관리사무소 및 총괄표제부 실측 대조 권장)"
+        elif any(k in property_type for k in ["다세대", "연립", "빌라", "다가구"]):
+            parking_info = "**세대당 약 0.6~0.9대 수준 추정** (다세대·빌라 특성상 1층 필로티 주차 구획 수 및 야간 주차 여건 현장 확인 필수)"
+        else:
+            parking_info = "**건축물대장 부설주차장 구획 확보** (현장 임장 시 자주식/기계식 작동 여부 및 방문차량 진출입 폭 확인 권장)"
+
+    # 2. 방개수 및 화장실 수
+    m_rb_pair = re.search(r"방\s*(\d+)\s*(?:개|실|칸)?\s*[,/·\s]+(?:욕실|화장실|욕실겸화장실)\s*(\d+)\s*(?:개|실|칸)?", doc_txt)
+    m_room = re.search(r"방\s*(\d+)\s*(?:개|실|칸)", doc_txt)
+    m_bath = re.search(r"(?:욕실|화장실|욕실겸화장실)\s*(\d+)\s*(?:개|실|칸)", doc_txt)
+
+    if m_rb_pair:
+        r_cnt, b_cnt = int(m_rb_pair.group(1)), int(m_rb_pair.group(2))
+        rooms_baths_info = f"**방 {r_cnt}개, 화장실(욕실) {b_cnt}개** (감정평가서/현황조사서 내부구조 기재 기준, 거실·주방·발코니 구성)"
+    elif m_room:
+        r_cnt = int(m_room.group(1))
+        b_cnt = int(m_bath.group(1)) if m_bath else (2 if r_cnt >= 3 else 1)
+        rooms_baths_info = f"**방 {r_cnt}개, 화장실(욕실) {b_cnt}개** (감정평가서 방 개수 실측 및 표준 욕실 배치 기준)"
+    else:
+        eff_py = bldg_py if bldg_py > 0 else 25.0
+        if eff_py >= 38:
+            rooms_baths_info = f"**방 4개, 화장실(욕실) 2개** (전용 {eff_py:.1f}평 대형 평면 표준 구성 — 거실·주방·드레스룸·발코니 포함, 감정평가서 내부구조도 최종 대조 권장)"
+        elif eff_py >= 21:
+            rooms_baths_info = f"**방 3개, 화장실(욕실) 2개** (전용 {eff_py:.1f}평 국민·중형 평면 표준 3~4Bay 구성 — 거실·주방·다용도실 포함, 감정평가서 내부구조도 최종 대조 권장)"
+        elif eff_py >= 12:
+            rooms_baths_info = f"**방 2개, 화장실(욕실) 1개** (전용 {eff_py:.1f}평 중소형 투룸 표준 구성 — 거실·주방 포함, 감정평가서 내부구조도 최종 대조 권장)"
+        else:
+            rooms_baths_info = f"**방 1개(원룸/오픈형), 화장실(욕실) 1개** (전용 {eff_py:.1f}평 소형 주거 표준 구성, 감정평가서 내부구조도 최종 대조 권장)"
+
+    # 3. 방향 (향)
+    m_dir = re.search(r"(남동향|남서향|정남향|남향|동향|서향|북동향|북서향|북향)", doc_txt)
+    if m_dir:
+        dir_val = m_dir.group(1)
+        if "남" in dir_val:
+            dir_eval = "거실·주실 기준 일조량과 동절기 난방 효율이 뛰어나 실수요 및 임차 선호도가 매우 높음"
+        elif "동" in dir_val:
+            dir_eval = "오전 채광이 우수하여 쾌적한 주거환경을 제공함"
+        else:
+            dir_eval = "주창 방향에 따른 오후 채광 및 통풍·결로 여부를 현장 점검 권장"
+        direction_info = f"**{dir_val}** (감정평가서/문건 기재 기준) — {dir_eval}"
+    else:
+        direction_info = "**남향 / 남동향(또는 남서향) 위주 주실 배치 추정** (감정평가서 호별배치도 및 현장 임장 시 거실 주창 방향·동간 일조 간섭 여부 최종 확인 권장)"
+
+    # 4. 엘리베이터(승강기) 수
+    raw_el = str(bldg_prof.get("elevators") or "").strip()
+    m_el_doc = re.search(r"(?:승강기|엘리베이터)\s*[:：]?\s*([^\n,.;()]{1,25})", doc_txt)
+    grnd_flr = _to_int(bldg_prof.get("grnd_flr"))
+    ugrnd_flr = _to_int(bldg_prof.get("ugrnd_flr"))
+
+    if raw_el and raw_el not in ("-", "미상"):
+        if "없음" in raw_el or raw_el == "0":
+            el_eval = "승강기 미설치 건물로서 중·고층 호실의 경우 임차 선호도 및 고령층 이동 편의성 감안 필요"
+            elevator_info = f"**승강기 없음 (0대)** — {el_eval}"
+        else:
+            el_cnt = _to_int(raw_el) or 1
+            elevator_info = f"**{raw_el}** (건축물대장 기준 총 {el_cnt}대 운행) — 수직 이동 편의성 및 출퇴근 시간대 대기시간 양호"
+    elif m_el_doc:
+        elevator_info = f"**{m_el_doc.group(1).strip()}** (감정평가서 설비 내역 기준)"
+    else:
+        if grnd_flr >= 6 or any(k in property_type for k in ["아파트", "오피스텔", "주상복합"]):
+            elevator_info = "**승용 엘리베이터 설치·운행 중 (라인당 1~2대 표준)** — 중고층 수직 이동성 양호 (현장 임장 시 승강기 교체 주기 및 지하주차장 직결 여부 확인 권장)"
+        else:
+            elevator_info = "**건축물대장 승강기 유무 현장 확인 필요** (5층 이하 저층 다세대/다가구의 경우 승강기 설치 여부에 따라 매도가·임대가 격차 발생)"
+
+    # 5. 주구조·층수·난방방식
+    struct_str = str(bldg_prof.get("structure") or "철근콘크리트조").strip()
+    flr_str = f"지상 {grnd_flr}층" + (f" / 지하 {ugrnd_flr}층" if ugrnd_flr > 0 else "") if grnd_flr > 0 else "층수 정보 감정평가서 참조"
+    if "지역난방" in doc_txt or "열병합" in doc_txt:
+        heat_str = "지역난방 (열병합, 관리비 효율 우수)"
+    elif "개별난방" in doc_txt or "도시가스" in doc_txt:
+        heat_str = "도시가스 개별난방"
+    elif "중앙난방" in doc_txt:
+        heat_str = "중앙난방"
+    else:
+        heat_str = "도시가스 개별난방(또는 지역난방) 설비"
+
+    structure_heating_info = f"**{struct_str}** ({flr_str}) / 난방방식: **{heat_str}**"
+
+    return {
+        "parking_info": parking_info,
+        "rooms_baths_info": rooms_baths_info,
+        "direction_info": direction_info,
+        "elevator_info": elevator_info,
+        "structure_heating_info": structure_heating_info,
+    }
+
+
 def _build_deterministic_deep_research(
     case_data: Dict[str, Any],
     vworld_info: Dict[str, Any],
@@ -965,12 +1121,18 @@ def _build_deterministic_deep_research(
             else "현재 공적장부 및 매각물건명세서 특기사항 내 위반건축물 등재 내역은 포착되지 않았으나, 현장 임장 시 무단 증축·발코니 불법 확장 여부를 건축물대장 도면과 재대조하시기 바랍니다."
         )
         mgmt_est = int(round((bldg_py or 25.0) * (12000 if is_commercial else 8500) * 6, -4))
+        housing_specs = _extract_housing_physical_specs(case_data, address, property_type, bldg_py)
         sec3_md = f"""- **건물 노후도 산출**: 사용승인 `{approval_display}` 기준 **만 {bldg_age}년차** ({current_year}년 - {current_year - bldg_age}년) 건축물입니다.
 - **노후도 연동 예상 수리비(CAPEX) 공식 산출**:
   - 적용 기준: 만 {bldg_age}년차 구간 계수 **{int(rep_ratio*100)}%** × 전용/건물면적 **{bldg_py if bldg_py > 0 else 25.0:.2f}평** × 기준 평당 수리단가 **150만 원** = **총 예상 수리비 {_fmt_krw(repair_cost)}**
+- **주택·건축물 핵심 물리적 스펙 (건축물대장 및 감정평가서·현황조사서 기준)**:
+  - **가구당 주차대수**: {housing_specs['parking_info']}
+  - **방개수 및 화장실 수**: {housing_specs['rooms_baths_info']}
+  - **방향 (향)**: {housing_specs['direction_info']}
+  - **엘리베이터(승강기) 수**: {housing_specs['elevator_info']}
+  - **주구조·층수·난방방식**: {housing_specs['structure_heating_info']} (전용/건물면적 **{bldg_area_fmt}**, 대지권/토지면적 **{land_area_fmt}**)
 - **미납 공용관리비 추정**: 집합건물법 제18조 및 대법원 전원합의체 판례(**대법원 2001다8677**)에 따라 전 소유자의 체납 관리비 중 **공용부분(연체료 제외, 3년 단기소멸시효 적용)**은 낙찰자가 승계합니다. 최근 6개월 공실/체납 가정 시 예상 공용관리비 예비비 약 **{_fmt_krw(mgmt_est)}**을 입찰 전 관리사무소(또는 한전·수도사업소)에 유선 확인하십시오.
-- **위반건축물 및 이행강제금 검토**: {vio_txt}
-- **감정평가서 기반 물리적 현황**: 주용도 **{property_type}**, 전용(건물)면적 **{bldg_area_fmt}**, 대지권(토지)면적 **{land_area_fmt}** 규모로, 위생·급배수 설비 및 기본 난방·주차 인프라가 갖춰진 도심 생활권 물건입니다."""
+- **위반건축물 및 이행강제금 검토**: {vio_txt}"""
 
     # 4. 권리분석 (임차인 유무 분기 + 소액임차인 기준표 + 8대 체크리스트 + 택지/재개발 보상)
     if has_tenant_flag and tenants:
@@ -1345,6 +1507,16 @@ def generate_deep_research(case_data: dict) -> str:
                     + "\n".join(spatial_ctx["dev_plans_lines"])
                 )
                 extra_context_parts.append(sp_txt)
+            _, bldg_py_ctx, _ = _format_area_dual(case_data.get("building_area"))
+            housing_specs_ctx = _extract_housing_physical_specs(case_data, address, property_type, bldg_py_ctx)
+            extra_context_parts.append(
+                "=== [건축물대장 및 감정평가서 기반 주택·건물 핵심 물리적 현황 (섹션 3 필수 반영)] ===\n"
+                f"- 가구당 주차대수: {housing_specs_ctx['parking_info']}\n"
+                f"- 방개수 및 화장실 수: {housing_specs_ctx['rooms_baths_info']}\n"
+                f"- 방향(향): {housing_specs_ctx['direction_info']}\n"
+                f"- 엘리베이터(승강기) 수: {housing_specs_ctx['elevator_info']}\n"
+                f"- 주구조·층수·난방방식: {housing_specs_ctx['structure_heating_info']}"
+            )
             pdf_context = "\n\n".join(extra_context_parts) if extra_context_parts else "마이옥션 수집 상세 기본정보 참조"
 
             is_gongmae = "-" in case_number and "타경" not in case_number
